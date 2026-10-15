@@ -1,6 +1,6 @@
 [package]
-name = "primase-core"
-description = "primase core: the world store, core components, frames, the pass manager and gates"
+name = "primase-dxbc"
+description = "Bounded Shader Model 5 pixel-program evaluation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,7 +10,8 @@ publish.workspace = true
 
 [dependencies]
 thiserror.workspace = true
-serde.workspace = true
+
+[dev-dependencies]
 serde_json.workspace = true
 
 [lints]
