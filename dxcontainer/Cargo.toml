@@ -1,6 +1,6 @@
 [package]
-name = "primase-dxbc"
-description = "Bounded Shader Model 4 and 5 pixel-program evaluation"
+name = "primase-dxcontainer"
+description = "The DXBC container Direct3D shader programs are stored in (Shader Model 4 to 6): its parts, and its digest"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,14 +9,9 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
-thiserror.workspace = true
-primase-shader.workspace = true
+primase-bytes.workspace = true
 primase-hash.workspace = true
-naga.workspace = true
-
-[dev-dependencies]
-primase-testdata.workspace = true
-serde_json.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true
