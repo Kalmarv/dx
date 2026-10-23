@@ -1,6 +1,6 @@
 // A compute program: a thread group of 8 by 4 by 2, the invocation ids, thread-group memory, barriers, atomics on
-// thread-group memory and on a buffer, and read-write buffers of each kind. Compiled with dxc -T cs_6_0 (also -Od,
-// and -T cs_6_6).
+// thread-group memory and on a buffer, and read-write buffers of each kind. Compiled with fxc /T cs_5_0 (also /Od;
+// the same source as the DXIL fixture).
 RWByteAddressBuffer raw : register(u0);
 RWStructuredBuffer<uint> words : register(u1);
 RWBuffer<float4> typed : register(u2);
