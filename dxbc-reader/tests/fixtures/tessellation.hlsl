@@ -1,9 +1,8 @@
 // A tessellated triangle patch: a vertex program that writes no position (its outputs feed the hull program), the hull
-// program with its patch-constant function, and the domain program that places each vertex of the patch. Compiled with
-//   dxc -T vs_6_0 -E vs_main      (tessellation.vs.dxil)
-//   dxc -T hs_6_0 -E hs_main      (tessellation.hs.dxil)
-//   dxc -T ds_6_0 -E ds_main      (tessellation.ds.dxil)
-// and the same with -Od (tessellation.vs.od.dxil, ...).
+// program with its patch-constant function, and the domain program that places each vertex of the patch. The same
+// source as the DXIL fixture; compiled with
+//   fxc /T vs_5_0 /E vs_main (tessellation.vs.dxbc),  /T hs_5_0 /E hs_main (tessellation.hs.dxbc),
+//   fxc /T ds_5_0 /E ds_main (tessellation.ds.dxbc)  and the same with /Od (tessellation.vs.od.dxbc, ...).
 cbuffer View : register(b0) {
     float4x4 viewProjection;
     float scale;
