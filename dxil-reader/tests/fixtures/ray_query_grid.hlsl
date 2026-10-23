@@ -1,25 +1,25 @@
-// Inline ray tracing against an acceleration structure (compute, one group of 5). Compiled with dxc -T cs_6_5 -E main
-// (ray_query_hits.dxil, also -Od). Thread i traces the ray origins[i], directions[i] (t from 0 to 100) with the flags
-// and instance mask of params[i].xy, commits every non-opaque triangle it is offered, and writes ten words to
-// results[10 * i]: the committed status (0 none, 1 triangle), the distance (a float's bits), the instance index, the
-// instance id, the instance's contribution to the hit group index, the geometry index, the primitive index, the two
-// barycentric weights (floats' bits) and whether the triangle faces the ray (0 or 1).
+// Inline ray tracing, many rays (compute, one group of 64). Compiled with dxc -T cs_6_5 -E main (ray_query_grid.dxil).
+// Thread i traces the ray origins[i], directions[i] (t from 0 to 1000) with the flags and instance mask of params[i].xy,
+// commits every non-opaque triangle it is offered, and writes ten words to results[10 * i], as ray_query_hits.hlsl does:
+// the committed status (0 none, 1 triangle), the distance (a float's bits), the instance index, the instance id, the
+// instance's contribution to the hit group index, the geometry index, the primitive index, the two barycentric weights
+// (floats' bits) and whether the triangle faces the ray.
 RaytracingAccelerationStructure scene : register(t0);
 RWStructuredBuffer<uint> results : register(u0);
 
 cbuffer Rays : register(b0) {
-    float4 origins[5];
-    float4 directions[5];
-    uint4 params[5];
+    float4 origins[64];
+    float4 directions[64];
+    uint4 params[64];
 };
 
-[numthreads(5, 1, 1)]
+[numthreads(64, 1, 1)]
 void main(uint i : SV_GroupIndex) {
     RayDesc ray;
     ray.Origin = origins[i].xyz;
     ray.Direction = directions[i].xyz;
     ray.TMin = 0.0;
-    ray.TMax = 100.0;
+    ray.TMax = 1000.0;
     RayQuery<RAY_FLAG_NONE> q;
     q.TraceRayInline(scene, params[i].x, params[i].y, ray);
     while (q.Proceed()) {
