@@ -579,9 +579,10 @@ fn return_codes(token: u32) -> ReturnCodes {
     [0, 4, 8, 12].map(|shift| low8((token >> shift) & 15))
 }
 
-/// The opcodes that are declarations (and the phase markers of hull programs, which carry none).
+/// The opcodes that are declarations (and the phase markers of hull programs, which carry none): 88-106 and
+/// 143-162 of Direct3D 10 and 11, the hull phases 113-116 and `dcl_gs_instance_count` (206).
 fn is_declaration(opcode: u16) -> bool {
-    matches!(opcode, 88..=106 | 113..=116 | 143..=162)
+    matches!(opcode, 88..=106 | 113..=116 | 143..=162 | 206)
 }
 
 /// Decode a complete token stream: version token, length, then declarations and instructions to its end.

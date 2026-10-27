@@ -156,3 +156,14 @@ fn unreadable_tokens_are_errors_naming_the_word() {
         let _ = dxbc_reader::decode(&cut);
     }
 }
+
+#[test]
+fn a_geometry_program_s_instance_count_is_a_declaration() {
+    // gs_5_0: dcl_gs_instance_count 2 (a declaration whose one word is the count, not an operand); ret
+    let d = dxbc_reader::decode(&stream(0x20050, &[instruction(206, &[2]), instruction(62, &[])])).unwrap();
+    assert_eq!(d.instructions.len(), 1);
+    assert!(matches!(
+        &d.declarations[0].kind,
+        Declared::Other { opcode: 206, words, .. } if words == &[2]
+    ));
+}
