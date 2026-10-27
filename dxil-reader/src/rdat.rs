@@ -37,37 +37,71 @@ use crate::{Result, error};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Subobject {
     /// Kind 0: the state object's flags (`D3D12_STATE_OBJECT_FLAGS`).
-    StateObjectConfig { name: String, flags: u32 },
+    StateObjectConfig {
+        /// The subobject's name.
+        name: String,
+        /// The flags as stored.
+        flags: u32,
+    },
     /// Kind 1: a root signature as D3D serialised it, its bytes from the raw bytes part.
-    GlobalRootSignature { name: String, signature: Vec<u8> },
+    GlobalRootSignature {
+        /// The subobject's name.
+        name: String,
+        /// The serialised root signature.
+        signature: Vec<u8>,
+    },
     /// Kind 2: a local root signature, as kind 1.
-    LocalRootSignature { name: String, signature: Vec<u8> },
+    LocalRootSignature {
+        /// The subobject's name.
+        name: String,
+        /// The serialised root signature.
+        signature: Vec<u8>,
+    },
     /// Kind 8: the subobject named, associated with these exports.
     ExportsAssociation {
+        /// The subobject's name.
         name: String,
+        /// The name of the subobject associated.
         subobject: String,
+        /// The exports it is associated with.
         exports: Vec<String>,
     },
     /// Kind 9: the largest payload and hit attributes.
     ShaderConfig {
+        /// The subobject's name.
         name: String,
+        /// The largest ray payload in bytes.
         max_payload_bytes: u32,
+        /// The largest hit attribute structure in bytes.
         max_attribute_bytes: u32,
     },
     /// Kind 10: the deepest recursion.
-    PipelineConfig { name: String, max_recursion_depth: u32 },
+    PipelineConfig {
+        /// The subobject's name.
+        name: String,
+        /// The deepest ray recursion.
+        max_recursion_depth: u32,
+    },
     /// Kind 11: a hit group; `kind` is its `D3D12_HIT_GROUP_TYPE` (0 triangles, 1 procedural primitives).
     HitGroup {
+        /// The subobject's name.
         name: String,
+        /// The hit group type.
         kind: u32,
+        /// The any-hit shader's name, where it has one.
         any_hit: Option<String>,
+        /// The closest-hit shader's name, where it has one.
         closest_hit: Option<String>,
+        /// The intersection shader's name, where it has one.
         intersection: Option<String>,
     },
     /// Kind 12: the deepest recursion and the pipeline flags (`D3D12_RAYTRACING_PIPELINE_FLAGS`).
     PipelineConfig1 {
+        /// The subobject's name.
         name: String,
+        /// The deepest ray recursion.
         max_recursion_depth: u32,
+        /// The pipeline flags as stored.
         flags: u32,
     },
 }

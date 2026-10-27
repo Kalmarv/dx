@@ -21,69 +21,109 @@ const BLOCKINFO: u64 = 0;
 const MAX_VALUES: usize = 1 << 22;
 const MAX_TYPES: usize = 1 << 16;
 
+/// An index into [`Module::types`].
 pub type TypeId = usize;
+/// An index into the values: the module's [`Module::values`], then a function body's own [`Function::locals`].
 pub type ValueId = usize;
+/// An index into [`Module::metadata`].
 pub type MetadataId = usize;
 
+/// A type of the module's type table.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
+    /// `void`.
     Void,
+    /// `label`, the type of a basic block.
     Label,
+    /// `metadata`.
     Metadata,
+    /// `half`.
     Half,
+    /// `float`.
     Float,
+    /// `double`.
     Double,
+    /// An integer of this many bits (1 to 64).
     Integer(u32),
+    /// A pointer to the type.
     Pointer(TypeId),
+    /// An array of this many elements of the type.
     Array(u64, TypeId),
+    /// A vector of this many lanes of the type.
     Vector(u64, TypeId),
+    /// A structure.
     Struct {
+        /// Its name, where it has one.
         name: Option<String>,
+        /// The types of its fields, in order.
         elements: Vec<TypeId>,
     },
+    /// A named structure without a body.
     Opaque(Option<String>),
+    /// A function type.
     Function {
+        /// Whether it takes a variable argument list.
         vararg: bool,
+        /// The return type.
         ret: TypeId,
+        /// The parameter types.
         params: Vec<TypeId>,
     },
 }
 
+/// A module-level constant.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Constant {
+    /// The null value of the constant's type (zero).
     Null,
+    /// An undefined value.
     Undef,
     /// An integer's bits, sign-extended from its width.
     Integer(i64),
     /// A float's bits (half, float or double by its type).
     Float(u64),
+    /// An array, structure or vector of other constants (value ids).
     Aggregate(Vec<ValueId>),
+    /// A constant array or vector of numbers, as stored (the bits of each element).
     Data(Vec<u64>),
+    /// A string constant, as stored.
     String(Vec<u8>),
     /// A constant `getelementptr`: the base (a global) and its indices (module constants).
     Gep {
+        /// The base global.
         base: ValueId,
+        /// The index constants.
         indices: Vec<ValueId>,
     },
     /// A constant cast of a module value (to the type of the constant).
     Cast {
+        /// The cast.
         op: CastOp,
+        /// The value cast.
         value: ValueId,
     },
     /// A constant binary operation on module values.
     Binary {
+        /// The operation.
         op: BinaryOp,
+        /// The left operand.
         lhs: ValueId,
+        /// The right operand.
         rhs: ValueId,
     },
 }
 
+/// A value the module numbers.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    /// A function, defined or declared.
     Function {
+        /// Its function type.
         ty: TypeId,
+        /// Whether it is only declared (it has no body).
         declaration: bool,
     },
+    /// A global variable.
     Global {
         /// The global's type: a pointer to `value_ty`.
         ty: TypeId,
@@ -96,16 +136,22 @@ pub enum Value {
         /// LLVM's address space: 0 default, 1 device memory, 3 group shared, 4 constants.
         address_space: u32,
     },
+    /// A constant.
     Constant(Constant),
     /// A function argument or an instruction's result.
     Local,
 }
 
+/// A metadata record.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Metadata {
+    /// A metadata string, as stored (not checked to be UTF-8 here).
     String(Vec<u8>),
+    /// A value as metadata.
     Value {
+        /// The value's type.
         ty: TypeId,
+        /// The value.
         value: ValueId,
     },
     /// Operands; `None` is a null operand.
@@ -115,136 +161,220 @@ pub enum Metadata {
 /// A binary operator code (LLVM's `BinaryOpcodes`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BinaryOp {
+    /// Addition.
     Add,
+    /// Subtraction.
     Sub,
+    /// Multiplication.
     Mul,
+    /// Unsigned division.
     UDiv,
+    /// Signed division.
     SDiv,
+    /// Unsigned remainder.
     URem,
+    /// Signed remainder.
     SRem,
+    /// Shift left.
     Shl,
+    /// Logical shift right.
     LShr,
+    /// Arithmetic shift right.
     AShr,
+    /// Bitwise and.
     And,
+    /// Bitwise or.
     Or,
+    /// Bitwise exclusive or.
     Xor,
 }
+/// A cast opcode (LLVM's `CastOpcodes`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CastOp {
+    /// Truncate an integer.
     Trunc,
+    /// Zero-extend an integer.
     ZExt,
+    /// Sign-extend an integer.
     SExt,
+    /// Float to unsigned integer.
     FpToUi,
+    /// Float to signed integer.
     FpToSi,
+    /// Unsigned integer to float.
     UiToFp,
+    /// Signed integer to float.
     SiToFp,
+    /// Truncate a float.
     FpTrunc,
+    /// Extend a float.
     FpExt,
+    /// Pointer to integer.
     PtrToInt,
+    /// Integer to pointer.
     IntToPtr,
+    /// Reinterpret the bits as another type.
     BitCast,
 }
 
+/// An instruction, with the value ids (absolute) and block numbers it names.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op {
     /// Integer opcodes apply to integers; for floating types Add, Sub, Mul, (S)Div, (S)Rem are the float forms.
     Binary {
+        /// The operation.
         op: BinaryOp,
+        /// The left operand.
         lhs: ValueId,
+        /// The right operand.
         rhs: ValueId,
     },
+    /// A conversion.
     Cast {
+        /// The conversion.
         op: CastOp,
+        /// The value converted; the instruction's result type is the target.
         value: ValueId,
     },
     /// A comparison by its LLVM predicate (0..15 float, 32..41 integer).
     Compare {
+        /// The predicate.
         predicate: u64,
+        /// The left operand.
         lhs: ValueId,
+        /// The right operand.
         rhs: ValueId,
     },
+    /// `select`: one of two values by a condition.
     Select {
+        /// The condition (an `i1`).
         condition: ValueId,
+        /// The value when the condition is true.
         then: ValueId,
+        /// The value when it is false.
         otherwise: ValueId,
     },
+    /// A field or element of an aggregate.
     ExtractValue {
+        /// The aggregate.
         aggregate: ValueId,
+        /// The indices into it, outermost first.
         indices: Vec<u64>,
     },
+    /// An aggregate with one field or element replaced.
     InsertValue {
+        /// The aggregate.
         aggregate: ValueId,
+        /// The new field or element.
         value: ValueId,
+        /// The indices of the replaced one, outermost first.
         indices: Vec<u64>,
     },
     /// One lane of a vector.
     ExtractElement {
+        /// The vector.
         vector: ValueId,
+        /// The lane number.
         index: ValueId,
     },
     /// A vector with one lane replaced.
     InsertElement {
+        /// The vector.
         vector: ValueId,
+        /// The new lane.
         value: ValueId,
+        /// The lane number.
         index: ValueId,
     },
     /// The lanes of two vectors the mask (a constant vector of lane numbers) picks.
     ShuffleVector {
+        /// The first vector.
         first: ValueId,
+        /// The second vector.
         second: ValueId,
+        /// The constant vector of lane numbers.
         mask: ValueId,
     },
+    /// A call.
     Call {
+        /// The callee.
         function: ValueId,
+        /// The arguments, one per parameter.
         args: Vec<ValueId>,
     },
     /// The value from the predecessor block control came from: (value, block) pairs.
     Phi {
+        /// The (value, predecessor block) pairs.
         incoming: Vec<(ValueId, usize)>,
     },
+    /// `ret`, with the value returned where there is one.
     Return(Option<ValueId>),
+    /// An unconditional branch.
     Branch {
+        /// The block branched to.
         target: usize,
     },
+    /// A conditional branch.
     CondBranch {
+        /// The condition (an `i1`).
         condition: ValueId,
+        /// The block when it is true.
         then: usize,
+        /// The block when it is false.
         otherwise: usize,
     },
     /// A multi-way branch: the value, the default block and the (case constant, block) pairs.
     Switch {
+        /// The value switched on.
         value: ValueId,
+        /// The block when no case matches.
         default: usize,
+        /// The (case constant, block) pairs.
         cases: Vec<(ValueId, usize)>,
     },
+    /// `unreachable`.
     Unreachable,
     /// A local variable of this type (the result is a pointer to it).
     Alloca {
+        /// The type of the variable.
         ty: TypeId,
     },
+    /// A load.
     Load {
+        /// The pointer loaded from; the result type is the loaded type.
         pointer: ValueId,
     },
+    /// A store.
     Store {
+        /// The pointer stored to.
         pointer: ValueId,
+        /// The value stored.
         value: ValueId,
     },
     /// `getelementptr`: the base pointer and its indices (the first steps over the pointer itself).
     Gep {
+        /// The base pointer.
         base: ValueId,
+        /// The indices.
         indices: Vec<ValueId>,
     },
     /// `atomicrmw`: the operation (LLVM's code: 0 xchg, 1 add, 2 sub, 3 and, 4 nand, 5 or, 6 xor, 7 max, 8 min, 9 umax,
     /// 10 umin); the result is the value the pointer held.
     AtomicRmw {
+        /// The pointer.
         pointer: ValueId,
+        /// The value operated with.
         value: ValueId,
+        /// The operation code.
         op: u64,
     },
     /// `cmpxchg`: the result is the pair (the value the pointer held, whether it was swapped).
     CmpXchg {
+        /// The pointer.
         pointer: ValueId,
+        /// The value compared with.
         compare: ValueId,
+        /// The new value stored where the comparison holds.
         value: ValueId,
     },
     /// `fence`: ordering between invocations, which a lockstep reading does not have.
@@ -300,8 +430,10 @@ impl Op {
     }
 }
 
+/// An instruction of a function body.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Instruction {
+    /// What it does.
     pub op: Op,
     /// The result's value id and type, when the instruction produces one.
     pub result: Option<(ValueId, TypeId)>,
@@ -311,36 +443,47 @@ pub struct Instruction {
     pub at: usize,
 }
 
+/// A function body.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Function {
     /// The function's module value id.
     pub value: ValueId,
+    /// The number of basic blocks.
     pub blocks: usize,
+    /// The instructions of all blocks, in order.
     pub instructions: Vec<Instruction>,
     /// The body's own values (arguments, constants, instruction results) and their types; their ids start at
     /// `first`, after the module's values.
     pub first: ValueId,
+    /// The values of the body.
     pub locals: Vec<Value>,
+    /// The types of [`Function::locals`].
     pub local_types: Vec<TypeId>,
 }
 
+/// A module: its types, values, metadata and function bodies.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Module {
+    /// The type table.
     pub types: Vec<Type>,
     /// The module's values by id (globals, functions, module constants); a function body's own values continue the
     /// numbering in its [`Function`].
     pub values: Vec<Value>,
     /// Each value's type.
     pub value_types: Vec<TypeId>,
+    /// The symbol table: the name of the values that have one.
     pub names: Vec<(ValueId, String)>,
+    /// The metadata records, by [`MetadataId`].
     pub metadata: Vec<Metadata>,
     /// The bit of the bitcode each metadata record (by id) starts at, for the locations of reflection errors.
     pub metadata_at: Vec<usize>,
+    /// The named metadata (`dx.entryPoints`, ...): the name and the records it lists.
     pub named_metadata: Vec<(String, Vec<MetadataId>)>,
     /// The bit each named metadata record (by index in `named_metadata`) starts at.
     pub named_metadata_at: Vec<usize>,
     /// The bit of the bitcode the module block starts at: where a record the module lacks would be.
     pub at: usize,
+    /// The function bodies, in the order of their definitions.
     pub functions: Vec<Function>,
 }
 
@@ -360,11 +503,11 @@ fn utf8(bytes: Vec<u8>, at: usize) -> Result<String> {
 }
 fn signed_vbr(v: u64) -> i64 {
     if v & 1 == 0 {
-        (v >> 1) as i64
+        i64::try_from(v >> 1).unwrap_or(i64::MAX)
     } else if v == 1 {
         i64::MIN
     } else {
-        -((v >> 1) as i64)
+        i64::try_from(v >> 1).map_or(i64::MIN, i64::wrapping_neg)
     }
 }
 
@@ -377,6 +520,23 @@ impl Module {
             Err(error(at, format!("type {id} undefined")))
         }
     }
+    /// The type `id`, which an earlier record has already checked against the table (an error where it has not).
+    fn type_at(&self, id: TypeId, at: usize) -> Result<&Type> {
+        self.types
+            .get(id)
+            .ok_or_else(|| error(at, format!("type {id} of {} types", self.types.len())))
+    }
+    /// The id of the type `ty`, appended to the table where it is not there yet.
+    fn intern(&mut self, ty: Type) -> TypeId {
+        match self.types.iter().position(|x| *x == ty) {
+            Some(p) => p,
+            None => {
+                self.types.push(ty);
+                self.types.len().saturating_sub(1)
+            }
+        }
+    }
+    /// The module's name for a value, where its symbol table has one.
     pub fn name(&self, value: ValueId) -> Option<&str> {
         self.names
             .iter()
@@ -389,7 +549,7 @@ impl Module {
         }
         self.values.push(value);
         self.value_types.push(ty);
-        Ok(self.values.len() - 1)
+        Ok(self.values.len().saturating_sub(1))
     }
 
     fn read_types(&mut self, block: &Block) -> Result<()> {
@@ -418,7 +578,10 @@ impl Module {
                 16 => Type::Metadata,
                 18 | 20 => Type::Struct {
                     name: if r.code == 20 { struct_name.take() } else { None },
-                    elements: r.operands[1.min(r.operands.len())..]
+                    elements: r
+                        .operands
+                        .get(1..)
+                        .unwrap_or_default()
                         .iter()
                         .map(|&t| self.ty(t, r.at))
                         .collect::<Result<_>>()?,
@@ -430,7 +593,10 @@ impl Module {
                 21 => Type::Function {
                     vararg: op(r, 0)? != 0,
                     ret: self.ty(op(r, 1)?, r.at)?,
-                    params: r.operands[2.min(r.operands.len())..]
+                    params: r
+                        .operands
+                        .get(2..)
+                        .unwrap_or_default()
                         .iter()
                         .map(|&t| self.ty(t, r.at))
                         .collect::<Result<_>>()?,
@@ -467,14 +633,24 @@ impl Module {
                 22 => Constant::Data(r.operands.clone()),
                 // CE_GEP and CE_INBOUNDS_GEP: [source type,] then (type, value) pairs, the first the base
                 12 | 20 => {
-                    let ops = &r.operands[usize::from(r.operands.len() % 2 == 1)..];
+                    let ops = r
+                        .operands
+                        .get(usize::from(r.operands.len() % 2 == 1)..)
+                        .unwrap_or_default();
                     let (pairs, rest) = ops.as_chunks::<2>();
-                    if !rest.is_empty() || pairs.is_empty() {
+                    let ([_, base], true) = (
+                        pairs.first().unwrap_or(&[0, 0]),
+                        rest.is_empty() && !pairs.is_empty(),
+                    ) else {
                         return Err(error(r.at, "constant getelementptr operands"));
-                    }
+                    };
                     Constant::Gep {
-                        base: id(pairs[0][1])?,
-                        indices: pairs[1..].iter().map(|p| id(p[1])).collect::<Result<_>>()?,
+                        base: id(*base)?,
+                        indices: pairs
+                            .iter()
+                            .skip(1)
+                            .map(|[_, index]| id(*index))
+                            .collect::<Result<_>>()?,
                     }
                 }
                 // CE_BINOP: [opcode, lhs, rhs, flags?]
@@ -524,7 +700,7 @@ impl Module {
                                 if v == 0 {
                                     Ok(None)
                                 } else {
-                                    md(v - 1, r.at).map(Some)
+                                    md(v.saturating_sub(1), r.at).map(Some)
                                 }
                             })
                             .collect::<Result<_>>()?,
@@ -553,8 +729,9 @@ impl Module {
                 1 | 3 => {
                     let value = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "value id"))?;
                     let skip = if r.code == 3 { 2 } else { 1 };
-                    let n = utf8(text(&r.operands[skip.min(r.operands.len())..], r.at)?, r.at)?;
-                    self.names.push((base + value, n));
+                    let n = utf8(text(r.operands.get(skip..).unwrap_or_default(), r.at)?, r.at)?;
+                    let id = base.checked_add(value).ok_or_else(|| error(r.at, "value id"))?;
+                    self.names.push((id, n));
                 }
                 2 => {} // basic-block names
                 other => return Err(error(r.at, format!("symbol record {other}"))),
@@ -577,33 +754,39 @@ impl Body<'_> {
     /// A relative operand (absolute = next - operand), with its explicit type following when it is a forward
     /// reference (a value defined later in the function's layout). Returns the value id and its type, and advances `i`.
     fn value_type(&self, r: &Record, i: &mut usize) -> Result<(ValueId, TypeId)> {
-        let rel = op(r, *i)?;
-        *i += 1;
-        let next = self.next() as u64;
-        let id = (next as u32).wrapping_sub(rel as u32) as usize;
+        let id = self.absolute(op(r, *i)?, r.at)?;
+        *i = i.saturating_add(1);
         if id < self.next() {
-            Ok((id, self.m.value_types[id]))
+            let t = self
+                .m
+                .value_types
+                .get(id)
+                .copied()
+                .ok_or_else(|| error(r.at, format!("value {id} has no type")))?;
+            Ok((id, t))
         } else {
             let t = self.m.ty(op(r, *i)?, r.at)?;
-            *i += 1;
+            *i = i.saturating_add(1);
             Ok((id, t))
         }
     }
     /// A relative operand whose type is known from another operand: a forward reference carries none.
     fn value(&self, r: &Record, i: &mut usize) -> Result<ValueId> {
-        let rel = op(r, *i)?;
-        *i += 1;
-        Ok((self.next() as u32).wrapping_sub(rel as u32) as usize)
+        let id = self.absolute(op(r, *i)?, r.at)?;
+        *i = i.saturating_add(1);
+        Ok(id)
+    }
+    /// The absolute id a relative operand names: the next id minus the operand, in 32 bits as LLVM writes it (a value
+    /// defined later is a forward reference, which wraps).
+    fn absolute(&self, relative: u64, at: usize) -> Result<ValueId> {
+        let relative = u32::try_from(relative)
+            .map_err(|_| error(at, format!("relative value id {relative} wider than 32 bits")))?;
+        let next = u32::try_from(self.next()).map_err(|_| error(at, "too many values"))?;
+        Ok(next.wrapping_sub(relative) as usize)
     }
     /// The type of a value defined before this point, or of a forward reference by the type given.
     fn pointer_to(&mut self, t: TypeId) -> TypeId {
-        match self.m.types.iter().position(|x| *x == Type::Pointer(t)) {
-            Some(p) => p,
-            None => {
-                self.m.types.push(Type::Pointer(t));
-                self.m.types.len() - 1
-            }
-        }
+        self.m.intern(Type::Pointer(t))
     }
     /// The index a constant integer value stands for, if it is one defined in the module or this function.
     fn constant_index(&self, v: ValueId) -> Option<usize> {
@@ -614,7 +797,7 @@ impl Body<'_> {
         }
     }
     fn result(&mut self, ty: TypeId, at: usize) -> Result<Option<(ValueId, TypeId)>> {
-        if self.m.types[ty] == Type::Void {
+        if *self.m.type_at(ty, at)? == Type::Void {
             return Ok(None);
         }
         Ok(Some((self.m.push(Value::Local, ty, at)?, ty)))
@@ -675,11 +858,11 @@ fn refused(code: u64) -> &'static str {
 
 impl Module {
     fn read_function(&mut self, block: &Block, value: ValueId) -> Result<Function> {
-        let fty = match self.types.get(self.value_types[value]) {
+        let fty = match self.value_types.get(value).and_then(|&t| self.types.get(t)) {
             Some(Type::Pointer(t)) => *t,
             _ => return Err(error(block.at, "function value is not a function pointer")),
         };
-        let params = match &self.types[fty] {
+        let params = match self.type_at(fty, block.at)? {
             Type::Function { params, .. } => params.clone(),
             _ => return Err(error(block.at, "function type")),
         };
@@ -725,14 +908,14 @@ impl Module {
                 3 => {
                     let value = body.value(r, &mut i)?;
                     let to = body.m.ty(op(r, i)?, r.at)?;
-                    let o = cast(op(r, i + 1)?, r.at)?;
+                    let o = cast(op(r, i.saturating_add(1))?, r.at)?;
                     (Op::Cast { op: o, value }, Some(to))
                 }
                 9 | 28 => {
                     let (lhs, t) = body.value_type(r, &mut i)?;
                     let rhs = body.value(r, &mut i)?;
                     let predicate = op(r, i)?;
-                    let bool_ty = match &body.m.types[t] {
+                    let bool_ty = match body.m.type_at(t, r.at)? {
                         Type::Vector(..) => {
                             return Err(error(r.at, "vector comparison"));
                         }
@@ -760,11 +943,12 @@ impl Module {
                 }
                 26 => {
                     let (aggregate, mut t) = body.value_type(r, &mut i)?;
-                    let indices = r.operands[i..].to_vec();
+                    let indices = r.operands.get(i..).unwrap_or_default().to_vec();
                     for &k in &indices {
-                        t = match &body.m.types[t] {
-                            Type::Struct { elements, .. } => *elements
-                                .get(k as usize)
+                        t = match body.m.type_at(t, r.at)? {
+                            Type::Struct { elements, .. } => *usize::try_from(k)
+                                .ok()
+                                .and_then(|k| elements.get(k))
                                 .ok_or_else(|| error(r.at, "extractvalue index"))?,
                             Type::Array(n, e) if k < *n => *e,
                             _ => return Err(error(r.at, "extractvalue index")),
@@ -775,7 +959,7 @@ impl Module {
                 6 => {
                     let (vector, t) = body.value_type(r, &mut i)?;
                     let (index, _) = body.value_type(r, &mut i)?;
-                    let Type::Vector(_, element) = body.m.types[t] else {
+                    let Type::Vector(_, element) = *body.m.type_at(t, r.at)? else {
                         return Err(error(r.at, "extractelement of something that is not a vector"));
                     };
                     (Op::ExtractElement { vector, index }, Some(element))
@@ -790,9 +974,10 @@ impl Module {
                     let (first, t) = body.value_type(r, &mut i)?;
                     let second = body.value(r, &mut i)?;
                     let (mask, mask_ty) = body.value_type(r, &mut i)?;
-                    let (Type::Vector(_, element), Type::Vector(lanes, _)) =
-                        (body.m.types[t].clone(), body.m.types[mask_ty].clone())
-                    else {
+                    let (Type::Vector(_, element), Type::Vector(lanes, _)) = (
+                        body.m.type_at(t, r.at)?.clone(),
+                        body.m.type_at(mask_ty, r.at)?.clone(),
+                    ) else {
                         return Err(error(r.at, "shufflevector of something that is not a vector"));
                     };
                     let result = body
@@ -806,7 +991,7 @@ impl Module {
                 27 => {
                     let (aggregate, t) = body.value_type(r, &mut i)?;
                     let value = body.value(r, &mut i)?;
-                    let indices = r.operands[i..].to_vec();
+                    let indices = r.operands.get(i..).unwrap_or_default().to_vec();
                     (
                         Op::InsertValue {
                             aggregate,
@@ -819,24 +1004,24 @@ impl Module {
                 34 => {
                     i = 1; // paramattrs
                     let cc = op(r, i)?;
-                    i += 1;
+                    i = i.saturating_add(1);
                     if cc & (1 << 17) != 0 {
-                        i += 1; // fast-math flags
+                        i = i.saturating_add(1); // fast-math flags
                     }
                     let explicit = if cc & (1 << 15) != 0 {
                         let t = body.m.ty(op(r, i)?, r.at)?;
-                        i += 1;
+                        i = i.saturating_add(1);
                         Some(t)
                     } else {
                         None
                     };
                     let (function, callee_ty) = body.value_type(r, &mut i)?;
-                    let fty = match (explicit, &body.m.types[callee_ty]) {
+                    let fty = match (explicit, body.m.type_at(callee_ty, r.at)?) {
                         (Some(t), _) => t,
                         (None, Type::Pointer(t)) => *t,
                         _ => return Err(error(r.at, "callee is not a function pointer")),
                     };
-                    let (ret, params, vararg) = match &body.m.types[fty] {
+                    let (ret, params, vararg) = match body.m.type_at(fty, r.at)? {
                         Type::Function { ret, params, vararg } => (*ret, params.clone(), *vararg),
                         _ => return Err(error(r.at, "call through a non-function type")),
                     };
@@ -847,7 +1032,7 @@ impl Module {
                     for p in &params {
                         // a fixed parameter carries no type, even for a value defined later in the layout
                         let a = body.value(r, &mut i)?;
-                        if a < body.next() && body.m.value_types[a] != *p {
+                        if a < body.next() && body.m.value_types.get(a) != Some(p) {
                             return Err(error(r.at, "call argument type"));
                         }
                         args.push(a);
@@ -859,11 +1044,11 @@ impl Module {
                 }
                 16 => {
                     let t = body.m.ty(op(r, 0)?, r.at)?;
-                    let pairs = &r.operands[1..];
+                    let pairs = r.operands.get(1..).unwrap_or_default();
                     if pairs.is_empty() || pairs.len() % 2 != 0 {
                         return Err(error(r.at, "phi operands"));
                     }
-                    let next = body.next() as i64;
+                    let next = i64::try_from(body.next()).map_err(|_| error(r.at, "too many values"))?;
                     let mut incoming = Vec::with_capacity(pairs.len() / 2);
                     for pair in pairs.as_chunks::<2>().0 {
                         // Signed and relative to the phi itself; it may name a value defined later.
@@ -926,7 +1111,7 @@ impl Module {
                     i = 1;
                     let value = body.value(r, &mut i)?;
                     let default = block(op(r, i)?)?;
-                    let pairs = &r.operands[i + 1..];
+                    let pairs = r.operands.get(i.saturating_add(1)..).unwrap_or_default();
                     if pairs.len() % 2 != 0 {
                         return Err(error(r.at, "switch cases"));
                     }
@@ -995,13 +1180,7 @@ impl Module {
                         name: None,
                         elements: vec![ty, flag],
                     };
-                    let result = match body.m.types.iter().position(|t| *t == pair) {
-                        Some(p) => p,
-                        None => {
-                            body.m.types.push(pair);
-                            body.m.types.len() - 1
-                        }
-                    };
+                    let result = body.m.intern(pair);
                     (
                         Op::CmpXchg {
                             pointer,
@@ -1024,9 +1203,8 @@ impl Module {
                     // the result points at what the indices reach: the first steps over the pointer, the rest into
                     // arrays, vectors and structures
                     let mut t = source;
-                    for (n, &index) in indices.iter().enumerate().skip(1) {
-                        let _ = n;
-                        t = match body.m.types[t].clone() {
+                    for &index in indices.iter().skip(1) {
+                        t = match body.m.type_at(t, r.at)?.clone() {
                             Type::Array(_, e) | Type::Vector(_, e) => e,
                             Type::Struct { elements, .. } => {
                                 let k = match body.constant_index(index) {
@@ -1070,7 +1248,7 @@ impl Module {
                 at: r.at,
             });
             if terminator {
-                body.block += 1;
+                body.block = body.block.saturating_add(1);
             }
         }
         if body.block != body.blocks {
@@ -1148,23 +1326,20 @@ impl Module {
                         let t = m.ty(op(r, 0)?, r.at)?;
                         let flags = op(r, 1)?;
                         let (ty, value_ty) = if flags & 2 != 0 {
-                            let pointer = match m.types.iter().position(|x| *x == Type::Pointer(t)) {
-                                Some(p) => p,
-                                None => {
-                                    m.types.push(Type::Pointer(t));
-                                    m.types.len() - 1
-                                }
-                            };
+                            let pointer = m.intern(Type::Pointer(t));
                             (pointer, t)
                         } else {
-                            match &m.types[t] {
+                            match m.type_at(t, r.at)? {
                                 Type::Pointer(inner) => (t, *inner),
                                 _ => return Err(error(r.at, "a global whose type is not a pointer")),
                             }
                         };
                         let init = match op(r, 2)? {
                             0 => None,
-                            n => Some(usize::try_from(n - 1).map_err(|_| error(r.at, "initial value id"))?),
+                            n => Some(
+                                usize::try_from(n.saturating_sub(1))
+                                    .map_err(|_| error(r.at, "initial value id"))?,
+                            ),
                         };
                         m.push(
                             Value::Global {
@@ -1182,13 +1357,7 @@ impl Module {
                     8 => {
                         // FUNCTION: [function type, cc, isproto, ...]
                         let t = m.ty(op(r, 0)?, r.at)?;
-                        let pointer = match m.types.iter().position(|x| *x == Type::Pointer(t)) {
-                            Some(p) => p,
-                            None => {
-                                m.types.push(Type::Pointer(t));
-                                m.types.len() - 1
-                            }
-                        };
+                        let pointer = m.intern(Type::Pointer(t));
                         let declaration = op(r, 2)? != 0;
                         let v = m.push(Value::Function { ty: t, declaration }, pointer, r.at)?;
                         if !declaration {

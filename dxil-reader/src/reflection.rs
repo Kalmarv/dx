@@ -10,7 +10,9 @@ use crate::{Result, error};
 /// register and column, and its size.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Element {
+    /// The id the `loadInput` and `storeOutput` operations name the element by.
     pub id: u32,
+    /// The semantic name.
     pub name: String,
     /// The first semantic index.
     pub index: u32,
@@ -20,9 +22,13 @@ pub struct Element {
     pub system_value: u8,
     /// DXIL interpolation mode (1 constant, 2 linear, 4 linear noperspective, ...).
     pub interpolation: u8,
+    /// The first register the element occupies.
     pub row: u32,
+    /// The first component (0 x to 3 w) of that register.
     pub column: u8,
+    /// How many registers it spans.
     pub rows: u32,
+    /// How many components of each register it uses.
     pub columns: u8,
     /// An element the packer did not place (system values read another way): no register.
     pub placed: bool,
@@ -30,9 +36,13 @@ pub struct Element {
 /// A bound resource range: class (0 SRV, 1 UAV, 2 constant buffer, 3 sampler), range id, first register, count.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
+    /// 0 SRV, 1 UAV, 2 constant buffer, 3 sampler.
     pub class: u8,
+    /// The range id the resource operations name the range by.
     pub id: u32,
+    /// The first register of the range.
     pub lower: u32,
+    /// The number of registers; `u32::MAX` where the range is unbounded.
     pub count: u32,
     /// Constant buffers: their size in bytes; SRVs and UAVs: their shape (`DxilResourceKind`, 2 a 2D texture);
     /// samplers: their kind (0 default, 1 comparison, 2 mono).
@@ -234,12 +244,19 @@ pub fn patch_elements(m: &Module) -> Result<Vec<Element>> {
 /// control-point counts, the tessellator's domain, partitioning and output primitive and the largest factor.
 #[derive(Clone, Debug, PartialEq)]
 pub struct HullState {
+    /// The patch-constant function.
     pub patch_constant: ValueId,
+    /// The number of input control points.
     pub input_control_points: u32,
+    /// The number of output control points.
     pub output_control_points: u32,
+    /// The tessellator domain (`D3D11_TESSELLATOR_DOMAIN`).
     pub domain: u32,
+    /// The partitioning (`D3D11_TESSELLATOR_PARTITIONING`).
     pub partitioning: u32,
+    /// The output primitive (`D3D11_TESSELLATOR_OUTPUT_PRIMITIVE`).
     pub output_primitive: u32,
+    /// The largest tessellation factor.
     pub max_tess_factor: f32,
 }
 
@@ -267,10 +284,15 @@ fn entry_property(m: &Module, wanted: i64) -> Result<Option<Node<'_>>> {
 /// line strip, 5 triangle strip) and how many invocations run for a primitive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GeometryState {
+    /// The input primitive (`D3D_PRIMITIVE`).
     pub input: u32,
+    /// The most vertices it emits.
     pub max_vertices: u32,
+    /// The streams it writes, a mask.
     pub streams: u32,
+    /// The topology of its output stream (`D3D_PRIMITIVE_TOPOLOGY`).
     pub topology: u32,
+    /// How many invocations run for a primitive.
     pub instances: u32,
 }
 
@@ -296,9 +318,13 @@ pub fn geometry_state(m: &Module) -> Result<GeometryState> {
 /// payload it reads from a task program. A null field is zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MeshState {
+    /// The most vertices it writes.
     pub max_vertices: u32,
+    /// The most primitives it writes.
     pub max_primitives: u32,
+    /// The topology of its primitives (1 line, 2 triangle).
     pub topology: u32,
+    /// The size in bytes of the payload it reads from a task program.
     pub payload: u32,
 }
 
@@ -414,7 +440,9 @@ fn signature_lists(m: &Module) -> Result<[Vec<Element>; 3]> {
                 // Four lanes per register; at most 32 registers.
                 if element.rows == 0
                     || element.columns == 0
-                    || u32::from(element.column) + u32::from(element.columns) > 4
+                    || u32::from(element.column)
+                        .checked_add(u32::from(element.columns))
+                        .is_none_or(|end| end > 4)
                     || element.row.checked_add(element.rows).is_none_or(|end| end > 32)
                 {
                     return Err(e.fail("the element lies outside the 32 four-lane registers"));
@@ -520,6 +548,7 @@ pub fn ranges(m: &Module) -> Result<Vec<(Range, String, Option<TypeId>)>> {
 /// One field of a struct type, as its annotation in `dx.typeAnnotations` states it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldAnnotation {
+    /// The field's name.
     pub name: String,
     /// Byte offset in the constant buffer.
     pub offset: u32,
@@ -601,14 +630,19 @@ pub fn fields(m: &Module, t: TypeId) -> Result<Vec<FieldAnnotation>> {
 /// One element of an `ISG1`/`OSG1`/`PSG1` part as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignatureElement {
+    /// The semantic name.
     pub name: String,
+    /// The semantic index.
     pub index: u32,
     /// `D3D_NAME`.
     pub system_value: u32,
     /// `D3D_REGISTER_COMPONENT_TYPE`.
     pub component_type: u32,
+    /// The register the element is packed into.
     pub register: u32,
+    /// The components the element occupies, one bit each (x is bit 0).
     pub mask: u8,
+    /// The components a program reads (inputs) or never writes (outputs), as stored.
     pub read_write_mask: u8,
     /// Where the record starts, in bits of the part.
     pub bit: usize,
@@ -618,41 +652,72 @@ pub struct SignatureElement {
 /// records of 32 bytes (stream, name offset, semantic index, system value, component type, register, mask and
 /// read-write mask, minimum precision). A name ends within 256 bytes.
 pub fn signature(part: &[u8]) -> Result<Vec<SignatureElement>> {
+    let bit = |byte: usize| byte.saturating_mul(8);
     let v = primase_foundations::bytes::View::new(part);
     let word = |at: usize| -> Result<u32> {
         v.array::<4>(at)
             .map(u32::from_le_bytes)
-            .map_err(|e| error(at * 8, e.to_string()))
+            .map_err(|e| error(bit(at), e.to_string()))
+    };
+    // the word `delta` bytes after a record's start
+    let field = |record: usize, delta: usize| -> Result<u32> {
+        word(
+            record
+                .checked_add(delta)
+                .ok_or_else(|| error(bit(record), "signature element offset"))?,
+        )
     };
     let n = word(0)? as usize;
     let first = word(4)? as usize;
-    let mut out = Vec::with_capacity(n.min(part.len() / 32));
+    // the records lie in the part: bound the count before anything is allocated
+    let table = n
+        .checked_mul(32)
+        .and_then(|size| first.checked_add(size))
+        .filter(|&end| end <= part.len())
+        .ok_or_else(|| {
+            error(
+                0,
+                format!(
+                    "{n} records of 32 bytes from byte {first} do not fit the part's {} bytes",
+                    part.len()
+                ),
+            )
+        })?;
+    let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let e = i
             .checked_mul(32)
             .and_then(|o| o.checked_add(first))
+            .filter(|&e| e < table)
             .ok_or_else(|| error(32, "signature element offset"))?;
-        let name_at = word(e + 4)? as usize;
+        let name_at = field(e, 4)? as usize;
         let tail = part
             .get(name_at..)
-            .ok_or_else(|| error(name_at * 8, "signature name offset"))?;
+            .ok_or_else(|| error(bit(name_at), "signature name offset"))?;
         let end = tail
             .iter()
             .position(|&b| b == 0)
             .filter(|&n| n <= 256)
-            .ok_or_else(|| error(name_at * 8, "signature name"))?;
-        let mask = v.array::<2>(e + 24).map_err(|x| error(e * 8, x.to_string()))?;
+            .ok_or_else(|| error(bit(name_at), "signature name"))?;
+        let name = tail
+            .get(..end)
+            .and_then(|name| std::str::from_utf8(name).ok())
+            .ok_or_else(|| error(bit(name_at), "signature name is not UTF-8"))?;
+        let [mask, read_write_mask] = v
+            .array::<2>(
+                e.checked_add(24)
+                    .ok_or_else(|| error(bit(e), "signature element offset"))?,
+            )
+            .map_err(|x| error(bit(e), x.to_string()))?;
         out.push(SignatureElement {
-            name: std::str::from_utf8(&tail[..end])
-                .map_err(|_| error(name_at * 8, "signature name is not UTF-8"))?
-                .to_owned(),
-            index: word(e + 8)?,
-            system_value: word(e + 12)?,
-            component_type: word(e + 16)?,
-            register: word(e + 20)?,
-            mask: mask[0],
-            read_write_mask: mask[1],
-            bit: e * 8,
+            name: name.to_owned(),
+            index: field(e, 8)?,
+            system_value: field(e, 12)?,
+            component_type: field(e, 16)?,
+            register: field(e, 20)?,
+            mask,
+            read_write_mask,
+            bit: bit(e),
         });
     }
     Ok(out)

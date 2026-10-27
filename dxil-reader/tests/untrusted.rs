@@ -220,3 +220,28 @@ fn operations_counts_each_dx_op_call_of_a_fixture_once() {
         "{operations:?}"
     );
 }
+
+#[test]
+fn every_committed_fixture_reads_to_a_module_with_its_reflection() {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let mut read = 0;
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|e| e != "dxil") {
+            continue;
+        }
+        let name = path.display();
+        let container = std::fs::read(&path).unwrap();
+        let chunks = dxil_reader::parts(&container).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let module = dxil_reader::module(&chunks, b"DXIL")
+            .unwrap_or_else(|e| panic!("{name}: {e}"))
+            .unwrap();
+        // the reflection that every program of a fixture states (a library has no single entry point)
+        if reflection::entry(&module).is_ok() {
+            reflection::elements(&module).unwrap_or_else(|e| panic!("{name}: {e}"));
+            reflection::ranges(&module).unwrap_or_else(|e| panic!("{name}: {e}"));
+        }
+        read += 1;
+    }
+    assert!(read >= 100, "{read} fixtures");
+}

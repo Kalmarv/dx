@@ -14,31 +14,42 @@ const MAX_TOTAL_OPERANDS: usize = 1 << 26;
 /// A record: its code, operands and, for blob abbreviations, the blob.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Record {
+    /// The record code, whose meaning the block's id gives.
     pub code: u64,
+    /// The operands, in order (an abbreviated array's elements are flattened into them).
     pub operands: Vec<u64>,
+    /// The blob of a record whose abbreviation ends in one.
     pub blob: Option<Vec<u8>>,
     /// Bit offset of the record in the stream, for error locations.
     pub at: usize,
 }
+/// What a block holds, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Element {
+    /// A nested block.
     Block(Block),
+    /// A record.
     Record(Record),
 }
+/// A block: its id and what it holds.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Block {
+    /// The block id (LLVM's `MODULE_BLOCK_ID` and so on).
     pub id: u64,
+    /// The block's records and nested blocks, in order.
     pub elements: Vec<Element>,
     /// Bit offset of the block's header.
     pub at: usize,
 }
 impl Block {
+    /// The nested blocks.
     pub fn blocks(&self) -> impl Iterator<Item = &Block> {
         self.elements.iter().filter_map(|e| match e {
             Element::Block(b) => Some(b),
             Element::Record(_) => None,
         })
     }
+    /// The records.
     pub fn records(&self) -> impl Iterator<Item = &Record> {
         self.elements.iter().filter_map(|e| match e {
             Element::Record(r) => Some(r),
@@ -58,6 +69,9 @@ enum Op {
 }
 type Abbrev = Vec<Op>;
 
+/// The characters of the `char6` encoding, by code.
+const CHAR6: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._";
+
 struct Bits<'a> {
     data: &'a [u8],
     /// Next bit to read.
@@ -65,23 +79,26 @@ struct Bits<'a> {
 }
 impl Bits<'_> {
     fn remaining(&self) -> usize {
-        self.data.len() * 8 - self.pos
+        self.data.len().saturating_mul(8).saturating_sub(self.pos)
     }
     fn read(&mut self, width: u32) -> Result<u64> {
         if width > 64 {
             return Err(error(self.pos, "field wider than 64 bits"));
         }
-        if width as usize > self.remaining() {
+        let n = width as usize;
+        if n > self.remaining() {
             return Err(error(self.pos, "bitstream ends inside a field"));
         }
         let mut value = 0u64;
-        for i in 0..width as usize {
-            let bit = self.pos + i;
-            if self.data[bit / 8] >> (bit % 8) & 1 == 1 {
-                value |= 1 << i;
+        for i in 0..width {
+            let bit = self.pos.saturating_add(i as usize);
+            let byte = self.data.get(bit / 8).copied().unwrap_or(0);
+            let shift = u32::try_from(bit % 8).unwrap_or(0);
+            if byte.checked_shr(shift).unwrap_or(0) & 1 == 1 {
+                value |= 1u64.checked_shl(i).unwrap_or(0);
             }
         }
-        self.pos += width as usize;
+        self.pos = self.pos.saturating_add(n);
         Ok(value)
     }
     fn vbr(&mut self, width: u32) -> Result<u64> {
@@ -89,35 +106,49 @@ impl Bits<'_> {
             return Err(error(self.pos, "VBR width outside 2..32"));
         }
         let at = self.pos;
-        let high = 1u64 << (width - 1);
+        let high = 1u64.checked_shl(width.saturating_sub(1)).unwrap_or(0);
         let mut value = 0u64;
         let mut shift = 0u32;
         loop {
             let chunk = self.read(width)?;
-            let payload = chunk & (high - 1);
+            let payload = chunk & high.saturating_sub(1);
             if payload != 0 {
                 // The payload's bits must all land below bit 64.
-                if shift >= 64 || (payload << shift) >> shift != payload {
+                if shift >= 64 || payload.leading_zeros() < shift {
                     return Err(error(at, "VBR value exceeds 64 bits"));
                 }
-                value |= payload << shift;
+                value |= payload.checked_shl(shift).unwrap_or(0);
             }
             if chunk & high == 0 {
                 return Ok(value);
             }
-            shift += width - 1;
+            shift = shift.saturating_add(width.saturating_sub(1));
             if shift > 64 + 32 {
                 return Err(error(at, "VBR value exceeds 64 bits"));
             }
         }
     }
     fn align32(&mut self) -> Result<()> {
-        let aligned = self.pos.div_ceil(32) * 32;
-        if aligned > self.data.len() * 8 {
-            return Err(error(self.pos, "bitstream ends before 32-bit alignment"));
-        }
+        let aligned = self
+            .pos
+            .div_ceil(32)
+            .checked_mul(32)
+            .filter(|&aligned| aligned <= self.data.len().saturating_mul(8))
+            .ok_or_else(|| error(self.pos, "bitstream ends before 32-bit alignment"))?;
         self.pos = aligned;
         Ok(())
+    }
+    /// A VBR-encoded count or length, as a `usize`.
+    fn vbr_usize(&mut self, width: u32) -> Result<usize> {
+        let at = self.pos;
+        let value = self.vbr(width)?;
+        usize::try_from(value).map_err(|_| error(at, format!("{value} does not fit the address space")))
+    }
+    /// A VBR-encoded field that must fit 32 bits.
+    fn vbr_u32(&mut self, width: u32) -> Result<u32> {
+        let at = self.pos;
+        let value = self.vbr(width)?;
+        u32::try_from(value).map_err(|_| error(at, format!("{value} does not fit 32 bits")))
     }
 }
 
@@ -129,14 +160,8 @@ struct Reader<'a> {
 }
 
 fn char6(v: u64) -> u64 {
-    let v = v as u8;
-    u64::from(match v {
-        0..=25 => b'a' + v,
-        26..=51 => b'A' + v - 26,
-        52..=61 => b'0' + v - 52,
-        62 => b'.',
-        _ => b'_',
-    })
+    let [index, ..] = v.to_le_bytes();
+    u64::from(CHAR6.get(usize::from(index)).copied().unwrap_or(b'_'))
 }
 
 impl Reader<'_> {
@@ -159,7 +184,7 @@ impl Reader<'_> {
     }
     fn define_abbrev(&mut self) -> Result<Abbrev> {
         let at = self.bits.pos;
-        let n = self.bits.vbr(5)? as usize;
+        let n = self.bits.vbr_usize(5)?;
         if n == 0 || n > MAX_ABBREV_OPS {
             return Err(error(at, "abbreviation operand count"));
         }
@@ -175,14 +200,14 @@ impl Reader<'_> {
                     if w > 64 {
                         return Err(error(at, "fixed width above 64"));
                     }
-                    Op::Fixed(w as u32)
+                    Op::Fixed(u32::try_from(w).map_err(|_| error(at, "fixed width above 64"))?)
                 }
                 2 => {
                     let w = self.bits.vbr(5)?;
                     if !(2..=32).contains(&w) {
                         return Err(error(at, "VBR width outside 2..32"));
                     }
-                    Op::Vbr(w as u32)
+                    Op::Vbr(u32::try_from(w).map_err(|_| error(at, "VBR width outside 2..32"))?)
                 }
                 3 => Op::Array,
                 4 => Op::Char6,
@@ -191,26 +216,36 @@ impl Reader<'_> {
             });
         }
         // An array takes the one operand after it as its element; a blob or array ends the abbreviation.
-        for (i, op) in ops.iter().enumerate() {
-            match op {
-                Op::Array if i + 2 != ops.len() || matches!(ops[i + 1], Op::Array | Op::Blob) => {
+        let mut rest = ops.as_slice();
+        while let Some((op, tail)) = rest.split_first() {
+            match (op, tail) {
+                (Op::Array, [Op::Array | Op::Blob, ..]) => {
                     return Err(error(at, "array not followed by one element encoding"));
                 }
-                Op::Blob if i + 1 != ops.len() => return Err(error(at, "blob not last")),
+                (Op::Array, [_]) => {}
+                (Op::Array, _) => {
+                    return Err(error(at, "array not followed by one element encoding"));
+                }
+                (Op::Blob, [_, ..]) => return Err(error(at, "blob not last")),
                 _ => {}
             }
+            rest = tail;
         }
         Ok(ops)
     }
     fn abbreviated(&mut self, abbrev: &Abbrev, at: usize) -> Result<Record> {
         let mut values: Vec<u64> = Vec::new();
         let mut blob = None;
-        let mut i = 0;
-        while i < abbrev.len() {
-            match abbrev[i] {
+        let mut rest = abbrev.as_slice();
+        while let Some((&op, tail)) = rest.split_first() {
+            rest = tail;
+            match op {
                 Op::Array => {
-                    let element = abbrev[i + 1];
-                    let len = self.bits.vbr(6)? as usize;
+                    let Some((&element, after)) = tail.split_first() else {
+                        return Err(error(at, "array without its element encoding"));
+                    };
+                    rest = after;
+                    let len = self.bits.vbr_usize(6)?;
                     // An element stored takes its width in bits; a literal or zero-width one takes none, so it is
                     // counted as one bit: the length of an array must not exceed the bits that remain, whatever its
                     // elements are.
@@ -220,7 +255,12 @@ impl Reader<'_> {
                         Op::Char6 => 6,
                         _ => 1,
                     };
-                    if len > self.bits.remaining() / min_bits {
+                    if self
+                        .bits
+                        .remaining()
+                        .checked_div(min_bits)
+                        .is_none_or(|most| len > most)
+                    {
                         return Err(error(at, "array longer than the bits that remain"));
                     }
                     self.count(len)?;
@@ -228,10 +268,9 @@ impl Reader<'_> {
                     for _ in 0..len {
                         values.push(self.scalar(element)?);
                     }
-                    i += 2;
                 }
                 Op::Blob => {
-                    let len = self.bits.vbr(6)? as usize;
+                    let len = self.bits.vbr_usize(6)?;
                     self.bits.align32()?;
                     if len > self.bits.remaining() / 8 {
                         return Err(error(at, "blob longer than the bits that remain"));
@@ -241,14 +280,12 @@ impl Reader<'_> {
                         .slice(start, len)
                         .map_err(|e| error(at, e.to_string()))?;
                     blob = Some(bytes.to_vec());
-                    self.bits.pos += len * 8;
+                    self.bits.pos = self.bits.pos.saturating_add(len.saturating_mul(8));
                     self.bits.align32()?;
-                    i += 1;
                 }
                 op => {
                     self.count(1)?;
                     values.push(self.scalar(op)?);
-                    i += 1;
                 }
             }
         }
@@ -292,18 +329,19 @@ impl Reader<'_> {
                 }
                 1 => {
                     let child = self.bits.vbr(8)?;
-                    let child_width = self.bits.vbr(4)? as u32;
+                    let child_width = self.bits.vbr_u32(4)?;
                     if !(1..=32).contains(&child_width) {
                         return Err(error(here, "abbreviation width outside 1..32"));
                     }
                     self.bits.align32()?;
-                    let words = self.bits.read(32)? as usize;
+                    let words = usize::try_from(self.bits.read(32)?)
+                        .map_err(|_| error(here, "block longer than its parent"))?;
                     let child_end = words
                         .checked_mul(32)
                         .and_then(|b| b.checked_add(self.bits.pos))
                         .filter(|&e| e <= end)
                         .ok_or_else(|| error(here, "block longer than its parent"))?;
-                    let b = self.block(child, child_width, child_end, depth + 1, here)?;
+                    let b = self.block(child, child_width, child_end, depth.saturating_add(1), here)?;
                     elements.push(Element::Block(b));
                 }
                 2 => {
@@ -311,12 +349,15 @@ impl Reader<'_> {
                     if id == 0 {
                         let target =
                             info_target.ok_or_else(|| error(here, "BLOCKINFO abbreviation before SETBID"))?;
-                        let entry = match self.info.iter().position(|(b, _)| *b == target) {
-                            Some(i) => &mut self.info[i].1,
+                        let slot = match self.info.iter().position(|(b, _)| *b == target) {
+                            Some(i) => i,
                             None => {
                                 self.info.push((target, Vec::new()));
-                                &mut self.info.last_mut().expect("pushed").1
+                                self.info.len().saturating_sub(1)
                             }
+                        };
+                        let Some((_, entry)) = self.info.get_mut(slot) else {
+                            return Err(error(here, "BLOCKINFO abbreviation table"));
                         };
                         if entry.len() >= MAX_ABBREVS_PER_BLOCK {
                             return Err(error(here, "too many abbreviations"));
@@ -331,7 +372,7 @@ impl Reader<'_> {
                 }
                 3 => {
                     let code = self.bits.vbr(6)?;
-                    let n = self.bits.vbr(6)? as usize;
+                    let n = self.bits.vbr_usize(6)?;
                     if n > self.bits.remaining() / 2 {
                         return Err(error(here, "record longer than the bits that remain"));
                     }
@@ -355,8 +396,9 @@ impl Reader<'_> {
                     }));
                 }
                 n => {
-                    let abbrev = abbrevs
-                        .get(n as usize - 4)
+                    let abbrev = usize::try_from(n.saturating_sub(4))
+                        .ok()
+                        .and_then(|i| abbrevs.get(i))
                         .cloned()
                         .ok_or_else(|| error(here, format!("undefined abbreviation {n}")))?;
                     let record = self.abbreviated(&abbrev, here)?;
@@ -380,24 +422,28 @@ pub fn read(data: &[u8], magic: [u8; 4]) -> Result<Vec<Block>> {
         info: Vec::new(),
         operands: 0,
     };
-    let end = data.len() * 8;
+    let end = data.len().saturating_mul(8);
     let mut blocks = Vec::new();
     while r.bits.pos < end {
         let here = r.bits.pos;
         // Trailing zero padding after the last block is allowed.
-        if data[here / 8..].iter().all(|&b| b == 0) {
+        if data
+            .get(here / 8..)
+            .is_none_or(|tail| tail.iter().all(|&b| b == 0))
+        {
             break;
         }
         if r.bits.read(2)? != 1 {
             return Err(error(here, "top level holds only blocks"));
         }
         let id = r.bits.vbr(8)?;
-        let width = r.bits.vbr(4)? as u32;
+        let width = r.bits.vbr_u32(4)?;
         if !(1..=32).contains(&width) {
             return Err(error(here, "abbreviation width outside 1..32"));
         }
         r.bits.align32()?;
-        let words = r.bits.read(32)? as usize;
+        let words =
+            usize::try_from(r.bits.read(32)?).map_err(|_| error(here, "block longer than the stream"))?;
         let block_end = words
             .checked_mul(32)
             .and_then(|b| b.checked_add(r.bits.pos))

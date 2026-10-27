@@ -16,6 +16,12 @@
 //! println!("{} functions", module.functions.len());
 //! # Ok(()) }
 //! ```
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::cast_possible_truncation
+)]
+#![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 pub mod bitstream;
 pub mod module;
@@ -35,6 +41,7 @@ pub struct Error {
     pub detail: String,
 }
 
+/// The reader's result: an [`Error`] naming the bit where reading failed.
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) fn error(bit: usize, detail: impl Into<String>) -> Error {
@@ -51,6 +58,7 @@ pub struct Part<'a> {
     pub program_version: u32,
     /// DXIL version (`0x100` is 1.0).
     pub dxil_version: u32,
+    /// The program's LLVM bitcode (starting at its `BC` magic), for [`bitstream::read`].
     pub bitcode: &'a [u8],
 }
 
@@ -65,7 +73,7 @@ pub fn program(data: &[u8]) -> Result<Part<'_>> {
     let word = |at: usize| -> Result<u32> {
         view.array::<4>(at)
             .map(u32::from_le_bytes)
-            .map_err(|e| error(at * 8, e.to_string()))
+            .map_err(|e| error(at.saturating_mul(8), e.to_string()))
     };
     let program_version = word(0)?;
     let dwords = word(4)? as usize;
@@ -138,10 +146,9 @@ pub fn operations(container: &[u8]) -> Result<(u32, std::collections::BTreeMap<S
                 continue;
             };
             let code = args.first().and_then(|&a| {
-                let value = if a < f.first {
-                    module.values.get(a)
-                } else {
-                    f.locals.get(a - f.first)
+                let value = match a.checked_sub(f.first) {
+                    None => module.values.get(a),
+                    Some(local) => f.locals.get(local),
                 };
                 match value {
                     Some(module::Value::Constant(module::Constant::Integer(i))) => Some(*i),
@@ -152,7 +159,9 @@ pub fn operations(container: &[u8]) -> Result<(u32, std::collections::BTreeMap<S
                 Some(code) => format!("{name} (op {code})"),
                 None => name.to_owned(),
             };
-            *out.entry(key).or_default() += 1;
+            out.entry(key)
+                .and_modify(|n: &mut usize| *n = n.saturating_add(1))
+                .or_insert(1);
         }
     }
     Ok((part.program_version >> 16, out))
