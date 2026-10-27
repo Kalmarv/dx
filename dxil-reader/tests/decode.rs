@@ -1,8 +1,7 @@
 #![allow(clippy::unwrap_used)]
-//! The DXIL reader on the control-flow and memory fixtures (dxc 1.7, default optimisation and -Od): loops are read as
-//! backward branches, a switch as a switch, a local array as an alloca with getelementptr, loads and stores. The
-//! lift takes the loops as structured ones.
-use primase_dxil::module::{Module, Op};
+//! The DXIL reader on the control-flow and memory fixtures (dxc 1.7, default optimisation and -Od): a switch is read as
+//! a switch, a local array as an alloca with getelementptr, loads and stores; and every committed fixture reads.
+use dxil_reader::module::{Module, Op};
 
 fn module(name: &str) -> Module {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -11,8 +10,8 @@ fn module(name: &str) -> Module {
     let bytes = std::fs::read(path).unwrap();
     let chunks = dxcontainer::chunks(&bytes).unwrap();
     let dxil = chunks.iter().find(|c| &c.kind == b"DXIL").unwrap();
-    let part = primase_dxil::program(dxil.data).unwrap();
-    let blocks = primase_dxil::bitstream::read(part.bitcode, *b"BC\xc0\xde").unwrap();
+    let part = dxil_reader::program(dxil.data).unwrap();
+    let blocks = dxil_reader::bitstream::read(part.bitcode, *b"BC\xc0\xde").unwrap();
     Module::read(&blocks).unwrap()
 }
 
@@ -22,28 +21,6 @@ fn count(m: &Module, pred: impl Fn(&Op, usize) -> bool) -> usize {
         .flat_map(|f| f.instructions.iter())
         .filter(|i| pred(&i.op, i.block))
         .count()
-}
-
-#[test]
-fn loops_are_backward_branches() {
-    for name in ["loops.dxil", "loops.od.dxil"] {
-        let m = module(name);
-        let back = count(&m, |op, block| match op {
-            Op::Branch { target } => *target <= block,
-            Op::CondBranch { then, otherwise, .. } => *then <= block || *otherwise <= block,
-            _ => false,
-        });
-        assert!(back >= 3, "{name}: {back} backward branches (three loops)");
-        // the lift takes them as structured loops
-        let bytes = std::fs::read(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("tests/fixtures")
-                .join(name),
-        )
-        .unwrap();
-        let program = primase_dxil::lift(&bytes).unwrap_or_else(|e| panic!("{name}: {e}"));
-        program.validate().unwrap_or_else(|p| panic!("{name}: {p:?}"));
-    }
 }
 
 #[test]
@@ -82,7 +59,7 @@ fn a_local_array_is_memory() {
             .filter(|v| {
                 matches!(
                     v,
-                    primase_dxil::module::Value::Global {
+                    dxil_reader::module::Value::Global {
                         init: Some(_),
                         constant: true,
                         ..

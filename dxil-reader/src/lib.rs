@@ -1,22 +1,53 @@
-//! Shader Model 6 (DXIL) programs: the container is the DXBC format (`dxcontainer`); the LLVM bitcode in its `DXIL`
-//! part is read by a bounded bitstream reader of our own (`bitstream`, `module`), the reflection (`reflection`, `rdat`), the
-//! lifter to `iridia::Program` (`lift`, every stage a DXIL container holds). A lifted program is run by
-//! `iridia_exec`.
+//! A reader of Shader Model 6 programs (DXIL) as Direct3D stores them in a `DXBC` container: the program part's header
+//! ([`program`]), its LLVM bitcode through a bounded bitstream reader ([`bitstream`]) into the module it holds
+//! ([`module`]), the entry point's metadata, resource records and signature parts ([`reflection`]), and a library's
+//! runtime data ([`rdat`]), each as the records the file stores with DXIL's and D3D's own numbers.
+//!
+//! It reads and checks bytes and never interprets them for an API: a resource is its record's class, range and shape
+//! numbers, a signature element its stored name, index, register and masks. Mapping those into a graphics API's
+//! vocabulary is a consumer's choice. Everything it can't read (a truncated record, an abbreviation it does not know, a
+//! reference outside its table) is an [`Error`] naming the bit where it happened; it never panics on untrusted input.
+//!
+//! ```no_run
+//! # fn main() -> Result<(), dxil_reader::Error> {
+//! let container = std::fs::read("shader.dxil").unwrap();
+//! let parts = dxil_reader::parts(&container)?;
+//! let module = dxil_reader::module(&parts, b"DXIL")?.expect("a DXIL part");
+//! println!("{} functions", module.functions.len());
+//! # Ok(()) }
+//! ```
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 pub mod bitstream;
-mod lift;
 pub mod module;
 pub mod rdat;
 pub mod reflection;
-pub use lift::{LIFTER_VERSION, lift, lift_with};
-pub use reflection::interface;
 
-/// A DXIL program or container refused or unreadable: the bit it is at (in the bitcode, or eight times a byte of the
-/// container) and why ([`iridia::Refusal`]).
-pub type Error = iridia::Refusal;
+pub use module::Module;
+
+/// Something the reader can't read: the bit where it is (in the bitcode, or eight times a byte of the container or
+/// part being read), and what.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Error {
+    /// The bit offset, counted from the start of the bitcode, part or container being read.
+    pub bit: usize,
+    pub detail: String,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DXIL at bit {}: {}", self.bit, self.detail)
+    }
+}
+
+impl std::error::Error for Error {}
+
 pub type Result<T> = std::result::Result<T, Error>;
+
 pub(crate) fn error(bit: usize, detail: impl Into<String>) -> Error {
-    Error::new("DXIL", iridia::Unit::Bit, bit, detail)
+    Error {
+        bit,
+        detail: detail.into(),
+    }
 }
 
 /// The `DXIL` part of a DXBC container: the program header and its LLVM bitcode.
@@ -29,8 +60,8 @@ pub struct Part<'a> {
     pub bitcode: &'a [u8],
 }
 
-/// The parts of a DXBC container, an error of the container as one of the program (the bit it is at).
-pub(crate) fn parts(container: &[u8]) -> Result<Vec<dxcontainer::Chunk<'_>>> {
+/// The parts of a DXBC container (its directory), an error of the container at the bit of its byte.
+pub fn parts(container: &[u8]) -> Result<Vec<dxcontainer::Chunk<'_>>> {
     dxcontainer::chunks(container).map_err(|e| error(e.offset.saturating_mul(8), e.detail))
 }
 
@@ -76,6 +107,16 @@ pub fn part(container: &[u8]) -> Result<Part<'_>> {
     program(data)
 }
 
+/// The module of a container's program part of this kind (`DXIL`, or `STAT` for the reflection module), if it has one.
+pub fn module(chunks: &[dxcontainer::Chunk<'_>], kind: &[u8; 4]) -> Result<Option<Module>> {
+    let Some(c) = chunks.iter().find(|c| &c.kind == kind) else {
+        return Ok(None);
+    };
+    let part = program(c.data)?;
+    let blocks = bitstream::read(part.bitcode, *b"BC\xc0\xde")?;
+    Module::read(&blocks).map(Some)
+}
+
 /// The shader kind (0 pixel, 1 vertex, 2 geometry, 3 hull, 4 domain, 5 compute) of a container and the `dx.op`
 /// operations called across all the module's function bodies (a hull shader's patch-constant function is a second
 /// one), by name: for surveying programs a stage's lifter does not exist for yet.
@@ -89,7 +130,7 @@ pub fn operations(container: &[u8]) -> Result<(u32, std::collections::BTreeMap<S
             .ok_or_else(|| error(0, "no DXIL part"))?
             .data,
     )?;
-    let module = reflection::module(&chunks, b"DXIL")?.ok_or_else(|| error(0, "no DXIL part"))?;
+    let module = module(&chunks, b"DXIL")?.ok_or_else(|| error(0, "no DXIL part"))?;
     let mut out = std::collections::BTreeMap::new();
     for f in &module.functions {
         for inst in &f.instructions {

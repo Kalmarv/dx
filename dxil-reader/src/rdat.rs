@@ -30,9 +30,47 @@
     clippy::cast_possible_truncation
 )]
 
-use iridia::{HitGroup, HitGroupKind, Subobject};
-
 use crate::{Result, error};
+
+/// A subobject record of the table, by its kind, with its stored numbers. A string reference that is none (all ones,
+/// or an empty string) is `None`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Subobject {
+    /// Kind 0: the state object's flags (`D3D12_STATE_OBJECT_FLAGS`).
+    StateObjectConfig { name: String, flags: u32 },
+    /// Kind 1: a root signature as D3D serialised it, its bytes from the raw bytes part.
+    GlobalRootSignature { name: String, signature: Vec<u8> },
+    /// Kind 2: a local root signature, as kind 1.
+    LocalRootSignature { name: String, signature: Vec<u8> },
+    /// Kind 8: the subobject named, associated with these exports.
+    ExportsAssociation {
+        name: String,
+        subobject: String,
+        exports: Vec<String>,
+    },
+    /// Kind 9: the largest payload and hit attributes.
+    ShaderConfig {
+        name: String,
+        max_payload_bytes: u32,
+        max_attribute_bytes: u32,
+    },
+    /// Kind 10: the deepest recursion.
+    PipelineConfig { name: String, max_recursion_depth: u32 },
+    /// Kind 11: a hit group; `kind` is its `D3D12_HIT_GROUP_TYPE` (0 triangles, 1 procedural primitives).
+    HitGroup {
+        name: String,
+        kind: u32,
+        any_hit: Option<String>,
+        closest_hit: Option<String>,
+        intersection: Option<String>,
+    },
+    /// Kind 12: the deepest recursion and the pipeline flags (`D3D12_RAYTRACING_PIPELINE_FLAGS`).
+    PipelineConfig1 {
+        name: String,
+        max_recursion_depth: u32,
+        flags: u32,
+    },
+}
 
 const VERSION: u32 = 0x10;
 const STRINGS: u32 = 1;
@@ -176,23 +214,18 @@ pub fn subobjects(rdat: &[u8]) -> Result<Vec<Subobject>> {
             10 => Subobject::PipelineConfig {
                 name,
                 max_recursion_depth: field(2)?,
-                flags: None,
             },
-            11 => Subobject::HitGroup(HitGroup {
+            11 => Subobject::HitGroup {
                 name,
-                kind: match field(2)? {
-                    0 => HitGroupKind::Triangles,
-                    1 => HitGroupKind::ProceduralPrimitives,
-                    other => return Err(error(0, format!("RDAT: hit group type {other}"))),
-                },
+                kind: field(2)?,
                 any_hit: strings.get(field(3)?)?,
                 closest_hit: strings.get(field(4)?)?,
                 intersection: strings.get(field(5)?)?,
-            }),
-            12 => Subobject::PipelineConfig {
+            },
+            12 => Subobject::PipelineConfig1 {
                 name,
                 max_recursion_depth: field(2)?,
-                flags: Some(field(3)?),
+                flags: field(3)?,
             },
             3..=7 => return Err(error(0, format!("RDAT: subobject kind {kind} is reserved"))),
             other => return Err(error(0, format!("RDAT: subobject kind {other}"))),
