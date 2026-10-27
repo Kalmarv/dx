@@ -63,8 +63,8 @@ compiles; the programs take a file path, for instance `cargo run -p dxbc-reader 
   and refuses instruction records DXIL does not use.
 - `rsx-reader` keeps vertex program microcode encoded and decodes fragment microcode only; it reads one revision (6) of
   `CgBinaryProgram`. Its dependency analysis is conservative, not an evaluator.
-- Nothing is published to crates.io yet (`publish = false`), and the minimum supported Rust version is the pinned toolchain,
-  1.99.
+- The minimum supported Rust version is the pinned toolchain, 1.99. The four crates are on crates.io
+  (`cargo add dxbc-reader`, and so on).
 
 ## Tests
 
