@@ -5,8 +5,8 @@
 //! The layout: a header (`DXBC`, a 16-byte digest, version 1, the container's size, the number of parts), the directory of
 //! the parts' offsets right after it, then the parts one after another in the directory's order, each its four-character
 //! kind, its length and its bytes, the last ending where the container does. Shader Model 6 parts are not padded to 4
-//! bytes, so an offset need not be a multiple of 4. This held for 77,956 containers from shader corpora that are not part
-//! of this repository, and for the 127 fixtures committed in `dxbc-reader` and `dxil-reader`.
+//! bytes, so an offset need not be a multiple of 4. This holds for every fixture committed in `dxbc-reader` and `dxil-reader`
+//! (the tests read each to its exact end and compare [`checksum`] with the stored digest).
 //!
 //! The reader reads to the exact end: a part anywhere else, a gap, a byte after the last part, a kind twice, a size other
 //! than the container's or a version other than 1 is an [`Error`] naming the byte. The digest is not verified (it is not an

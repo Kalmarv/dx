@@ -147,3 +147,22 @@ fn the_digest_is_md5_of_the_bytes_from_20_as_the_compiler_pads_it() {
     other[28] = 1;
     assert_ne!(checksum(&other), Some(digest));
 }
+
+#[test]
+fn the_digest_equals_the_one_every_committed_fixture_stores() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut checked = 0;
+    for crate_dir in ["dxbc-reader", "dxil-reader"] {
+        for entry in std::fs::read_dir(root.join(crate_dir).join("tests/fixtures")).unwrap() {
+            let path = entry.unwrap().path();
+            if !path.extension().is_some_and(|e| e == "dxbc" || e == "dxil") {
+                continue;
+            }
+            let bytes = std::fs::read(&path).unwrap();
+            let stored: [u8; 16] = bytes[4..20].try_into().unwrap();
+            assert_eq!(checksum(&bytes), Some(stored), "{}", path.display());
+            checked += 1;
+        }
+    }
+    assert!(checked > 100, "{checked} fixtures");
+}

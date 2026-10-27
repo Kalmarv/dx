@@ -18,8 +18,8 @@ Run it with `cargo run -p dxcontainer --example parts -- shader.dxbc`; the sourc
 A header (`DXBC`, a 16-byte digest, version 1, the container's size, the number of parts), the directory of the parts'
 offsets, then the parts one after another in the directory's order (each its four-character kind, its length and its
 bytes), the last ending where the container does. Shader Model 6 parts are not padded, so an offset need not be a multiple
-of 4. This layout held for 77,956 containers from shader corpora that are not part of this repository, and holds for the 127
-containers committed under `dxbc-reader/tests/fixtures` and `dxil-reader/tests/fixtures`.
+of 4. This layout holds for the 127 containers committed under `dxbc-reader/tests/fixtures` and `dxil-reader/tests/fixtures`:
+the tests read each to its exact end and check that `checksum` equals the digest it stores.
 
 ## What it guarantees
 
