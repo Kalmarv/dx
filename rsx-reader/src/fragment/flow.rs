@@ -5,8 +5,10 @@
 use super::{Control, Error, Instruction, Opcode, Program, Register, SourceKind, error};
 use std::collections::BTreeSet;
 
+/// The texture units and interpolators a value may depend on, one bit per unit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Dependencies {
+    /// Bit `n` is texture image unit `n`.
     pub textures: u16,
     /// Encoded interpolator indices, not texture image units.
     pub inputs: u16,
@@ -20,25 +22,36 @@ impl Dependencies {
     }
 }
 
+/// One texture sample.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sample {
+    /// The byte offset of the sampling instruction.
     pub offset: usize,
+    /// The texture unit sampled.
     pub unit: u8,
+    /// What its first source (the coordinates) depends on.
     pub coordinates: Dependencies,
     /// All sampling arguments, including separate LOD, bias or gradients.
     pub arguments: Dependencies,
 }
 
+/// What one requested output register depends on.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Output {
+    /// The register.
     pub register: Register,
+    /// The dependencies of each component (x to w).
     pub components: [Dependencies; 4],
 }
 
+/// The result of [`analyze`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Analysis {
+    /// The texture samples, in program order.
     pub samples: Vec<Sample>,
+    /// The requested outputs, in the order they were requested.
     pub outputs: Vec<Output>,
+    /// What may kill the pixel.
     pub kill: Dependencies,
     /// Operations which may consume each texture unit, directly or transitively.
     pub consumers: [Vec<Opcode>; 16],
@@ -61,19 +74,29 @@ impl Default for State {
         }
     }
 }
+/// The bit of texture unit or interpolator `n` (0 to 15) in a [`Dependencies`] mask.
+fn unit_bit(n: usize) -> u16 {
+    u32::try_from(n)
+        .ok()
+        .and_then(|n| 1u16.checked_shl(n))
+        .unwrap_or(0)
+}
+/// The 16-bit lanes component `c` of `r` occupies: one for a half register, two for a full one.
 fn positions(r: Register, c: usize) -> std::ops::Range<usize> {
     if r.half {
-        let at = usize::from(r.index) * 4 + c;
-        at..at + 1
+        let at = usize::from(r.index).saturating_mul(4).saturating_add(c);
+        at..at.saturating_add(1)
     } else {
-        let at = usize::from(r.index) * 8 + c * 2;
-        at..at + 2
+        let at = usize::from(r.index)
+            .saturating_mul(8)
+            .saturating_add(c.saturating_mul(2));
+        at..at.saturating_add(2)
     }
 }
 impl State {
     fn read(&self, r: Register, c: usize) -> Dependencies {
         positions(r, c)
-            .map(|n| self.lanes[n])
+            .map(|n| self.lanes.get(n).copied().unwrap_or_default())
             .fold(Dependencies::default(), Dependencies::join)
     }
     fn merge(&mut self, other: &Self) {
@@ -92,7 +115,13 @@ impl State {
             i.predicate
                 .swizzle
                 .iter()
-                .map(|&c| self.cc[usize::from(i.predicate.register)][usize::from(c)])
+                .map(|&c| {
+                    self.cc
+                        .get(usize::from(i.predicate.register))
+                        .and_then(|row| row.get(usize::from(c)))
+                        .copied()
+                        .unwrap_or_default()
+                })
                 .fold(Dependencies::default(), Dependencies::join)
         }
     }
@@ -108,8 +137,10 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
         return Err(error(0, "output register index exceeds encoding"));
     }
     let code = &program.instructions;
-    let mut incoming: Vec<Option<State>> = vec![None; code.len() + 1];
-    incoming[0] = Some(State::default());
+    let mut incoming: Vec<Option<State>> = vec![None; code.len().saturating_add(1)];
+    if let Some(first) = incoming.first_mut() {
+        *first = Some(State::default());
+    }
     let mut exits: Option<State> = None;
     let mut samples = Vec::new();
     let mut consumers: [BTreeSet<u8>; 16] = std::array::from_fn(|_| BTreeSet::new());
@@ -139,7 +170,10 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
     }
     for &(start, _, end) in &branches {
         if branches.iter().any(|&(s, _, e)| start < s && s < end && e > end) {
-            return Err(error(code[start].offset, "crossing IF regions in flow analysis"));
+            return Err(error(
+                code.get(start).map_or(0, |i| i.offset),
+                "crossing IF regions in flow analysis",
+            ));
         }
     }
     let merge_exit = |exits: &mut Option<State>, state: &State| {
@@ -150,7 +184,7 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
         }
     };
     for (n, i) in code.iter().enumerate() {
-        let Some(mut state) = incoming[n].take() else {
+        let Some(mut state) = incoming.get_mut(n).and_then(Option::take) else {
             continue;
         };
         let predicate = state.predicate(i);
@@ -165,7 +199,7 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
                     .fold(Dependencies::default(), Dependencies::join),
                 SourceKind::Input(k) => Dependencies {
                     textures: 0,
-                    inputs: 1u16 << k,
+                    inputs: unit_bit(usize::from(k)),
                 },
                 SourceKind::Constant => Dependencies::default(),
             };
@@ -177,7 +211,7 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
         let influenced = source.join(predicate).join(state.control);
         if i.predicate.test != 0 {
             for (unit, set) in consumers.iter_mut().enumerate() {
-                if influenced.textures & (1 << unit) != 0 {
+                if influenced.textures & unit_bit(unit) != 0 {
                     set.insert(i.opcode as u8);
                 }
             }
@@ -189,24 +223,30 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
                     coordinates,
                     arguments: source,
                 });
-                result.textures |= 1u16 << unit;
+                result.textures |= unit_bit(usize::from(unit));
             }
             if i.opcode.writes_destination() {
                 for c in 0..4 {
-                    if i.write_mask & (1 << c) == 0 {
+                    if i.write_mask & unit_bit(c).to_le_bytes()[0] == 0 {
                         continue;
                     }
                     if !i.no_destination && i.destination.index != 63 {
                         for at in positions(i.destination, c) {
-                            state.lanes[at] = if i.predicate.test == 7 {
-                                result
-                            } else {
-                                state.lanes[at].join(result)
-                            };
+                            if let Some(lane) = state.lanes.get_mut(at) {
+                                *lane = if i.predicate.test == 7 {
+                                    result
+                                } else {
+                                    lane.join(result)
+                                };
+                            }
                         }
                     }
-                    if i.update_condition {
-                        let cc = &mut state.cc[usize::from(i.condition_destination)][c];
+                    if i.update_condition
+                        && let Some(cc) = state
+                            .cc
+                            .get_mut(usize::from(i.condition_destination))
+                            .and_then(|row| row.get_mut(c))
+                    {
                         *cc = if i.predicate.test == 7 {
                             result
                         } else {
@@ -236,17 +276,17 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
             {
                 state.control = state.control.join(predicate);
                 if i.predicate.test != 0 {
-                    next.push(if n + 1 == index(else_offset) {
+                    next.push(if n.saturating_add(1) == index(else_offset) {
                         index(end_offset)
                     } else {
-                        n + 1
+                        n.saturating_add(1)
                     });
                 }
                 if i.predicate.test != 7 {
                     next.push(index(else_offset));
                 }
             } else {
-                next.push(n + 1);
+                next.push(n.saturating_add(1));
             }
         }
         for mut successor in next {
@@ -257,10 +297,11 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
                     successor = end_at;
                 }
             }
-            if let Some(old) = &mut incoming[successor] {
-                old.merge(&state);
-            } else {
-                incoming[successor] = Some(state.clone());
+            if let Some(slot) = incoming.get_mut(successor) {
+                match slot {
+                    Some(old) => old.merge(&state),
+                    None => *slot = Some(state.clone()),
+                }
             }
         }
     }

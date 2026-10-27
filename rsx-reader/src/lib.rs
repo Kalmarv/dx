@@ -22,6 +22,12 @@
 //! assert_eq!((texture.width, texture.height), (256, 128));
 //! assert!(texture.linear());
 //! ```
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::cast_possible_truncation
+)]
+#![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
 pub mod cgbinary;

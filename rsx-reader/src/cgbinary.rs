@@ -3,10 +3,13 @@
 use primase_foundations::bytes::{Endian::Big, View};
 use std::ops::Range;
 
+/// What is wrong with a container, and where.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("CgBinaryProgram at byte {offset}: {detail}")]
 pub struct Error {
+    /// The byte offset in the container where the problem is.
     pub offset: usize,
+    /// What was expected there, or what was found instead.
     pub detail: String,
 }
 
@@ -17,53 +20,87 @@ fn error(offset: usize, detail: impl Into<String>) -> Error {
     }
 }
 
+/// The offset `delta` bytes after `at`, which the caller has checked to lie in the container.
+fn plus(at: usize, delta: usize) -> Result<usize, Error> {
+    at.checked_add(delta)
+        .ok_or_else(|| error(at, "offset overflows the address space"))
+}
+
+/// The stage-specific header of a vertex program.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Vertex {
+    /// The number of 16-byte microcode slots.
     pub instruction_count: u32,
+    /// The slot the program starts at.
     pub instruction_slot: u32,
+    /// The number of registers it uses.
     pub register_count: u32,
+    /// The vertex attributes it reads, a mask.
     pub attribute_input_mask: u32,
+    /// The attributes it writes, a mask.
     pub attribute_output_mask: u32,
+    /// The user clip planes it writes, a mask.
     pub user_clip_mask: u32,
 }
 
+/// The stage-specific header of a fragment program.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fragment {
     /// Number of 16-byte microcode slots, including embedded constants.
     pub instruction_count: u32,
+    /// The interpolated attributes it reads, a mask.
     pub attribute_input_mask: u32,
     /// Two bits per texture unit, kept as encoded.
     pub partial_tex_type: u32,
+    /// The texture coordinate sets it reads, a mask.
     pub tex_coords_input_mask: u16,
+    /// The sets that are two-component, a mask.
     pub tex_coords_2d: u16,
+    /// The sets interpolated at the centroid, a mask.
     pub tex_coords_centroid: u16,
+    /// The number of registers it uses.
     pub register_count: u8,
+    /// Whether the colour output is written from the half-precision register 0.
     pub output_from_h0: bool,
+    /// Whether the program writes depth.
     pub depth_replace: bool,
+    /// Whether the program can kill the pixel.
     pub pixel_kill: bool,
+    /// The two padding bytes after the flags, as stored.
     pub padding: [u8; 2],
 }
 
+/// A program's stage and its stage-specific header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Stage {
+    /// A vertex program.
     Vertex(Vertex),
+    /// A fragment program.
     Fragment(Fragment),
 }
 
+/// One parameter record of the container.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Parameter<'a> {
     /// Original CGtype, CGresource and CGenum values, including unknown values.
     pub ty: u32,
+    /// The CGresource (a texture unit, an attribute, ...).
     pub resource: u32,
+    /// The CGenum variability (varying, uniform, ...).
     pub variability: u32,
+    /// The index within the resource, as a signed value.
     pub resource_index: i32,
     /// NUL-terminated source strings, excluding their terminator; no encoding conversion.
     pub name: Option<&'a [u8]>,
+    /// The semantic string, where the parameter has one.
     pub semantic: Option<&'a [u8]>,
+    /// The CGenum direction (in, out, ...).
     pub direction: u32,
     /// -1 denotes a global parameter.
     pub parameter_number: i32,
+    /// Whether the program references the parameter.
     pub referenced: bool,
+    /// Whether the parameter is shared between programs.
     pub shared: bool,
     /// Big-endian float bits, preserving NaNs and signed zeros. Float scalar,
     /// vector and matrix types are supported; other types with defaults refuse.
@@ -79,11 +116,16 @@ impl Parameter<'_> {
     }
 }
 
+/// A container as read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Program<'a> {
+    /// The profile: 7003 vertex, 7004 fragment.
     pub profile: u32,
+    /// The binary revision (6).
     pub revision: u32,
+    /// The stage-specific header.
     pub stage: Stage,
+    /// The parameter records, in order.
     pub parameters: Vec<Parameter<'a>>,
     /// Original byte order and inline constants retained verbatim.
     pub microcode: &'a [u8],
@@ -112,7 +154,12 @@ impl<'a> Reader<'a> {
     }
     fn boolean(&self, at: usize, byte: bool) -> Result<bool, Error> {
         let n = if byte {
-            u32::from(self.bytes(at, 1)?[0])
+            u32::from(
+                *self
+                    .bytes(at, 1)?
+                    .first()
+                    .ok_or_else(|| error(at, "a boolean byte"))?,
+            )
         } else {
             self.word(at)?
         };
@@ -127,7 +174,7 @@ impl<'a> Reader<'a> {
             .checked_mul(stride)
             .ok_or_else(|| error(at, "array size overflow"))?;
         self.bytes(at, n)?;
-        Ok(at..at.checked_add(n).ok_or_else(|| error(at, "range overflow"))?)
+        Ok(at..plus(at, n)?)
     }
     fn reserve(&mut self, r: Range<usize>) -> Result<(), Error> {
         if !r.start.is_multiple_of(4) {
@@ -161,7 +208,7 @@ impl<'a> Reader<'a> {
             .iter()
             .position(|&b| b == 0)
             .ok_or_else(|| error(at, "unterminated string"))?;
-        let r = self.range(at, len + 1, 1)?;
+        let r = self.range(at, plus(len, 1)?, 1)?;
         self.metadata(r)?;
         Ok(Some(self.bytes(at, len)?))
     }
@@ -172,10 +219,12 @@ impl<'a> Reader<'a> {
         }
         let count = match ty {
             1045 | 1091 => 1,
-            1046..=1048 => (ty - 1044) as usize,
+            1046..=1048 => (ty.saturating_sub(1044)) as usize,
             1049..=1064 => {
-                let m = ty - 1049;
-                ((m / 4 + 1) * (m % 4 + 1)) as usize
+                let m = ty.saturating_sub(1049);
+                ((m / 4)
+                    .saturating_add(1)
+                    .saturating_mul((m % 4).saturating_add(1))) as usize
             }
             _ => {
                 return Err(error(
@@ -188,9 +237,9 @@ impl<'a> Reader<'a> {
             return Err(error(field, "unaligned default value"));
         }
         let r = self.range(at, count, 4)?;
-        self.metadata(r)?;
-        (0..count)
-            .map(|i| self.word(at + i * 4))
+        self.metadata(r.clone())?;
+        r.step_by(4)
+            .map(|p| self.word(p))
             .collect::<Result<Vec<_>, _>>()
             .map(Some)
     }
@@ -210,10 +259,9 @@ impl<'a> Reader<'a> {
                 .ok_or_else(|| error(at, "constant count overflow"))?,
             4,
         )?;
-        self.metadata(r)?;
+        self.metadata(r.clone())?;
         let mut offsets = Vec::new();
-        for i in 0..count {
-            let field = at + 4 + i * 4;
+        for field in r.step_by(4).skip(1) {
             let offset = self.word(field)?;
             let n = usize::try_from(offset).map_err(|_| error(field, "constant outside address space"))?;
             if !n.is_multiple_of(16) || n.checked_add(16).is_none_or(|end| end > ucode_size) {
@@ -271,6 +319,7 @@ pub fn parse_prefix(bytes: &[u8]) -> Result<Program<'_>, Error> {
     let ucode_size = r.offset(24)?;
     let ucode_at = r.offset(28)?;
     let param_range = r.range(params, count, 48)?;
+    let params_at = param_range.clone().step_by(48);
     r.reserve(param_range)?;
     let stage_range = r.range(stage_at, 1, 24)?;
     r.reserve(stage_range)?;
@@ -285,7 +334,11 @@ pub fn parse_prefix(bytes: &[u8]) -> Result<Program<'_>, Error> {
         fixed: Vec::new(),
     };
     let instruction_count = s.word(0)?;
-    if u64::from(instruction_count) * 16 != ucode_size as u64 {
+    if usize::try_from(instruction_count)
+        .ok()
+        .and_then(|slots| slots.checked_mul(16))
+        != Some(ucode_size)
+    {
         return Err(error(
             stage_at,
             "instruction slot count disagrees with microcode size",
@@ -301,10 +354,17 @@ pub fn parse_prefix(bytes: &[u8]) -> Result<Program<'_>, Error> {
             user_clip_mask: s.word(20)?,
         })
     } else {
+        let stage_view = View::new(stage_bytes);
         let half = |at| {
-            View::new(stage_bytes)
+            stage_view
                 .u16(at, Big)
-                .map_err(|e| error(stage_at + at, e.to_string()))
+                .map_err(|e| error(stage_at.saturating_add(at), e.to_string()))
+        };
+        let flag = |at| -> Result<bool, Error> { r.boolean(plus(stage_at, at)?, true) };
+        let byte = |at| {
+            stage_view
+                .u8(at)
+                .map_err(|e| error(stage_at.saturating_add(at), e.to_string()))
         };
         Stage::Fragment(Fragment {
             instruction_count,
@@ -313,31 +373,31 @@ pub fn parse_prefix(bytes: &[u8]) -> Result<Program<'_>, Error> {
             tex_coords_input_mask: half(12)?,
             tex_coords_2d: half(14)?,
             tex_coords_centroid: half(16)?,
-            register_count: stage_bytes[18],
-            output_from_h0: r.boolean(stage_at + 19, true)?,
-            depth_replace: r.boolean(stage_at + 20, true)?,
-            pixel_kill: r.boolean(stage_at + 21, true)?,
-            padding: [stage_bytes[22], stage_bytes[23]],
+            register_count: byte(18)?,
+            output_from_h0: flag(19)?,
+            depth_replace: flag(20)?,
+            pixel_kill: flag(21)?,
+            padding: [byte(22)?, byte(23)?],
         })
     };
     let mut parameters = Vec::new();
-    for i in 0..count {
-        let at = params + i * 48;
+    for at in params_at {
+        let field = |delta| plus(at, delta);
         let ty = r.word(at)?;
         // The source signed fields are two's-complement 32-bit values.
         parameters.push(Parameter {
             ty,
-            resource: r.word(at + 4)?,
-            variability: r.word(at + 8)?,
-            resource_index: r.word(at + 12)? as i32,
-            name: r.string(at + 16)?,
-            default_value: r.floats(at + 20, ty)?,
-            embedded_constants: r.embedded(at + 24, ucode_size)?,
-            semantic: r.string(at + 28)?,
-            direction: r.word(at + 32)?,
-            parameter_number: r.word(at + 36)? as i32,
-            referenced: r.boolean(at + 40, false)?,
-            shared: r.boolean(at + 44, false)?,
+            resource: r.word(field(4)?)?,
+            variability: r.word(field(8)?)?,
+            resource_index: r.word(field(12)?)? as i32,
+            name: r.string(field(16)?)?,
+            default_value: r.floats(field(20)?, ty)?,
+            embedded_constants: r.embedded(field(24)?, ucode_size)?,
+            semantic: r.string(field(28)?)?,
+            direction: r.word(field(32)?)?,
+            parameter_number: r.word(field(36)?)? as i32,
+            referenced: r.boolean(field(40)?, false)?,
+            shared: r.boolean(field(44)?, false)?,
         });
     }
     Ok(Program {

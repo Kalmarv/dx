@@ -30,11 +30,15 @@ pub struct CellGcmTexture {
     pub cubemap: u8,
     /// The libgcm component remap word; identity is `0xaae4`.
     pub remap: u32,
+    /// The width in texels.
     pub width: u16,
+    /// The height in texels.
     pub height: u16,
+    /// The depth in texels (1 unless a volume).
     pub depth: u16,
     /// The memory location code, as stored.
     pub location: u8,
+    /// The padding byte after the location, as stored.
     pub pad: u8,
     /// The base row pitch in bytes, meaningful for linear storage.
     pub pitch: u32,
@@ -48,22 +52,45 @@ impl CellGcmTexture {
     /// # Errors
     /// [`Error::DescriptorLength`] when `data` is not 24 bytes.
     pub fn parse(data: &[u8]) -> Result<Self, Error> {
-        let b: &[u8; 24] = data.try_into().map_err(|_| Error::DescriptorLength(data.len()))?;
-        let u16_at = |i| u16::from_be_bytes([b[i], b[i + 1]]);
-        let u32_at = |i| u32::from_be_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]]);
+        let &[
+            format,
+            mipmap,
+            dimension,
+            cubemap,
+            r0,
+            r1,
+            r2,
+            r3,
+            w0,
+            w1,
+            h0,
+            h1,
+            d0,
+            d1,
+            location,
+            pad,
+            p0,
+            p1,
+            p2,
+            p3,
+            o0,
+            o1,
+            o2,
+            o3,
+        ] = <&[u8; 24]>::try_from(data).map_err(|_| Error::DescriptorLength(data.len()))?;
         Ok(Self {
-            format: b[0],
-            mipmap: b[1],
-            dimension: b[2],
-            cubemap: b[3],
-            remap: u32_at(4),
-            width: u16_at(8),
-            height: u16_at(10),
-            depth: u16_at(12),
-            location: b[14],
-            pad: b[15],
-            pitch: u32_at(16),
-            offset: u32_at(20),
+            format,
+            mipmap,
+            dimension,
+            cubemap,
+            remap: u32::from_be_bytes([r0, r1, r2, r3]),
+            width: u16::from_be_bytes([w0, w1]),
+            height: u16::from_be_bytes([h0, h1]),
+            depth: u16::from_be_bytes([d0, d1]),
+            location,
+            pad,
+            pitch: u32::from_be_bytes([p0, p1, p2, p3]),
+            offset: u32::from_be_bytes([o0, o1, o2, o3]),
         })
     }
 
