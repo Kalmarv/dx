@@ -159,7 +159,7 @@ impl View<'_> {
 pub struct SignatureElement {
     /// The semantic name (`POSITION`, `TEXCOORD`, ...).
     pub name: String,
-    /// The semantic index.
+    /// The semantic index (the `1` of `TEXCOORD1`).
     pub index: u32,
     /// `D3D_NAME`.
     pub system_value: u32,
@@ -298,7 +298,7 @@ pub struct RdefBinding {
     pub samples: u32,
     /// The first register the resource is bound to.
     pub register: u32,
-    /// How many registers it is bound to.
+    /// How many consecutive registers it is bound to.
     pub count: u32,
     /// `D3D_SHADER_INPUT_FLAGS`.
     pub flags: u32,
@@ -313,7 +313,7 @@ pub struct RdefBuffer {
     pub name: String,
     /// `D3D_CBUFFER_TYPE`: 0 a cbuffer, 1 a tbuffer, 2 interface pointers, 3 a structured buffer's element.
     pub kind: u32,
-    /// In bytes.
+    /// The buffer's size in bytes, as the part stores it.
     pub size: u32,
     /// The variables the buffer holds.
     pub variables: Vec<RdefVariable>,

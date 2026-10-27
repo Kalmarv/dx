@@ -27,6 +27,7 @@
 //! assert!(parts[0].data.is_empty());
 //! assert!(dxcontainer::checksum(&bytes).is_some());
 //! ```
+#![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 #![deny(
     clippy::arithmetic_side_effects,

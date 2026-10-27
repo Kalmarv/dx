@@ -175,7 +175,7 @@ pub struct Operand {
     pub register: Register,
     /// Which components it selects.
     pub selection: Selection,
-    /// Its index dimensions, outermost first.
+    /// Its index dimensions, outermost first: none for an immediate, one for `r3`, two for `cb2[5]`.
     pub indices: Vec<Index>,
     /// The values of an immediate operand (one lane repeated, or four); zero for other registers.
     pub immediate: [u32; 4],
@@ -203,7 +203,7 @@ pub struct Index {
 pub struct Instruction {
     /// The instruction's first word in the token stream.
     pub word: usize,
-    /// The opcode token's opcode (see [`opcode_name`]).
+    /// The opcode token's low 11 bits (see [`opcode_name`]).
     pub opcode: u16,
     /// The opcode token's bits 11 to 23: saturate and the opcode-specific controls (the test of a conditional, a
     /// `resinfo` return type, the interpolation of a declaration).
@@ -259,7 +259,7 @@ pub type ReturnCodes = [u8; 4];
 pub struct Declaration {
     /// The word of the token stream the declaration starts at.
     pub word: usize,
-    /// The opcode token's opcode.
+    /// The opcode token's low 11 bits (see [`opcode_name`]).
     pub opcode: u16,
     /// The opcode token's bits 11 to 23 as stored.
     pub control: u32,

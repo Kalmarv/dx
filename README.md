@@ -16,6 +16,9 @@ values); mapping those to another graphics API, or compiling or translating the 
 
 ## What it was written against
 
+The repository holds no shader from a shipped game: the Direct3D fixtures are compiler output for small HLSL sources, and the
+PS3 tests use byte streams laid out by hand from the public layouts below.
+
 - **Direct3D:** containers and programs from Microsoft's `fxc` (Shader Model 4 and 5; the six program types are recognised: vertex,
   hull, domain, geometry, pixel, compute) and from DirectXShaderCompiler `dxc` 1.7 (Shader Model 6, LLVM 3.7 IR with relative value ids,
   module version 1). The committed fixtures, with the HLSL they were compiled from, are in `*/tests/fixtures`.
