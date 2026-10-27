@@ -11,12 +11,21 @@ use crate::{Result, chunk, error, parts};
 struct View<'a>(&'a [u8]);
 impl View<'_> {
     fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
-        let end = at
-            .checked_add(len)
-            .ok_or_else(|| error(at / 4, "reflection range overflow"))?;
-        self.0
-            .get(at..end)
-            .ok_or_else(|| error(at / 4, "reflection range exceeds chunk"))
+        let end = at.checked_add(len).ok_or_else(|| {
+            error(
+                at / 4,
+                format!("{len} bytes at byte {at} overflow the address space"),
+            )
+        })?;
+        self.0.get(at..end).ok_or_else(|| {
+            error(
+                at / 4,
+                format!(
+                    "{len} bytes at byte {at} exceed the part's {} bytes",
+                    self.0.len()
+                ),
+            )
+        })
     }
     fn u32(&self, at: usize) -> Result<u32> {
         Ok(u32::from_le_bytes(
@@ -29,37 +38,53 @@ impl View<'_> {
         ))
     }
     fn string(&self, at: usize) -> Result<String> {
-        let tail = self
-            .0
-            .get(at..)
-            .ok_or_else(|| error(at / 4, "invalid string offset"))?;
-        let end = tail
-            .iter()
-            .position(|&b| b == 0)
-            .ok_or_else(|| error(at / 4, "unterminated reflection string"))?;
+        let tail = self.0.get(at..).ok_or_else(|| {
+            error(
+                at / 4,
+                format!("a string at byte {at}, past the part's {} bytes", self.0.len()),
+            )
+        })?;
+        let end = tail.iter().position(|&b| b == 0).ok_or_else(|| {
+            error(
+                at / 4,
+                format!("the string at byte {at} has no terminating zero in the part"),
+            )
+        })?;
         if end > 4096 {
-            return Err(error(at / 4, "reflection string exceeds bound"));
+            return Err(error(
+                at / 4,
+                format!("the string at byte {at} is {end} bytes, more than the 4096 allowed"),
+            ));
         }
         Ok(std::str::from_utf8(&tail[..end])
-            .map_err(|_| error(at / 4, "non-UTF8 reflection string"))?
+            .map_err(|_| error(at / 4, format!("the string at byte {at} is not UTF-8")))?
             .to_owned())
     }
     fn table(&self, at: usize, count: usize, stride: usize) -> Result<std::ops::Range<usize>> {
         if count > 65536 {
-            return Err(error(at / 4, "reflection table exceeds count bound"));
+            return Err(error(
+                at / 4,
+                format!("a table of {count} records at byte {at}, more than the 65536 allowed"),
+            ));
         }
         self.bytes(
             at,
-            count
-                .checked_mul(stride)
-                .ok_or_else(|| error(at / 4, "table overflow"))?,
+            count.checked_mul(stride).ok_or_else(|| {
+                error(
+                    at / 4,
+                    format!("a table of {count} records of {stride} bytes overflows"),
+                )
+            })?,
         )?;
         Ok(0..count)
     }
     /// The type record at byte `at` and its members' types, depth first.
     fn ty(&self, at: usize, stack: &mut Vec<usize>, budget: &mut usize) -> Result<RdefType> {
         if stack.len() >= 32 || stack.contains(&at) || *budget == 0 {
-            return Err(error(at / 4, "cyclic or excessive reflection types"));
+            return Err(error(
+                at / 4,
+                "the type at this word is part of a cycle, nests deeper than 32 or is one of more than 65536 types",
+            ));
         }
         *budget -= 1;
         self.bytes(at, 36)?;
@@ -111,7 +136,13 @@ pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> 
     let v = View(bytes);
     let count = v.u32(0)? as usize;
     if v.u32(4)? != 8 {
-        return Err(error(1, "unsupported signature directory offset"));
+        return Err(error(
+            1,
+            format!(
+                "expected the record directory at byte 8, found byte {}",
+                v.u32(4)?
+            ),
+        ));
     }
     // bytes before the name offset, and the record size
     let (skip, record) = match kind {
@@ -178,7 +209,7 @@ pub fn program_type(directory: &[dxcontainer::Chunk<'_>]) -> Result<ProgramType>
     let code = directory
         .iter()
         .find(|c| matches!(&c.kind, b"SHDR" | b"SHEX"))
-        .ok_or_else(|| error(0, "missing shader code chunk"))?;
+        .ok_or_else(|| error(0, "the container has no SHDR or SHEX part"))?;
     let token = View(code.data).u32(0)?;
     match token >> 16 {
         0 => Ok(ProgramType::Pixel),
@@ -187,7 +218,10 @@ pub fn program_type(directory: &[dxcontainer::Chunk<'_>]) -> Result<ProgramType>
         3 => Ok(ProgramType::Hull),
         4 => Ok(ProgramType::Domain),
         5 => Ok(ProgramType::Compute),
-        kind => Err(error(0, format!("program type {kind} (unknown) is not mapped"))),
+        kind => Err(error(
+            0,
+            format!("expected a program type from 0 (pixel) to 5 (compute), found {kind}"),
+        )),
     }
 }
 
@@ -286,12 +320,23 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
     }
     let v = View(chunk(&directory, b"RDEF")?);
     let target = v.u32(16)?;
-    if v.bytes(28, 4)? != b"RD11" {
-        return Err(error(4, "expected SM5.0 pixel or vertex RDEF"));
+    let tag = v.bytes(28, 4)?;
+    if tag != b"RD11" {
+        return Err(error(
+            7,
+            format!(
+                "expected the `RD11` tag of the Shader Model 5 RDEF layout, found {:?}",
+                String::from_utf8_lossy(tag)
+            ),
+        ));
     }
     for (i, size) in [60, 24, 32, 40, 36, 12].into_iter().enumerate() {
-        if v.u32(32 + i * 4)? != size {
-            return Err(error(8 + i, "unsupported RDEF record size"));
+        let found = v.u32(32 + i * 4)?;
+        if found != size {
+            return Err(error(
+                8 + i,
+                format!("expected record size {size} (entry {i} of the RD11 size directory), found {found}"),
+            ));
         }
     }
     let mut bindings = Vec::new();
@@ -319,7 +364,10 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
         let kind = v.u32(p + 20)?;
         let size = v.u32(p + 12)?;
         if size > 65536 {
-            return Err(error(p / 4, "constant-buffer size exceeds bound"));
+            return Err(error(
+                (p + 12) / 4,
+                format!("constant buffer of {size} bytes, more than the 65536 allowed"),
+            ));
         }
         let mut variables = Vec::new();
         let entries = v.u32(p + 8)? as usize;
@@ -328,7 +376,12 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
             let start = v.u32(q + 4)?;
             let len = v.u32(q + 8)?;
             if start.checked_add(len).is_none_or(|end| end > size) {
-                return Err(error(q / 4, "variable exceeds constant buffer"));
+                return Err(error(
+                    (q + 4) / 4,
+                    format!(
+                        "variable at byte {start} of {len} bytes lies outside its {size} byte constant buffer"
+                    ),
+                ));
             }
             let default = v.u32(q + 20)? as usize;
             let ty = v.ty(v.u32(q + 16)? as usize, &mut Vec::new(), &mut budget)?;

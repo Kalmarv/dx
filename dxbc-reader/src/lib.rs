@@ -30,20 +30,14 @@ pub use reflection::{
 };
 
 /// Something the reader can't read: the 32-bit word of the container's chunk or token stream where it is, and what.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("DXBC at word {word}: {detail}")]
 pub struct Error {
     /// The word offset, counted from the start of the chunk or token stream being read.
     pub word: usize,
+    /// What was expected there, or what was found instead.
     pub detail: String,
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DXBC at word {}: {}", self.word, self.detail)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -61,18 +55,17 @@ pub fn parts(bytes: &[u8]) -> Result<Vec<dxcontainer::Chunk<'_>>> {
 
 /// The container's one part of kind `tag`: an error where it has none, or more than one.
 pub fn chunk<'a>(directory: &[dxcontainer::Chunk<'a>], tag: &[u8; 4]) -> Result<&'a [u8]> {
+    let shown = String::from_utf8_lossy(tag);
     let mut matching = directory.iter().filter(|c| &c.kind == tag);
     let data = matching
         .next()
-        .ok_or_else(|| {
-            error(
-                0,
-                format!("missing reflection chunk {}", String::from_utf8_lossy(tag)),
-            )
-        })?
+        .ok_or_else(|| error(0, format!("the container has no {shown} part")))?
         .data;
     if matching.next().is_some() {
-        return Err(error(0, "duplicate reflection chunk"));
+        return Err(error(
+            0,
+            format!("the container has the {shown} part more than once"),
+        ));
     }
     Ok(data)
 }
@@ -85,7 +78,13 @@ pub fn code(bytes: &[u8]) -> Result<Vec<u32>> {
         .find(|c| matches!(&c.kind, b"SHDR" | b"SHEX"))
         .ok_or_else(|| error(0, "missing shader code chunk"))?;
     if code.data.len() % 4 != 0 {
-        return Err(error(0, "unaligned code length"));
+        return Err(error(
+            code.data.len() / 4,
+            format!(
+                "the code part is {} bytes, expected a multiple of 4 (32-bit tokens)",
+                code.data.len()
+            ),
+        ));
     }
     Ok(code
         .data
