@@ -1,4 +1,4 @@
-use primase_rsx::cgbinary::{Stage, parse, parse_prefix};
+use rsx_reader::cgbinary::{Stage, parse, parse_prefix};
 
 fn word(b: &mut [u8], at: usize, value: u32) {
     b[at..at + 4].copy_from_slice(&value.to_be_bytes());

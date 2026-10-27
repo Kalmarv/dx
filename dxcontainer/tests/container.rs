@@ -3,7 +3,7 @@
 //! (the format's own rules) and the committed fixtures of the two lifters are read as containers of real compilers.
 use std::path::Path;
 
-use primase_dxcontainer::{checksum, chunks};
+use dxcontainer::{checksum, chunks};
 
 /// A container of these parts, directory first and the parts one after another.
 fn container(parts: &[(&[u8; 4], &[u8])]) -> Vec<u8> {

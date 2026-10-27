@@ -1,5 +1,5 @@
 [package]
-name = "primase-dxcontainer"
+name = "dxcontainer"
 description = "The DXBC container Direct3D shader programs are stored in (Shader Model 4 to 6): its parts, and its digest"
 version.workspace = true
 edition.workspace = true

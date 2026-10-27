@@ -1,5 +1,5 @@
 [package]
-name = "primase-rsx"
+name = "rsx-reader"
 description = "RSX shader program containers"
 version.workspace = true
 edition.workspace = true

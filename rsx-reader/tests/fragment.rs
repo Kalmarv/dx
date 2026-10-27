@@ -1,4 +1,4 @@
-use primase_rsx::fragment::{Control, Opcode, Register, SourceKind, decode, flow::analyze};
+use rsx_reader::fragment::{Control, Opcode, Register, SourceKind, decode, flow::analyze};
 
 fn encode(words: &[u32]) -> Vec<u8> {
     words
