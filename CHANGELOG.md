@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-27)
 
 - `dxbc-reader`: `patch_signature_elements` reads the `PSG1` part where a hull or domain program has no `PCSG` (fxc
   writes `PSG1` and the 32-byte `ISG1`/`OSG1` records when a `min16float` is in the program); `signature` takes
