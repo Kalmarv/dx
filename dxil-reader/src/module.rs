@@ -1,6 +1,6 @@
 //! LLVM 3.7 IR as DXIL stores it, read from the bitstream tree: the type table, module values (globals, functions,
 //! constants), metadata, value names and function bodies. Only what DXIL programs use is decoded; any other record in a
-//! function body is refused by name. The blocks of a function body that say nothing a lifter uses (its metadata, the
+//! function body is refused by name. The blocks of a function body that say nothing a reader of the program's behaviour needs (its metadata, the
 //! metadata attached to its instructions and its use-list order) are the only things skipped.
 use crate::bitstream::{Block, Record};
 use crate::{Result, error};

@@ -1,8 +1,8 @@
 //! The token-level decoder of Shader Model 4 and 5 programs: any stage's version token, declarations as typed
 //! records, and instructions as an opcode, its control bits, its extended tokens and its operands. It decides nothing
-//! about what a consumer supports: a consumer refuses, by name,
-//! what it cannot use. A token it cannot read at all (an operand register type it has no name for, a truncated
-//! instruction) is an error naming the word.
+//! about which instructions a caller can use: they are all returned, and the caller refuses what it cannot handle. A token
+//! it cannot read at all (an operand register type it has no name for, a truncated instruction) is an error naming the
+//! word.
 
 use crate::opcodes::NAMES;
 use crate::{Result, error};
@@ -142,7 +142,7 @@ pub struct Operand {
     pub indices: Vec<Index>,
     pub immediate: [u32; 4],
     /// 0 none, 1 negate, 2 absolute, 3 negated absolute (float sources); 4 two's-complement negate (an integer
-    /// instruction's negate, set by the consumer that knows the instruction reads integers).
+    /// instruction's negate; the encoding has no such value, so a caller that knows the instruction reads integers sets it).
     pub modifier: u8,
     /// The minimum-precision annotation of the operand's extended token (0 none; 1 float16, 2 float2_8, 4 sint16,
     /// 5 uint16).

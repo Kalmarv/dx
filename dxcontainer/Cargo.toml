@@ -1,6 +1,10 @@
 [package]
 name = "dxcontainer"
-description = "The DXBC container Direct3D shader programs are stored in (Shader Model 4 to 6): its parts, and its digest"
+description = "Parser for the DXBC container that holds Direct3D shader bytecode (DXBC and DXIL, Shader Model 4 to 6): reads the part directory and computes the digest"
+keywords = ["dxbc", "dxil", "shader", "direct3d", "container"]
+categories = ["parser-implementations", "graphics"]
+readme = "README.md"
+documentation = "https://docs.rs/dxcontainer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

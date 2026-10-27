@@ -129,8 +129,7 @@ pub fn entry(m: &Module) -> Result<ValueId> {
 }
 
 /// The entry point's thread group size (`numthreads`): the value of the properties' tag 4 (a mesh program's, the first
-/// field of its state, tag 9). `None` when the entry
-/// point states none (every stage but compute).
+/// field of its state, tag 9). `None` when the entry point states none (every stage but compute).
 pub fn num_threads(m: &Module) -> Result<Option<[u32; 3]>> {
     let entry = &the_entry(m)?;
     let entry = node(m, *entry, "entry point")?;
@@ -215,9 +214,6 @@ fn entry_property(m: &Module, wanted: i64) -> Result<Option<&[Option<MetadataId>
     Ok(None)
 }
 
-/// What a geometry program's entry point states (the properties' tag 1): the primitive it reads, how many vertices it
-/// emits at most, the streams it writes, what its stream makes and how many invocations run for a primitive. Only stream 0
-/// is carried: another stream is refused by name.
 /// What a geometry program's entry point states (the properties' tag 1), as stored: the primitive it reads (`input`, a
 /// `D3D_PRIMITIVE`: 1 point, 2 line, 3 triangle, 6 line and 7 triangle with adjacency), how many vertices it emits at
 /// most, the streams it writes (a mask), the topology its stream makes (a `D3D_PRIMITIVE_TOPOLOGY`: 1 point list, 3

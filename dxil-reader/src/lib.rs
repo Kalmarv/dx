@@ -1,16 +1,16 @@
 //! A reader of Shader Model 6 programs (DXIL) as Direct3D stores them in a `DXBC` container: the program part's header
 //! ([`program`]), its LLVM bitcode through a bounded bitstream reader ([`bitstream`]) into the module it holds
-//! ([`module`]), the entry point's metadata, resource records and signature parts ([`reflection`]), and a library's
+//! ([`mod@module`]), the entry point's metadata, resource records and signature parts ([`reflection`]), and a library's
 //! runtime data ([`rdat`]), each as the records the file stores with DXIL's and D3D's own numbers.
 //!
 //! It reads and checks bytes and never interprets them for an API: a resource is its record's class, range and shape
 //! numbers, a signature element its stored name, index, register and masks. Mapping those into a graphics API's
-//! vocabulary is a consumer's choice. Everything it can't read (a truncated record, an abbreviation it does not know, a
+//! vocabulary is the caller's choice. Everything it can't read (a truncated record, an abbreviation it does not know, a
 //! reference outside its table) is an [`Error`] naming the bit where it happened; it never panics on untrusted input.
 //!
 //! ```no_run
 //! # fn main() -> Result<(), dxil_reader::Error> {
-//! let container = std::fs::read("shader.dxil").unwrap();
+//! let container = std::fs::read("shader.dxil").expect("a compiled shader");
 //! let parts = dxil_reader::parts(&container)?;
 //! let module = dxil_reader::module(&parts, b"DXIL")?.expect("a DXIL part");
 //! println!("{} functions", module.functions.len());
@@ -119,7 +119,7 @@ pub fn module(chunks: &[dxcontainer::Chunk<'_>], kind: &[u8; 4]) -> Result<Optio
 
 /// The shader kind (0 pixel, 1 vertex, 2 geometry, 3 hull, 4 domain, 5 compute) of a container and the `dx.op`
 /// operations called across all the module's function bodies (a hull shader's patch-constant function is a second
-/// one), by name: for surveying programs a stage's lifter does not exist for yet.
+/// one), by name: for surveying which operations a set of shaders uses.
 pub fn operations(container: &[u8]) -> Result<(u32, std::collections::BTreeMap<String, usize>)> {
     use module::Op;
     let chunks = parts(container)?;

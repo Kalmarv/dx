@@ -1,6 +1,10 @@
 [package]
 name = "dxil-reader"
-description = "A bounded reader of Direct3D Shader Model 6 programs (DXIL): the LLVM bitstream and module, and reflection and runtime-data records as stored"
+description = "DXIL reader: decodes Direct3D Shader Model 6 programs (LLVM bitcode in a DXBC container) to modules, with resource, signature and RDAT reflection records"
+keywords = ["dxil", "dxbc", "shader", "llvm", "direct3d"]
+categories = ["parser-implementations", "graphics"]
+readme = "README.md"
+documentation = "https://docs.rs/dxil-reader"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

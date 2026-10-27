@@ -1,14 +1,14 @@
 //! A reader of Shader Model 4 and 5 programs as Direct3D stores them in a `DXBC` container: the token stream of any
-//! stage ([`decode`]), and the reflection and signature chunks as the records the file holds ([`reflection`]).
+//! stage ([`mod@decode`]), and the reflection and signature chunks as the records the file holds ([`reflection`]).
 //!
 //! It reads and checks bytes and never interprets them for an API: a register binding is the RDEF record's own
 //! numbers, a signature element its stored name, index and masks. Mapping those into a graphics API's vocabulary is
-//! a consumer's choice. Everything it can't read (a truncated instruction, an out-of-range table, a cyclic type) is an
+//! the caller's choice. Everything it can't read (a truncated instruction, an out-of-range table, a cyclic type) is an
 //! [`Error`] naming the 32-bit word where it happened; it never panics on untrusted input.
 //!
 //! ```no_run
 //! # fn main() -> Result<(), dxbc_reader::Error> {
-//! let container = std::fs::read("shader.dxbc").unwrap();
+//! let container = std::fs::read("shader.dxbc").expect("a compiled shader");
 //! let code = dxbc_reader::code(&container)?;
 //! let program = dxbc_reader::decode(&code)?;
 //! println!("{} with {} instructions", program.target(), program.instructions.len());
@@ -77,7 +77,7 @@ pub fn chunk<'a>(directory: &[dxcontainer::Chunk<'a>], tag: &[u8; 4]) -> Result<
     Ok(data)
 }
 
-/// The program's token stream (its `SHEX` or `SHDR` part) as 32-bit little-endian words, for [`decode`].
+/// The program's token stream (its `SHEX` or `SHDR` part) as 32-bit little-endian words, for [`decode()`].
 pub fn code(bytes: &[u8]) -> Result<Vec<u32>> {
     let directory = parts(bytes)?;
     let code = directory

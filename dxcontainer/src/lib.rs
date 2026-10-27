@@ -1,14 +1,32 @@
-//! The DXBC container: what Shader Model 4 and 5 programs (`SHDR`, `SHEX`, signatures, `RDEF`) and Shader Model 6 programs
-//! (`DXIL`, `PSV0`, `RDAT`, ...) are stored in. [`chunks`] reads its part directory and [`checksum`] computes the digest the
-//! compiler stores in it.
+//! Reader for the DXBC container, the file format Direct3D shader programs are stored in: Shader Model 4 and 5 programs
+//! (`SHDR`, `SHEX`, signatures, `RDEF`) and Shader Model 6 programs (`DXIL`, `PSV0`, `RDAT`, ...) alike. [`chunks`] reads
+//! the container's part directory and [`checksum`] computes the digest the compiler stores in it.
 //!
-//! The layout, which every one of the 77,956 containers of the project's shader corpora and fixtures has: a header (`DXBC`, a
-//! 16-byte digest, version 1, the container's size, the number of parts), the directory of the parts' offsets right after it,
-//! then the parts one after another in the directory's order, each its four-character kind, its length and its bytes, the last
-//! ending where the container does. Shader Model 6 parts are not padded to 4 bytes, so an offset need not be a multiple of 4.
-//! The reader reads to the exact end: a part anywhere else, a gap, a byte after the last part, a kind twice, or a size
-//! other than the container's is an error naming where. The digest is not verified (it is not an authenticity check);
-//! [`checksum`] is for a caller that wants to know it.
+//! The layout: a header (`DXBC`, a 16-byte digest, version 1, the container's size, the number of parts), the directory of
+//! the parts' offsets right after it, then the parts one after another in the directory's order, each its four-character
+//! kind, its length and its bytes, the last ending where the container does. Shader Model 6 parts are not padded to 4
+//! bytes, so an offset need not be a multiple of 4. This held for 77,956 containers from shader corpora that are not part
+//! of this repository, and for the 127 fixtures committed in `dxbc-reader` and `dxil-reader`.
+//!
+//! The reader reads to the exact end: a part anywhere else, a gap, a byte after the last part, a kind twice, a size other
+//! than the container's or a version other than 1 is an [`Error`] naming the byte. The digest is not verified (it is not an
+//! authenticity check); [`checksum`] is for a caller that wants to compare it.
+//!
+//! ```
+//! // A container with one empty `ISGN` part: header, one directory entry, the part.
+//! let mut bytes = b"DXBC".to_vec();
+//! bytes.extend_from_slice(&[0; 16]); // digest
+//! for word in [1u32, 44, 1, 36] {
+//!     bytes.extend_from_slice(&word.to_le_bytes()); // version, size, part count, the part's offset
+//! }
+//! bytes.extend_from_slice(b"ISGN");
+//! bytes.extend_from_slice(&0u32.to_le_bytes()); // the part's length
+//!
+//! let parts = dxcontainer::chunks(&bytes).expect("a well-formed container");
+//! assert_eq!(&parts[0].kind, b"ISGN");
+//! assert!(parts[0].data.is_empty());
+//! assert!(dxcontainer::checksum(&bytes).is_some());
+//! ```
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 #![deny(
     clippy::arithmetic_side_effects,
@@ -22,7 +40,9 @@ use primase_foundations::bytes::View;
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("DXBC container at byte {offset}: {detail}")]
 pub struct Error {
+    /// The byte offset in the container where the problem is.
     pub offset: usize,
+    /// What was expected there, or what was found instead.
     pub detail: String,
 }
 
@@ -36,7 +56,9 @@ fn error(offset: usize, detail: impl Into<String>) -> Error {
 /// A part of a container: its four-character kind and its bytes.
 #[derive(Clone, Copy, Debug)]
 pub struct Chunk<'a> {
+    /// The part's four-character kind (`DXIL`, `RDEF`, ...).
     pub kind: [u8; 4],
+    /// The part's bytes, without its kind and length.
     pub data: &'a [u8],
 }
 

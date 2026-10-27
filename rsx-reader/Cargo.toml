@@ -1,6 +1,10 @@
 [package]
 name = "rsx-reader"
-description = "PS3 RSX shader program containers (CgBinary, fragment programs) and the CellGcmTexture descriptor"
+description = "PlayStation 3 RSX reader: CellGcmTexture descriptors, CgBinaryProgram shader containers and fragment program microcode decoded to typed instructions"
+keywords = ["ps3", "rsx", "shader", "cg", "gcm"]
+categories = ["parser-implementations", "graphics"]
+readme = "README.md"
+documentation = "https://docs.rs/rsx-reader"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

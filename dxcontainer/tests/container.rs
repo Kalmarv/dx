@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-//! The container reader reads to the exact end and refuses the layouts the corpora never have. Containers are built by hand
+//! The container reader reads to the exact end and refuses the layouts real compilers never write. Containers are built by hand
 //! (the format's own rules) and the committed fixtures of both bytecodes (`dxbc-reader`'s and `dxil-reader`'s) are read
 //! as containers of real compilers.
 use std::path::Path;
@@ -55,7 +55,7 @@ fn parts_are_read_in_the_directorys_order_with_their_bytes() {
 }
 
 #[test]
-fn what_the_corpora_never_have_is_refused_by_name() {
+fn what_compilers_never_write_is_refused_by_name() {
     let good = container(&[(b"AAAA", &[1, 1, 1, 1]), (b"BBBB", &[2, 2])]);
     chunks(&good).unwrap();
 

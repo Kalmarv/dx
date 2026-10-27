@@ -1,6 +1,10 @@
 [package]
 name = "dxbc-reader"
-description = "A bounded reader of Direct3D Shader Model 4 and 5 bytecode: the token stream, and RDEF and signature records as stored"
+description = "DXBC parser: reads Direct3D 10/11 shader bytecode (Shader Model 4 and 5) into typed declarations and instructions, with RDEF reflection and signatures"
+keywords = ["dxbc", "shader", "bytecode", "direct3d", "parser"]
+categories = ["parser-implementations", "graphics"]
+readme = "README.md"
+documentation = "https://docs.rs/dxbc-reader"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

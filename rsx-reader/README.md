@@ -1,82 +1,83 @@
-# RSX shader containers and texture descriptors
+# rsx-reader
 
-`gcm::CellGcmTexture::parse` reads the 24-byte big-endian libgcm texture descriptor (format, mip count,
-dimension, cube flag, component remap, extents, pitch and the GPU address fields) as data. It refuses only a
-descriptor of the wrong length; whether the described storage can be decoded is the caller's question.
+Readers for PlayStation 3 RSX graphics data: `CellGcmTexture` texture descriptors, Cg binary (`CgBinaryProgram`) shader
+program containers, and RSX fragment program microcode decoded to typed instructions.
 
-`cgbinary::parse` reads exactly one big-endian revision-6 CgBinaryProgram;
-`parse_prefix` reads its advertised size when a caller owns concatenation/padding.
-Profiles 7003 (vertex) and 7004 (fragment) have a 32-byte header, 48-byte
-parameter records, and a 24-byte stage descriptor. Microcode remains encoded.
-The fragment instruction count includes inline constant slots.
+```rust
+use rsx_reader::{cgbinary, fragment, gcm};
 
-Parameter strings keep their source bytes. Resource, type, variability and
-direction keep the original Cg enum values. Resource indices and parameter
-numbers remain signed. `texture_unit` recognises resources CG_TEXUNIT0..15;
-it does not reinterpret a constant-register index as a sampler. Defaults retain
-float bits for float scalars, vectors and matrices; defaults of other types
-refuse explicitly. Embedded constant tables identify 16-byte microcode spans.
+let texture = gcm::CellGcmTexture::parse(&std::fs::read("texture.bin")?)?; // exactly 24 bytes
+println!("{}x{}, {} mips, linear: {}", texture.width, texture.height, texture.mipmap, texture.linear());
 
-The reader bounds every structure against the advertised size, rejects
-overlapping fixed structures and metadata inside those structures, and checks
-alignment, boolean values, string termination and embedded constant offsets.
-Shared metadata and string suffixes are allowed. Padding bytes in the fragment
-descriptor are retained; no undocumented requirement that they be zero is added.
-This is container validation, not microcode validation or disassembly.
+let shader = std::fs::read("shader.fpo")?;
+let program = cgbinary::parse(&shader)?;
+if let cgbinary::Stage::Fragment(_) = program.stage {
+    let code = fragment::decode(program.microcode)?;
+    print!("{}", code.disassemble());
+}
+```
 
-Layout reference: RPCS3's public
-[CgBinaryProgram declarations](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/CgBinaryProgram.h).
-It is used as a description; no RPCS3 implementation code is copied.
-Cg enum values are described in the published
-[Cg header](https://help.autodesk.com/cloudhelp/ENU/Mudbox-SDK/cpp_ref/cg_8h_source.html).
-The tests lay out small containers by hand, including metadata fields that a
-compiler may omit. A world crate can run its archive corpus through this reader
-without introducing a toolkit dependency on that world's archive format.
+Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the source is [`examples/inspect_rsx.rs`](examples/inspect_rsx.rs).
 
-`fragment::decode` reads the unchanged big-endian fragment microcode into typed
-instructions. It rotates each word's halfwords, preserves sources, swizzles,
-predicates, destination masks, modifier bits, texture units, control offsets,
-and inline float bits. Constants consume a full extra slot shared by the
-instruction's constant sources. END must be at the exact end; reserved source
-types/opcodes, incomplete constants, and branches into constants refuse.
-Unproven bump-environment opcodes refuse explicitly. `disassemble` produces
-stable inspection text; this is not an assembler, executor or shader lifter.
+## What it reads
 
-`fragment::flow::analyze` reports possible texture and interpolator influences
-into caller-selected registers, discard conditions, sampling coordinates, and
-downstream operations. It tracks component writes, full/half register overlap,
-conditional writes, forward IF/ELSE regions, KIL and RET. Arithmetic unions all
-referenced source components, and condition dependencies survive joins. Thus
-these are conservative dependencies, not proof that a particular texel/channel
-affects a rendered pixel. Calls, loops, BRK and indexed interpolators explicitly
-refuse analysis. The decoder can still inspect their encoded instructions.
-No sampler is automatically assigned a colour, normal or material role.
-The binary register overlap follows the RSX consumer's byte ranges
-([register-file ranges](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/Assembler/FPOpcodes.cpp)):
-four 2-byte lanes per H register and four 4-byte lanes per R register.
-This is physical binary addressing, separate from the non-overlapping named
-temporaries presented by the high-level NV program language.
+- **`gcm::CellGcmTexture::parse`**: the 24-byte big-endian libgcm texture descriptor (format, mip count, dimension, cube
+  flag, component remap, extents, pitch, and the GPU address fields) as data. It refuses only a descriptor of the wrong
+  length; whether the described storage can be decoded is the caller's question.
+- **`cgbinary::parse`** reads exactly one big-endian revision-6 `CgBinaryProgram`; `parse_prefix` reads the size it
+  advertises, for callers that own concatenation or padding. Profiles 7003 (vertex) and 7004 (fragment) have a 32-byte
+  header, 48-byte parameter records and a 24-byte stage descriptor. Microcode stays encoded and is returned as bytes.
+  Parameter strings keep their source bytes; resource, type, variability and direction keep the original Cg enum values;
+  resource indices and parameter numbers stay signed. `Parameter::texture_unit` recognises the resources
+  `CG_TEXUNIT0..15` and does not reinterpret a constant-register index as a sampler. Defaults keep float bits for float
+  scalars, vectors and matrices; defaults of other types are refused. The fragment instruction count includes inline
+  constant slots.
+- **`fragment::decode`** reads unchanged big-endian fragment microcode into instructions, rotating each word's halfwords
+  first. It keeps sources, swizzles, predicates, destination masks, modifier bits, texture units, control-flow offsets and
+  inline float bits. A constant takes a full extra slot shared by the instruction's constant sources. `disassemble`
+  produces stable inspection text.
+- **`fragment::flow::analyze`** reports which texture units and interpolators can influence caller-selected output
+  registers, discard conditions, sampling coordinates and downstream operations. It tracks component writes, full and half
+  register overlap, conditional writes, forward `IF`/`ELSE` regions, `KIL` and `RET`.
 
-Instruction encodings are described by the same pinned RPCS3 public RSX field
-and opcode declarations; semantics and condition vocabulary are described by
-NVIDIA's published [NV_fragment_program](https://registry.khronos.org/OpenGL/extensions/NV/NV_fragment_program.txt)
-and [NV_fragment_program2](https://registry.khronos.org/OpenGL/extensions/NV/NV_fragment_program2.txt).
-No RPCS3 implementation was copied into this crate. Independently built and run
-RPCS3 TaskFP outputs are an oracle in a world crate's corpus test. The test
-compares all operands and controls actually printed by that tool, not omitted
-saturation, precision, scale, ALU predicates or condition-register selection.
-It also omits TXL/TXB's separate LOD/bias source and TXD's second gradient.
-Those operands are retained by this decoder (and counted as unprinted by the
-comparison); hand-worked constant/flow fixtures check them. The runtime
-consumer's [sampling templates](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/GLSLCommon.cpp)
-describe these separate sources. A TXL with a source-1 inline constant is a
-discriminating control: original TaskFP stops after 16 of its 32 bytes, whereas
-the fixture requires that the decoded instruction include the constant.
-When another instruction follows, TaskFP can print that constant as a NOP.
-The corpus comparison validates and counts this specific discrepancy rather
-than accepting the extra line as an instruction; the original oracle is kept
-unchanged. One such constant slot occurs in the current disc corpus.
-Hand-worked fixtures check those fields and dependency analysis. The oracle
-does not establish hardware correctness: its condition spellings for test bits
-0/2/7 disagree with NV's FL/EQ/TR. That discrepancy is kept explicit and counted
-by the comparison (none occurs in the current corpus's printed conditions).
+## What it guarantees
+
+- `cgbinary` bounds every structure against the advertised size, rejects overlapping fixed structures and metadata inside
+  them, and checks alignment, boolean values, string termination and embedded constant offsets. Shared metadata and string
+  suffixes are allowed. Padding bytes in the fragment descriptor are kept, and no undocumented requirement that they be zero
+  is added. Errors name the byte offset.
+- `fragment::decode` requires `END` at the exact end of the microcode and refuses reserved source types, opcodes it has no
+  entry for (the bump-environment opcodes, whose encoding is unproven, among them; the error gives the opcode number),
+  incomplete constants and branches into constants.
+- The register overlap in `flow` follows the RSX register file's byte ranges (four 2-byte lanes per H register and four
+  4-byte lanes per R register), which is physical binary addressing and differs from the non-overlapping named temporaries
+  of the NV program language.
+- `flow::analyze` is conservative: arithmetic unions every referenced source component and condition dependencies survive
+  joins, so a reported dependency is a possible influence, not proof that a texel or channel changes a rendered pixel.
+
+## What it does not do
+
+It is container validation and instruction decoding, not microcode validation of hardware behaviour. It does not assemble,
+execute or translate programs, does not decode vertex program microcode (the vertex stage descriptor is read, the
+microcode is returned encoded), and does not assign a sampler a colour, normal or material role. `flow::analyze` refuses
+calls, loops, `BRK` and indexed interpolators; the decoder can still inspect their encoded instructions.
+
+## Sources
+
+Layouts follow RPCS3's public
+[`CgBinaryProgram` declarations](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/CgBinaryProgram.h)
+and [register-file ranges](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/Assembler/FPOpcodes.cpp);
+instruction encodings follow its public field and opcode declarations. Opcode semantics and condition vocabulary follow
+NVIDIA's [NV_fragment_program](https://registry.khronos.org/OpenGL/extensions/NV/NV_fragment_program.txt) and
+[NV_fragment_program2](https://registry.khronos.org/OpenGL/extensions/NV/NV_fragment_program2.txt); Cg enum values come
+from the published [Cg header](https://help.autodesk.com/cloudhelp/ENU/Mudbox-SDK/cpp_ref/cg_8h_source.html); texture
+descriptors follow [PSL1GHT's `gcmTexture`](https://github.com/ps3dev/PSL1GHT/blob/master/ppu/include/rsx/gcm_sys.h). No
+RPCS3 implementation code is copied. Texture sampling with a separate LOD, bias or gradient source (`TXL`, `TXB`, `TXD`) keeps
+that source in the decoded instruction; RPCS3's `GLSLCommon.cpp` sampling templates describe it.
+
+## Tests
+
+`cargo test -p rsx-reader`: containers, descriptors and fragment programs laid out by hand, bit by bit, without an encoder,
+including metadata fields a compiler may omit, inline constants, flow regions and the refusals. No game files are needed.
+
+License: GPL-3.0-or-later.
