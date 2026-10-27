@@ -1,5 +1,5 @@
-//! The reflection (`RDEF`) and signature (`ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`, `PCSG`) parts of a Shader Model 4
-//! or 5 container, as the records they store: resource bindings, constant buffers with their variables and type
+//! The reflection (`RDEF`) and signature (`ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`, `PCSG`, `PSG1`) parts of a Shader
+//! Model 4 or 5 container, as the records they store: resource bindings, constant buffers with their variables and type
 //! trees, and signature elements, each with D3D's own numbers (`D3D_SHADER_INPUT_TYPE`, `D3D_NAME`, ...) and the word
 //! it starts at. What the numbers mean for a graphics API is the caller's to decide.
 //!
@@ -119,8 +119,8 @@ impl View<'_> {
         )?;
         Ok(0..count)
     }
-    /// The type record at byte `at` and its members' types, depth first.
-    fn ty(&self, at: usize, stack: &mut Vec<usize>, budget: &mut usize) -> Result<RdefType> {
+    /// The type record at byte `at` (of `layout`'s size) and its members' types, depth first.
+    fn ty(&self, at: usize, layout: Layout, stack: &mut Vec<usize>, budget: &mut usize) -> Result<RdefType> {
         if stack.len() >= 32 || stack.contains(&at) || *budget == 0 {
             return Err(error(
                 at / 4,
@@ -128,7 +128,7 @@ impl View<'_> {
             ));
         }
         *budget = budget.saturating_sub(1);
-        self.bytes(at, 36)?;
+        self.bytes(at, layout.ty)?;
         stack.push(at);
         let count = usize::from(self.field16(at, 10)?);
         let offset = self.field(at, 12)? as usize;
@@ -138,7 +138,7 @@ impl View<'_> {
             members.push(RdefMember {
                 name: self.string(self.u32(p)? as usize)?,
                 offset: self.field(p, 8)?,
-                ty: self.ty(self.field(p, 4)? as usize, stack, budget)?,
+                ty: self.ty(self.field(p, 4)? as usize, layout, stack, budget)?,
             });
         }
         stack.pop();
@@ -153,6 +153,22 @@ impl View<'_> {
         })
     }
 }
+
+/// The record sizes of an `RDEF` part's layout that differ. The resource binding (32 bytes), constant buffer (24) and
+/// struct member (12) records are the same in both; Shader Model 5's variable and type records end in fields Shader
+/// Model 4's do not have.
+#[derive(Clone, Copy)]
+struct Layout {
+    /// The size of a variable record.
+    variable: usize,
+    /// The size of a type record.
+    ty: usize,
+}
+
+/// Shader Model 4: the 28-byte header, then the tables.
+const SM4: Layout = Layout { variable: 24, ty: 16 };
+/// Shader Model 5: the header, the `RD11` tag and the six record sizes it states.
+const SM5: Layout = Layout { variable: 40, ty: 36 };
 
 /// One element of a signature as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -176,7 +192,7 @@ pub struct SignatureElement {
 }
 
 /// A signature part's records. Layouts: `ISGN`/`OSGN`/`PCSG` (name, index, system value, component type, register,
-/// masks), `ISG1`/`OSG1` (a stream and a minimum precision besides) and `OSG5` (a stream besides). `kind` is the
+/// masks), `ISG1`/`OSG1`/`PSG1` (a stream and a minimum precision besides) and `OSG5` (a stream besides). `kind` is the
 /// part's tag, which says which layout `bytes` has.
 pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> {
     let v = View(bytes);
@@ -190,7 +206,7 @@ pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> 
     }
     // bytes before the name offset, and the record size
     let (skip, record) = match kind {
-        b"ISG1" | b"OSG1" => (4, 32),
+        b"ISG1" | b"OSG1" | b"PSG1" => (4, 32),
         b"OSG5" => (4, 28),
         _ => (0, 24),
     };
@@ -213,10 +229,12 @@ pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> 
     Ok(result)
 }
 
-/// A hull or domain program's patch-constant signature elements as stored (the `PCSG` part).
+/// A hull or domain program's patch-constant signature elements as stored (the `PCSG` part, or the `PSG1` part where
+/// the program uses minimum precision).
 pub fn patch_signature_elements(bytes: &[u8]) -> Result<Vec<SignatureElement>> {
     let directory = parts(bytes)?;
-    signature(chunk(&directory, b"PCSG")?, b"PCSG")
+    let (data, tag) = signature_part(&directory, &[b"PCSG", b"PSG1"])?;
+    signature(data, &tag)
 }
 
 /// The part among `tags` the container has (the first tag where it has none, so that is the one reported missing).
@@ -377,14 +395,8 @@ pub fn rdef_target(bytes: &[u8]) -> Result<Option<u32>> {
         .transpose()
 }
 
-/// A container's `RDEF` part (`None` where it has none), for the SM5 layout (the `RD11` record-size directory).
-pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
-    let directory = parts(bytes)?;
-    if !directory.iter().any(|c| &c.kind == b"RDEF") {
-        return Ok(None);
-    }
-    let v = View(chunk(&directory, b"RDEF")?);
-    let target = v.u32(16)?;
+/// The `RD11` tag and record-size directory a Shader Model 5 `RDEF` part has after its 28-byte header.
+fn read_directory(v: &View<'_>) -> Result<()> {
     let tag = v.bytes(28, 4)?;
     if tag != b"RD11" {
         return Err(error(
@@ -405,6 +417,25 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
             ));
         }
     }
+    Ok(())
+}
+
+/// A container's `RDEF` part (`None` where it has none): the Shader Model 4 layout where its target is a 4.x one (a
+/// 28-byte header, then the tables), the Shader Model 5 layout (the `RD11` record-size directory) where it is a 5.x one.
+pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
+    let directory = parts(bytes)?;
+    if !directory.iter().any(|c| &c.kind == b"RDEF") {
+        return Ok(None);
+    }
+    let v = View(chunk(&directory, b"RDEF")?);
+    let target = v.u32(16)?;
+    let layout = match (target >> 8) & 0xff {
+        4 => SM4,
+        _ => {
+            read_directory(&v)?;
+            SM5
+        }
+    };
     let mut bindings = Vec::new();
     let offset = v.field(0, 12)? as usize;
     for i in v.table(offset, v.field(0, 8)? as usize, 32)? {
@@ -437,8 +468,8 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
         }
         let mut variables = Vec::new();
         let entries = v.field(p, 8)? as usize;
-        for j in v.table(entries, v.field(p, 4)? as usize, 40)? {
-            let q = v.record(entries, j, 40)?;
+        for j in v.table(entries, v.field(p, 4)? as usize, layout.variable)? {
+            let q = v.record(entries, j, layout.variable)?;
             let start = v.field(q, 4)?;
             let len = v.field(q, 8)?;
             if start.checked_add(len).is_none_or(|end| end > size) {
@@ -450,7 +481,7 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
                 ));
             }
             let default = v.field(q, 20)? as usize;
-            let ty = v.ty(v.field(q, 16)? as usize, &mut Vec::new(), &mut budget)?;
+            let ty = v.ty(v.field(q, 16)? as usize, layout, &mut Vec::new(), &mut budget)?;
             variables.push(RdefVariable {
                 word: q / 4,
                 name: v.string(v.u32(q)? as usize)?,

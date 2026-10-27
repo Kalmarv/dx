@@ -199,12 +199,20 @@ pub struct Instruction {
     pub source_precision: [u8; 3],
     /// The result scale code, as stored.
     pub scale: u8,
-    /// The inputs are addressed indirectly.
+    /// The inputs are addressed indirectly (bit 30 of the last operand word). Clear in every instruction of the
+    /// fragment programs on the disc.
     pub indexed_input: bool,
-    /// The indirect input address, as stored.
+    /// Bits 19 to 29 of the last operand word, as stored. Bits 21 to 29 are all ones on every instruction of the
+    /// disc's programs that reads an interpolant and zero on every other; bits 19 and 20 are always zero. It is not an
+    /// address in any of them.
     pub input_address: u16,
-    /// The inputs are perspective-corrected.
-    pub perspective_input: bool,
+    /// Bit 31 of the last operand word, as stored: a flag of the interpolant the instruction reads (always clear where
+    /// it reads none). Within one program every read of one interpolant has the same value in 17,689 of the disc's
+    /// 17,691 (program, interpolant) pairs; it is clear on all 10,409 texture lookups' coordinates (texture
+    /// coordinates 0 and 1) and set on most of the reads of texture coordinates 4 to 7. What it selects is not
+    /// established: a program's parameter table names no varying, so the sense (perspective-corrected or not) is not
+    /// tied to any data, and it is read as the bit it is.
+    pub interpolant_flag: bool,
     /// What a flow-control instruction does.
     pub control: Option<Control>,
 }
@@ -361,7 +369,7 @@ pub fn decode(bytes: &[u8]) -> Result<Program, Error> {
             scale: bits8(b, 28, 3),
             indexed_input: bits(c, 30, 1) != 0,
             input_address: bits16(c, 19, 11),
-            perspective_input: bits(c, 31, 1) != 0,
+            interpolant_flag: bits(c, 31, 1) != 0,
             control,
         });
         at = at.saturating_add(size);

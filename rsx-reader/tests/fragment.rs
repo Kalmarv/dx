@@ -308,3 +308,23 @@ fn a_fragment_program_error_names_the_fragment_program_not_a_container() {
     let shown = analyze(&p, &[r(0)]).unwrap_err().to_string();
     assert!(shown.contains("fragment program at byte 0"), "{shown}");
 }
+
+#[test]
+fn the_interpolant_flag_and_input_address_are_bits_of_the_last_operand_word() {
+    // an instruction that reads texture coordinate 0, with bits 21 to 29 of the last operand word set as the disc's
+    // programs set them, then the same with bit 31 as well
+    let mut w = sample(0, 0, true);
+    w[3] |= 0x1ff << 21;
+    let read = |w: [u32; 4]| {
+        let p = decode(&encode(&w)).unwrap();
+        let i = &p.instructions[0];
+        (i.interpolant_flag, i.indexed_input, i.input_address)
+    };
+    assert_eq!(read(w), (false, false, 0x7fc));
+    w[3] |= 1 << 31;
+    assert_eq!(read(w), (true, false, 0x7fc));
+    w[3] = XYZW | (1 << 30);
+    assert_eq!(read(w), (false, true, 0));
+    w[3] = XYZW | (3 << 19);
+    assert_eq!(read(w), (false, false, 3));
+}

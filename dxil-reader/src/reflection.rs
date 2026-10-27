@@ -506,7 +506,7 @@ pub fn ranges(m: &Module) -> Result<Vec<(Range, String, Option<TypeId>)>> {
             // The record's variable is an undef pointer to the resource's type.
             let ty = match r.op(1)?.and_then(|i| m.metadata.get(i)) {
                 Some(Metadata::Value { ty, .. }) => match m.types.get(*ty) {
-                    Some(Type::Pointer(t)) => Some(*t),
+                    Some(Type::Pointer(t, _)) => Some(*t),
                     _ => None,
                 },
                 _ => None,

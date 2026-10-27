@@ -84,3 +84,49 @@ fn every_fixture_reads() {
     }
     assert!(n >= 17, "{n} fixtures");
 }
+
+#[test]
+fn a_pointer_type_keeps_its_address_space() {
+    use dxil_reader::module::{Type, Value};
+    for name in ["compute_basic.dxil", "compute_basic.od.dxil"] {
+        let m = module(name);
+        // a global's type is the pointer to its value in the global's own space, group shared memory in space 3
+        let mut spaces = std::collections::BTreeSet::new();
+        for v in &m.values {
+            if let Value::Global {
+                ty,
+                value_ty,
+                address_space,
+                ..
+            } = v
+            {
+                assert_eq!(m.types[*ty], Type::Pointer(*value_ty, *address_space), "{name}");
+                spaces.insert(*address_space);
+            }
+        }
+        assert!(
+            spaces.contains(&3),
+            "{name}: group shared globals are in space 3, found {spaces:?}"
+        );
+        // the type table has pointers to one pointee in both spaces: two types, not one
+        let pointers: Vec<_> = m
+            .types
+            .iter()
+            .filter_map(|t| match t {
+                Type::Pointer(to, space) => Some((*to, *space)),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            pointers
+                .iter()
+                .any(|&(to, space)| space == 3 && pointers.contains(&(to, 0))),
+            "{name}: {pointers:?}"
+        );
+        let mut seen = std::collections::BTreeSet::new();
+        assert!(
+            pointers.iter().all(|p| seen.insert(*p)),
+            "{name}: a pointer type is in the table twice"
+        );
+    }
+}

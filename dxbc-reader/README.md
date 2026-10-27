@@ -29,10 +29,10 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   instruction with its opcode, control bits, extended tokens (sample offset, resource dimension, return type) and operands
   (register kind, component selection, indices including relative ones, immediates, modifiers, minimum precision).
   Opcode names are those of Microsoft's tokenized program format (`opcode_name`).
-- **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 5 layout (`RD11`): resource bindings, constant
-  buffers with their variables, default values and type trees.
-- **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`
-  and `PCSG` parts.
+- **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag) and the Shader Model 5 one
+  (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
+- **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
+  `PCSG` and `PSG1` parts.
 - **Container** (`parts`, over the `dxcontainer` crate).
 
 Numbers are Direct3D's own (`D3D_NAME`, `D3D_SHADER_INPUT_TYPE`, `D3D_REGISTER_COMPONENT_TYPE`, ...), as stored.
@@ -48,12 +48,12 @@ dimensions) is an `Error` naming the 32-bit word where it happened.
 
 It does not execute, translate or validate programs. Declarations of the tessellation and geometry stages (and interface
 tables) are kept as `Declared::Other` with their raw words rather than typed. `RDEF` parts of other record layouts than
-Shader Model 5's are refused. Shader Model 6 is `dxil-reader`'s.
+Shader Model 4's and 5's are refused. Shader Model 6 is `dxil-reader`'s.
 
 ## Tests
 
 `cargo test -p dxbc-reader`: token streams assembled by hand (a vertex program, typed declarations, an instruction's
-controls and extended tokens, the refusals by name) and the 17 committed fixtures in `tests/fixtures`, compiled by `fxc`
+controls and extended tokens, the refusals by name) and the 24 committed fixtures in `tests/fixtures`, compiled by `fxc`
 from the HLSL beside each (`.od` files with `/Od`), each read to its end. No game files are needed.
 
 License: GPL-3.0-or-later.

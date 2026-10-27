@@ -45,8 +45,9 @@ pub enum Type {
     Double,
     /// An integer of this many bits (1 to 64).
     Integer(u32),
-    /// A pointer to the type.
-    Pointer(TypeId),
+    /// A pointer to the type, in this LLVM address space (the `TYPE_CODE_POINTER` record's second operand). Pointers to
+    /// one type in two spaces are two types.
+    Pointer(TypeId, u32),
     /// An array of this many elements of the type.
     Array(u64, TypeId),
     /// A vector of this many lanes of the type.
@@ -133,7 +134,7 @@ pub enum Value {
         init: Option<ValueId>,
         /// Whether it is a constant (read only).
         constant: bool,
-        /// LLVM's address space: 0 default, 1 device memory, 3 group shared, 4 constants.
+        /// LLVM's address space: 0 the default, 3 group shared. No other space occurs in the programs of the games read.
         address_space: u32,
     },
     /// A constant.
@@ -571,7 +572,10 @@ impl Module {
                         .filter(|w| (1..=64).contains(w))
                         .ok_or_else(|| error(r.at, "integer width"))?,
                 ),
-                8 => Type::Pointer(self.ty(op(r, 0)?, r.at)?),
+                8 => Type::Pointer(
+                    self.ty(op(r, 0)?, r.at)?,
+                    u32::try_from(op(r, 1)?).map_err(|_| error(r.at, "pointer address space"))?,
+                ),
                 10 => Type::Half,
                 11 => Type::Array(op(r, 0)?, self.ty(op(r, 1)?, r.at)?),
                 12 => Type::Vector(op(r, 0)?, self.ty(op(r, 1)?, r.at)?),
@@ -786,7 +790,7 @@ impl Body<'_> {
     }
     /// The type of a value defined before this point, or of a forward reference by the type given.
     fn pointer_to(&mut self, t: TypeId) -> TypeId {
-        self.m.intern(Type::Pointer(t))
+        self.m.intern(Type::Pointer(t, 0))
     }
     /// The index a constant integer value stands for, if it is one defined in the module or this function.
     fn constant_index(&self, v: ValueId) -> Option<usize> {
@@ -859,7 +863,7 @@ fn refused(code: u64) -> &'static str {
 impl Module {
     fn read_function(&mut self, block: &Block, value: ValueId) -> Result<Function> {
         let fty = match self.value_types.get(value).and_then(|&t| self.types.get(t)) {
-            Some(Type::Pointer(t)) => *t,
+            Some(Type::Pointer(t, _)) => *t,
             _ => return Err(error(block.at, "function value is not a function pointer")),
         };
         let params = match self.type_at(fty, block.at)? {
@@ -1018,7 +1022,7 @@ impl Module {
                     let (function, callee_ty) = body.value_type(r, &mut i)?;
                     let fty = match (explicit, body.m.type_at(callee_ty, r.at)?) {
                         (Some(t), _) => t,
-                        (None, Type::Pointer(t)) => *t,
+                        (None, Type::Pointer(t, _)) => *t,
                         _ => return Err(error(r.at, "callee is not a function pointer")),
                     };
                     let (ret, params, vararg) = match body.m.type_at(fty, r.at)? {
@@ -1325,12 +1329,14 @@ impl Module {
                         // initial value + 1 or 0, ...]
                         let t = m.ty(op(r, 0)?, r.at)?;
                         let flags = op(r, 1)?;
+                        let address_space =
+                            u32::try_from(flags >> 2).map_err(|_| error(r.at, "address space"))?;
                         let (ty, value_ty) = if flags & 2 != 0 {
-                            let pointer = m.intern(Type::Pointer(t));
+                            let pointer = m.intern(Type::Pointer(t, address_space));
                             (pointer, t)
                         } else {
                             match m.type_at(t, r.at)? {
-                                Type::Pointer(inner) => (t, *inner),
+                                Type::Pointer(inner, _) => (t, *inner),
                                 _ => return Err(error(r.at, "a global whose type is not a pointer")),
                             }
                         };
@@ -1347,8 +1353,7 @@ impl Module {
                                 value_ty,
                                 init,
                                 constant: flags & 1 != 0,
-                                address_space: u32::try_from(flags >> 2)
-                                    .map_err(|_| error(r.at, "address space"))?,
+                                address_space,
                             },
                             ty,
                             r.at,
@@ -1357,7 +1362,7 @@ impl Module {
                     8 => {
                         // FUNCTION: [function type, cc, isproto, ...]
                         let t = m.ty(op(r, 0)?, r.at)?;
-                        let pointer = m.intern(Type::Pointer(t));
+                        let pointer = m.intern(Type::Pointer(t, 0));
                         let declaration = op(r, 2)? != 0;
                         let v = m.push(Value::Function { ty: t, declaration }, pointer, r.at)?;
                         if !declaration {
