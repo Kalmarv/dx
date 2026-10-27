@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 //! The token-level decoder on hand-assembled streams (token layouts from Microsoft's tokenized program format): a
 //! vertex program, typed declarations, an instruction's controls and extended tokens, and what it refuses by name.
-use primase_dxbc::decode::{Declared, ProgramType, Register, Selection};
+use dxbc_reader::decode::{Declared, ProgramType, Register, Selection};
 
 fn instruction(token: u32, operands: &[u32]) -> Vec<u32> {
     let mut v = vec![token | (((operands.len() + 1) as u32) << 24)];
@@ -47,7 +47,7 @@ fn vertex() -> Vec<u32> {
 
 #[test]
 fn a_vertex_program_decodes_to_typed_declarations_and_instructions() {
-    let d = primase_dxbc::decode(&vertex()).unwrap();
+    let d = dxbc_reader::decode(&vertex()).unwrap();
     assert_eq!((d.kind, d.major, d.minor), (ProgramType::Vertex, 5, 0));
     assert_eq!(d.target(), "vs_5_0");
     assert_eq!(d.declarations.len(), 3);
@@ -84,7 +84,7 @@ fn declarations_carry_their_fields() {
     let sampler = [6 << 12 | 1 << 20, 1];
     let texture = [7 << 12 | 1 << 20, 5, 0x5555];
     let structured = [7 << 12 | 1 << 20, 2, 64];
-    let d = primase_dxbc::decode(&stream(
+    let d = dxbc_reader::decode(&stream(
         0x50,
         &[
             instruction(89 | 1 << 11, &cb),
@@ -127,13 +127,13 @@ fn unreadable_tokens_are_errors_naming_the_word() {
     // a stage the format does not have, a length that disagrees, an operand register type with no name, a truncated
     // instruction
     assert!(
-        primase_dxbc::decode(&[0x70050, 2])
+        dxbc_reader::decode(&[0x70050, 2])
             .unwrap_err()
             .detail
             .contains("program type 7")
     );
     assert!(
-        primase_dxbc::decode(&[0x50, 5])
+        dxbc_reader::decode(&[0x50, 5])
             .unwrap_err()
             .detail
             .contains("declared length")
@@ -142,17 +142,17 @@ fn unreadable_tokens_are_errors_naming_the_word() {
         0x50,
         &[instruction(54, &[2 | 15 << 4 | 99 << 12 | 1 << 20, 0, 1])],
     );
-    let e = primase_dxbc::decode(&bad).unwrap_err();
+    let e = dxbc_reader::decode(&bad).unwrap_err();
     assert!(e.detail.contains("operand register type 99"), "{e}");
     let mut short = vertex();
     short.truncate(short.len() - 2);
     short[1] = short.len() as u32;
-    assert!(primase_dxbc::decode(&short).is_err());
+    assert!(dxbc_reader::decode(&short).is_err());
     for n in 0..vertex().len() {
         let mut cut = vertex()[..n].to_vec();
         if n >= 2 {
             cut[1] = n as u32;
         }
-        let _ = primase_dxbc::decode(&cut);
+        let _ = dxbc_reader::decode(&cut);
     }
 }
