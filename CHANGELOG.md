@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 (2026-10-27)
+
+- Depends on `primase-foundations` 0.2 (its Oodle decoder changed; these crates do not use it), so a build has one
+  copy of it. `dxil-reader` and `rsx-reader` are first published at 0.1.1.
+
 ## 0.1.0 (2026-10-27)
 
 - First release of four crates:
