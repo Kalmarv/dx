@@ -99,3 +99,23 @@ fn a_signature_directory_that_does_not_start_at_8_says_what_it_found() {
     assert_eq!(e.word, 1, "{e}");
     assert!(e.detail.contains("12") && e.detail.contains('8'), "{e}");
 }
+
+#[test]
+fn lengths_that_do_not_fit_the_stream_are_refused_at_the_token_that_states_them() {
+    // customdata (opcode 53) of 9 words in a stream with 4 words after it
+    let e = dxbc_reader::decode(&[0x50, 8, 53, 9, 0, 0, 0, 0]).unwrap_err();
+    assert_eq!(e.word, 2, "{e}");
+    assert!(e.detail.contains("customdata"), "{e}");
+    // an instruction of length 0
+    let e = dxbc_reader::decode(&[0x50, 3, 54]).unwrap_err();
+    assert_eq!(e.word, 2, "{e}");
+    assert!(e.detail.contains("instruction length 0"), "{e}");
+    // an instruction of 5 words with 2 left
+    let e = dxbc_reader::decode(&[0x50, 4, 54 | 5 << 24, 0]).unwrap_err();
+    assert_eq!(e.word, 2, "{e}");
+    assert!(e.detail.contains("does not fit"), "{e}");
+    // an immediate constant buffer of 6 words is not whole rows
+    let e = dxbc_reader::decode(&[0x50, 10, 53 | 3 << 11, 8, 0, 0, 0, 0, 0, 0]).unwrap_err();
+    assert_eq!(e.word, 2, "{e}");
+    assert!(e.detail.contains("whole rows"), "{e}");
+}

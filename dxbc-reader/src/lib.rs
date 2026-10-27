@@ -14,6 +14,12 @@
 //! println!("{} with {} instructions", program.target(), program.instructions.len());
 //! # Ok(()) }
 //! ```
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing,
+    clippy::cast_possible_truncation
+)]
+#![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
 pub mod decode;
@@ -39,6 +45,7 @@ pub struct Error {
     pub detail: String,
 }
 
+/// The reader's result: an [`Error`] naming the word where reading failed.
 pub type Result<T> = std::result::Result<T, Error>;
 
 pub(crate) fn error(word: usize, detail: impl Into<String>) -> Error {

@@ -8,6 +8,13 @@
 use crate::decode::ProgramType;
 use crate::{Result, chunk, error, parts};
 
+/// The most records one table may state.
+const MAX_RECORDS: usize = 65536;
+/// The longest name, in bytes.
+const MAX_NAME: usize = 4096;
+/// The largest constant buffer, in bytes.
+const MAX_BUFFER_SIZE: usize = 65536;
+
 struct View<'a>(&'a [u8]);
 impl View<'_> {
     fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
@@ -27,16 +34,46 @@ impl View<'_> {
             )
         })
     }
+    fn array<const N: usize>(&self, at: usize) -> Result<[u8; N]> {
+        self.bytes(at, N)?
+            .try_into()
+            .map_err(|_| error(at / 4, format!("{N} bytes at byte {at}")))
+    }
     fn u32(&self, at: usize) -> Result<u32> {
-        Ok(u32::from_le_bytes(
-            self.bytes(at, 4)?.try_into().expect("four bytes"),
-        ))
+        Ok(u32::from_le_bytes(self.array(at)?))
     }
     fn u16(&self, at: usize) -> Result<u16> {
-        Ok(u16::from_le_bytes(
-            self.bytes(at, 2)?.try_into().expect("two bytes"),
-        ))
+        Ok(u16::from_le_bytes(self.array(at)?))
     }
+    /// The byte `delta` bytes after `at`.
+    fn plus(&self, at: usize, delta: usize) -> Result<usize> {
+        at.checked_add(delta).ok_or_else(|| {
+            error(
+                at / 4,
+                format!("byte {at} plus {delta} overflows the address space"),
+            )
+        })
+    }
+    /// The 32-bit field `delta` bytes after `at`.
+    fn field(&self, at: usize, delta: usize) -> Result<u32> {
+        self.u32(self.plus(at, delta)?)
+    }
+    /// The 16-bit field `delta` bytes after `at`.
+    fn field16(&self, at: usize, delta: usize) -> Result<u16> {
+        self.u16(self.plus(at, delta)?)
+    }
+    /// The start of record `i` of a table at `at` with records of `stride` bytes.
+    fn record(&self, at: usize, i: usize, stride: usize) -> Result<usize> {
+        i.checked_mul(stride)
+            .and_then(|n| at.checked_add(n))
+            .ok_or_else(|| {
+                error(
+                    at / 4,
+                    format!("record {i} of {stride} bytes at byte {at} overflows"),
+                )
+            })
+    }
+    /// The string at byte `at`, which ends inside the part.
     fn string(&self, at: usize) -> Result<String> {
         let tail = self.0.get(at..).ok_or_else(|| {
             error(
@@ -50,21 +87,25 @@ impl View<'_> {
                 format!("the string at byte {at} has no terminating zero in the part"),
             )
         })?;
-        if end > 4096 {
+        if end > MAX_NAME {
             return Err(error(
                 at / 4,
-                format!("the string at byte {at} is {end} bytes, more than the 4096 allowed"),
+                format!("the string at byte {at} is {end} bytes, more than the {MAX_NAME} allowed"),
             ));
         }
-        Ok(std::str::from_utf8(&tail[..end])
-            .map_err(|_| error(at / 4, format!("the string at byte {at} is not UTF-8")))?
-            .to_owned())
+        let text = tail
+            .get(..end)
+            .ok_or_else(|| error(at / 4, format!("the string at byte {at}")))?;
+        std::str::from_utf8(text)
+            .map(str::to_owned)
+            .map_err(|_| error(at / 4, format!("the string at byte {at} is not UTF-8")))
     }
+    /// The indices of the `count` records of `stride` bytes at `at`, once the table is known to lie in the part.
     fn table(&self, at: usize, count: usize, stride: usize) -> Result<std::ops::Range<usize>> {
-        if count > 65536 {
+        if count > MAX_RECORDS {
             return Err(error(
                 at / 4,
-                format!("a table of {count} records at byte {at}, more than the 65536 allowed"),
+                format!("a table of {count} records at byte {at}, more than the {MAX_RECORDS} allowed"),
             ));
         }
         self.bytes(
@@ -86,28 +127,28 @@ impl View<'_> {
                 "the type at this word is part of a cycle, nests deeper than 32 or is one of more than 65536 types",
             ));
         }
-        *budget -= 1;
+        *budget = budget.saturating_sub(1);
         self.bytes(at, 36)?;
         stack.push(at);
-        let count = self.u16(at + 10)? as usize;
-        let offset = self.u32(at + 12)? as usize;
+        let count = usize::from(self.field16(at, 10)?);
+        let offset = self.field(at, 12)? as usize;
         let mut members = Vec::new();
         for i in self.table(offset, count, 12)? {
-            let p = offset + i * 12;
+            let p = self.record(offset, i, 12)?;
             members.push(RdefMember {
                 name: self.string(self.u32(p)? as usize)?,
-                offset: self.u32(p + 8)?,
-                ty: self.ty(self.u32(p + 4)? as usize, stack, budget)?,
+                offset: self.field(p, 8)?,
+                ty: self.ty(self.field(p, 4)? as usize, stack, budget)?,
             });
         }
         stack.pop();
         Ok(RdefType {
             word: at / 4,
             class: self.u16(at)?,
-            scalar: self.u16(at + 2)?,
-            rows: self.u16(at + 4)?,
-            columns: self.u16(at + 6)?,
-            elements: self.u16(at + 8)?,
+            scalar: self.field16(at, 2)?,
+            rows: self.field16(at, 4)?,
+            columns: self.field16(at, 6)?,
+            elements: self.field16(at, 8)?,
             members,
         })
     }
@@ -116,14 +157,19 @@ impl View<'_> {
 /// One element of a signature as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignatureElement {
+    /// The semantic name (`POSITION`, `TEXCOORD`, ...).
     pub name: String,
+    /// The semantic index.
     pub index: u32,
     /// `D3D_NAME`.
     pub system_value: u32,
     /// `D3D_REGISTER_COMPONENT_TYPE`.
     pub component_type: u32,
+    /// The register the element is packed into.
     pub register: u32,
+    /// The components the element occupies, one bit each (x is bit 0).
     pub mask: u8,
+    /// The components a program reads (inputs) or never writes (outputs), as stored.
     pub read_write_mask: u8,
     /// Where the record starts, in words of the chunk.
     pub at: usize,
@@ -135,13 +181,11 @@ pub struct SignatureElement {
 pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> {
     let v = View(bytes);
     let count = v.u32(0)? as usize;
-    if v.u32(4)? != 8 {
+    let directory = v.u32(4)?;
+    if directory != 8 {
         return Err(error(
             1,
-            format!(
-                "expected the record directory at byte 8, found byte {}",
-                v.u32(4)?
-            ),
+            format!("expected the record directory at byte 8, found byte {directory}"),
         ));
     }
     // bytes before the name offset, and the record size
@@ -152,17 +196,17 @@ pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> 
     };
     let mut result = Vec::new();
     for i in v.table(8, count, record)? {
-        let p = 8 + i * record;
-        let q = p + skip;
-        let lanes = v.bytes(q + 20, 4)?;
+        let p = v.record(8, i, record)?;
+        let q = v.plus(p, skip)?;
+        let [mask, read_write_mask, _, _] = v.array::<4>(v.plus(q, 20)?)?;
         result.push(SignatureElement {
             name: v.string(v.u32(q)? as usize)?,
-            index: v.u32(q + 4)?,
-            system_value: v.u32(q + 8)?,
-            component_type: v.u32(q + 12)?,
-            register: v.u32(q + 16)?,
-            mask: lanes[0],
-            read_write_mask: lanes[1],
+            index: v.field(q, 4)?,
+            system_value: v.field(q, 8)?,
+            component_type: v.field(q, 12)?,
+            register: v.field(q, 16)?,
+            mask,
+            read_write_mask,
             at: p / 4,
         });
     }
@@ -183,7 +227,8 @@ fn signature_part<'a>(
     let tag = tags
         .iter()
         .find(|t| directory.iter().any(|c| &&c.kind == *t))
-        .unwrap_or(&tags[0]);
+        .or(tags.first())
+        .ok_or_else(|| error(0, "no signature part kinds to look for"))?;
     Ok((chunk(directory, tag)?, **tag))
 }
 
@@ -230,7 +275,9 @@ pub fn program_type(directory: &[dxcontainer::Chunk<'_>]) -> Result<ProgramType>
 pub struct Rdef {
     /// The part's own version token (`0xffff0500`: an SM5.0 pixel program, `0xfffe0500`: vertex, ...).
     pub target: u32,
+    /// The resource bindings, in the order the part lists them.
     pub bindings: Vec<RdefBinding>,
+    /// The constant buffers, in the order the part lists them.
     pub buffers: Vec<RdefBuffer>,
 }
 
@@ -239,6 +286,7 @@ pub struct Rdef {
 pub struct RdefBinding {
     /// Where the record starts, in words of the part.
     pub word: usize,
+    /// The resource's name.
     pub name: String,
     /// `D3D_SHADER_INPUT_TYPE`.
     pub kind: u32,
@@ -248,7 +296,9 @@ pub struct RdefBinding {
     pub dimension: u32,
     /// A multisampled texture's sample count; a structured buffer's stride.
     pub samples: u32,
+    /// The first register the resource is bound to.
     pub register: u32,
+    /// How many registers it is bound to.
     pub count: u32,
     /// `D3D_SHADER_INPUT_FLAGS`.
     pub flags: u32,
@@ -257,22 +307,30 @@ pub struct RdefBinding {
 /// One buffer (`D3D11_SHADER_BUFFER_DESC`) as stored, with its variables.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RdefBuffer {
+    /// Where the record starts, in words of the part.
     pub word: usize,
+    /// The buffer's name.
     pub name: String,
     /// `D3D_CBUFFER_TYPE`: 0 a cbuffer, 1 a tbuffer, 2 interface pointers, 3 a structured buffer's element.
     pub kind: u32,
     /// In bytes.
     pub size: u32,
+    /// The variables the buffer holds.
     pub variables: Vec<RdefVariable>,
 }
 
 /// One variable of a buffer as stored: its byte range in the buffer, its type and its default value.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RdefVariable {
+    /// Where the record starts, in words of the part.
     pub word: usize,
+    /// The variable's name.
     pub name: String,
+    /// Its first byte in the buffer.
     pub offset: u32,
+    /// Its size in bytes.
     pub size: u32,
+    /// Its type.
     pub ty: RdefType,
     /// The stored default value's `size` bytes, where the variable has one.
     pub default: Option<Vec<u8>>,
@@ -281,23 +339,30 @@ pub struct RdefVariable {
 /// A variable's type record (`D3D11_SHADER_TYPE_DESC`) as stored, and its members' types.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RdefType {
+    /// Where the record starts, in words of the part.
     pub word: usize,
     /// `D3D_SHADER_VARIABLE_CLASS`: 0 scalar, 1 vector, 2 row-major matrix, 3 column-major matrix, 4 object, 5 struct.
     pub class: u16,
     /// `D3D_SHADER_VARIABLE_TYPE`.
     pub scalar: u16,
+    /// The matrix's rows (1 for a scalar or vector).
     pub rows: u16,
+    /// The vector's or matrix's columns.
     pub columns: u16,
     /// The array length; 0 where it isn't an array.
     pub elements: u16,
+    /// The struct's members, in order.
     pub members: Vec<RdefMember>,
 }
 
 /// A struct member: its name, its byte offset in the struct and its type.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RdefMember {
+    /// The member's name.
     pub name: String,
+    /// Its first byte in the struct.
     pub offset: u32,
+    /// Its type.
     pub ty: RdefType,
 }
 
@@ -331,60 +396,61 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
         ));
     }
     for (i, size) in [60, 24, 32, 40, 36, 12].into_iter().enumerate() {
-        let found = v.u32(32 + i * 4)?;
+        let at = v.record(32, i, 4)?;
+        let found = v.u32(at)?;
         if found != size {
             return Err(error(
-                8 + i,
+                at / 4,
                 format!("expected record size {size} (entry {i} of the RD11 size directory), found {found}"),
             ));
         }
     }
     let mut bindings = Vec::new();
-    let offset = v.u32(12)? as usize;
-    for i in v.table(offset, v.u32(8)? as usize, 32)? {
-        let p = offset + i * 32;
+    let offset = v.field(0, 12)? as usize;
+    for i in v.table(offset, v.field(0, 8)? as usize, 32)? {
+        let p = v.record(offset, i, 32)?;
         bindings.push(RdefBinding {
             word: p / 4,
             name: v.string(v.u32(p)? as usize)?,
-            kind: v.u32(p + 4)?,
-            returns: v.u32(p + 8)?,
-            dimension: v.u32(p + 12)?,
-            samples: v.u32(p + 16)?,
-            register: v.u32(p + 20)?,
-            count: v.u32(p + 24)?,
-            flags: v.u32(p + 28)?,
+            kind: v.field(p, 4)?,
+            returns: v.field(p, 8)?,
+            dimension: v.field(p, 12)?,
+            samples: v.field(p, 16)?,
+            register: v.field(p, 20)?,
+            count: v.field(p, 24)?,
+            flags: v.field(p, 28)?,
         });
     }
     let mut buffers = Vec::new();
-    let offset = v.u32(4)? as usize;
-    let mut budget = 65536;
+    let offset = v.field(0, 4)? as usize;
+    let mut budget = MAX_RECORDS;
     for i in v.table(offset, v.u32(0)? as usize, 24)? {
-        let p = offset + i * 24;
+        let p = v.record(offset, i, 24)?;
         let name = v.string(v.u32(p)? as usize)?;
-        let kind = v.u32(p + 20)?;
-        let size = v.u32(p + 12)?;
-        if size > 65536 {
+        let kind = v.field(p, 20)?;
+        let size = v.field(p, 12)?;
+        if size as usize > MAX_BUFFER_SIZE {
             return Err(error(
-                (p + 12) / 4,
-                format!("constant buffer of {size} bytes, more than the 65536 allowed"),
+                v.plus(p, 12)? / 4,
+                format!("constant buffer of {size} bytes, more than the {MAX_BUFFER_SIZE} allowed"),
             ));
         }
         let mut variables = Vec::new();
-        let entries = v.u32(p + 8)? as usize;
-        for j in v.table(entries, v.u32(p + 4)? as usize, 40)? {
-            let q = entries + j * 40;
-            let start = v.u32(q + 4)?;
-            let len = v.u32(q + 8)?;
+        let entries = v.field(p, 8)? as usize;
+        for j in v.table(entries, v.field(p, 4)? as usize, 40)? {
+            let q = v.record(entries, j, 40)?;
+            let start = v.field(q, 4)?;
+            let len = v.field(q, 8)?;
             if start.checked_add(len).is_none_or(|end| end > size) {
                 return Err(error(
-                    (q + 4) / 4,
+                    v.plus(q, 4)? / 4,
                     format!(
                         "variable at byte {start} of {len} bytes lies outside its {size} byte constant buffer"
                     ),
                 ));
             }
-            let default = v.u32(q + 20)? as usize;
-            let ty = v.ty(v.u32(q + 16)? as usize, &mut Vec::new(), &mut budget)?;
+            let default = v.field(q, 20)? as usize;
+            let ty = v.ty(v.field(q, 16)? as usize, &mut Vec::new(), &mut budget)?;
             variables.push(RdefVariable {
                 word: q / 4,
                 name: v.string(v.u32(q)? as usize)?,

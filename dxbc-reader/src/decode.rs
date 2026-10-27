@@ -7,18 +7,38 @@
 use crate::opcodes::NAMES;
 use crate::{Result, error};
 
+/// The low byte of `v`.
+fn low8(v: u32) -> u8 {
+    let [byte, ..] = v.to_le_bytes();
+    byte
+}
+
+/// The low 16 bits of `v`.
+fn low16(v: u32) -> u16 {
+    let [a, b, ..] = v.to_le_bytes();
+    u16::from_le_bytes([a, b])
+}
+
 /// The kind of register an operand names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Register {
+    /// A temporary register (`r<n>`).
     Temp,
+    /// An input register (`v<n>`).
     Input,
+    /// An output register (`o<n>`).
     Output,
     /// An indexable temporary (`x<n>[i]`).
     IndexableTemp,
+    /// A constant buffer register (`cb<slot>[row]`).
     Constant,
+    /// An immediate operand (`l(...)`), its values in [`Operand::immediate`].
     Immediate,
+    /// A shader resource view (`t<n>`).
     Texture,
+    /// A sampler (`s<n>`).
     Sampler,
+    /// The null register (`null`), a destination that discards its result.
     Null,
     /// An unordered-access view (`u<n>`).
     Uav,
@@ -30,21 +50,29 @@ pub enum Register {
     InputCoverage,
     /// `oDepth`.
     OutputDepth,
+    /// `oDepthGE`, a depth output that is at least the rasterized depth.
     OutputDepthGreaterEqual,
+    /// `oDepthLE`, a depth output that is at most the rasterized depth.
     OutputDepthLessEqual,
     /// `oMask`, the coverage output.
     OutputCoverage,
+    /// `oStencilRef`, the stencil reference output.
     OutputStencilRef,
     /// `g<n>`, thread-group shared memory.
     GroupSharedMemory,
     /// `vThreadID`, `vThreadGroupID`, `vThreadIDInGroup` and `vThreadIDInGroupFlattened`, a compute program's ids.
     ThreadId,
+    /// `vThreadGroupID`.
     ThreadGroupId,
+    /// `vThreadIDInGroup`.
     ThreadIdInGroup,
+    /// `vThreadIDInGroupFlattened`.
     ThreadIdInGroupFlattened,
     /// `vOutputControlPointID`, `vForkInstanceID`, `vJoinInstanceID`: a hull program's phase numbers.
     OutputControlPointId,
+    /// `vForkInstanceID`, a hull program's fork phase instance.
     ForkInstanceId,
+    /// `vJoinInstanceID`, a hull program's join phase instance.
     JoinInstanceId,
     /// `vicp[point][register]`: an input control point of a hull or domain program.
     InputControlPoint,
@@ -127,19 +155,29 @@ impl Register {
     }
 }
 
+/// The components of a register an operand selects.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Selection {
+    /// A write mask: bit 0 is x, bit 3 is w.
     Mask(u8),
+    /// A four-component swizzle: for each result lane the source lane (0 x to 3 w) it reads.
     Swizzle([u8; 4]),
+    /// One source lane (0 x to 3 w).
     Scalar(u8),
+    /// No selection: the operand has no components (a sampler, a resource).
     None,
 }
 
+/// An instruction's or declaration's operand.
 #[derive(Clone, Debug)]
 pub struct Operand {
+    /// The kind of register it names.
     pub register: Register,
+    /// Which components it selects.
     pub selection: Selection,
+    /// Its index dimensions, outermost first.
     pub indices: Vec<Index>,
+    /// The values of an immediate operand (one lane repeated, or four); zero for other registers.
     pub immediate: [u32; 4],
     /// 0 none, 1 negate, 2 absolute, 3 negated absolute (float sources); 4 two's-complement negate (an integer
     /// instruction's negate; the encoding has no such value, so a caller that knows the instruction reads integers sets it).
@@ -151,28 +189,36 @@ pub struct Operand {
     pub non_uniform: bool,
 }
 
+/// One index dimension of an operand: a constant, a relative register, or both added.
 #[derive(Clone, Debug)]
 pub struct Index {
+    /// The constant part of the index.
     pub base: u32,
+    /// The register whose component is added to `base`, where the index is relative.
     pub relative: Option<Box<Operand>>,
 }
 
+/// An instruction as stored.
 #[derive(Clone, Debug)]
 pub struct Instruction {
     /// The instruction's first word in the token stream.
     pub word: usize,
+    /// The opcode token's opcode (see [`opcode_name`]).
     pub opcode: u16,
     /// The opcode token's bits 11 to 23: saturate and the opcode-specific controls (the test of a conditional, a
     /// `resinfo` return type, the interpolation of a declaration).
     pub control: u32,
     /// The opcode's extended tokens as stored (sample offsets, resource dimension, return type).
     pub extensions: Vec<u32>,
+    /// The saturate bit of the opcode token.
     pub saturate: bool,
     /// A conditional (`if`, `breakc`, `continuec`) taken when its operand is nonzero (`_nz`), else when zero (`_z`).
     pub nonzero: bool,
+    /// The operands, destination first where the instruction has one.
     pub operands: Vec<Operand>,
 }
 impl Instruction {
+    /// The opcode's name (`mov`, `add`, ...), or `unknown opcode`.
     pub fn name(&self) -> &'static str {
         opcode_name(self.opcode)
     }
@@ -196,6 +242,7 @@ impl Instruction {
     }
 }
 
+/// The name of an opcode in Microsoft's tokenized program format, or `unknown opcode`.
 pub fn opcode_name(opcode: u16) -> &'static str {
     NAMES
         .get(usize::from(opcode))
@@ -210,21 +257,28 @@ pub type ReturnCodes = [u8; 4];
 /// A declaration, typed. `word` is where it starts.
 #[derive(Clone, Debug)]
 pub struct Declaration {
+    /// The word of the token stream the declaration starts at.
     pub word: usize,
+    /// The opcode token's opcode.
     pub opcode: u16,
     /// The opcode token's bits 11 to 23 as stored.
     pub control: u32,
+    /// The declaration, typed.
     pub kind: Declared,
 }
 
+/// A declaration, typed where this reader knows its layout.
 #[derive(Clone, Debug)]
 pub enum Declared {
     /// `dcl_temps`.
     Temps(u32),
     /// `dcl_indexable_temp x<register>[size], components`.
     IndexableTemp {
+        /// The register index (the `<n>` of `x<n>`).
         register: u32,
+        /// The number of elements.
         size: u32,
+        /// The number of components per element.
         components: u32,
     },
     /// `dcl_globalFlags`: the control bits as stored (bit 0 refactoring allowed, 1 double precision, 2 forced early
@@ -233,84 +287,126 @@ pub enum Declared {
     GlobalFlags(u32),
     /// `dcl_constantbuffer cb<slot>[rows]`; `dynamic` when it is dynamically indexed.
     ConstantBuffer {
+        /// The buffer slot (the `<slot>` of `cb<slot>`).
         slot: u32,
+        /// The number of 16-byte rows; 0 where the declaration states none.
         rows: u32,
+        /// The buffer is dynamically indexed.
         dynamic: bool,
+        /// The number of index dimensions the operand had (1 or 2).
         dimensions: usize,
     },
     /// `dcl_sampler s<slot>`, its mode: 0 default, 1 comparison, 2 mono.
     Sampler {
+        /// The sampler slot.
         slot: u32,
+        /// 0 default, 1 comparison, 2 mono.
         mode: u32,
     },
     /// `dcl_resource_<dimension> t<slot>`: the D3D resource dimension code, the sample count of a multisampled one,
     /// and the four return types.
     Resource {
+        /// The resource slot.
         slot: u32,
+        /// The D3D resource dimension code.
         dimension: u32,
+        /// The sample count of a multisampled resource.
         samples: u32,
+        /// The return type of each lane.
         returns: ReturnCodes,
+        /// The return type token as stored.
         token: u32,
     },
+    /// `dcl_resource_raw t<slot>`.
     ResourceRaw {
+        /// The resource slot.
         slot: u32,
     },
+    /// `dcl_resource_structured t<slot>, stride`.
     ResourceStructured {
+        /// The resource slot.
         slot: u32,
+        /// The element stride in bytes.
         stride: u32,
     },
     /// `dcl_uav_typed` and its control bits (dimension in bits 0 to 4, globally coherent bit 5).
     UavTyped {
+        /// The UAV slot.
         slot: u32,
+        /// The D3D resource dimension code.
         dimension: u32,
+        /// The return type of each lane.
         returns: ReturnCodes,
+        /// The return type token as stored.
         token: u32,
+        /// The opcode token's control bits.
         control: u32,
     },
+    /// `dcl_uav_raw u<slot>`.
     UavRaw {
+        /// The UAV slot.
         slot: u32,
+        /// The opcode token's control bits.
         control: u32,
     },
+    /// `dcl_uav_structured u<slot>, stride`.
     UavStructured {
+        /// The UAV slot.
         slot: u32,
+        /// The element stride in bytes.
         stride: u32,
+        /// The opcode token's control bits.
         control: u32,
     },
     /// `dcl_thread_group x, y, z`.
     ThreadGroup([u32; 3]),
     /// `dcl_tgsm_raw g<register>, bytes`.
     GroupSharedRaw {
+        /// The shared memory register index.
         register: u32,
+        /// Its size in bytes.
         bytes: u32,
     },
     /// `dcl_tgsm_structured g<register>, stride, count`.
     GroupSharedStructured {
+        /// The shared memory register index.
         register: u32,
+        /// The element stride in bytes.
         stride: u32,
+        /// The number of elements.
         count: u32,
     },
     /// An input register or special input: `dcl_input`, `_sgv`, `_siv`, `_ps`, `_ps_sgv`, `_ps_siv`. `interpolation` is
     /// a pixel input's `D3D_INTERPOLATION_MODE`; `name` a system value's `D3D_NAME`.
     Input {
+        /// The input register or special input the declaration names.
         operand: Operand,
+        /// The interpolation mode of a pixel input.
         interpolation: Option<u32>,
+        /// The system value (`D3D_NAME`) of a `_sgv` or `_siv` declaration.
         name: Option<u32>,
     },
     /// An output register or special output: `dcl_output`, `_sgv`, `_siv`.
     Output {
+        /// The output register or special output the declaration names.
         operand: Operand,
+        /// The system value (`D3D_NAME`) of a `_siv` or `_sgv` declaration.
         name: Option<u32>,
     },
     /// `dcl_immediateConstantBuffer`.
     ImmediateBuffer(Vec<[u32; 4]>),
     /// Custom data that is not an immediate constant buffer (a comment, debug information, ...) by its class.
     CustomData {
+        /// The custom data class.
         class: u32,
     },
     /// A declaration this decoder does not type: stage-specific (geometry, tessellation, compute), interface tables.
     Other {
+        /// The opcode.
         opcode: u16,
+        /// The opcode token's control bits.
         control: u32,
+        /// The declaration's words after its operands, as stored.
         words: Vec<u32>,
     },
 }
@@ -318,14 +414,21 @@ pub enum Declared {
 /// The kind of program a version token names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProgramType {
+    /// A pixel program (`ps`).
     Pixel,
+    /// A vertex program (`vs`).
     Vertex,
+    /// A geometry program (`gs`).
     Geometry,
+    /// A hull program (`hs`).
     Hull,
+    /// A domain program (`ds`).
     Domain,
+    /// A compute program (`cs`).
     Compute,
 }
 impl ProgramType {
+    /// The target's stage prefix (`ps`, `vs`, ...).
     pub fn name(self) -> &'static str {
         match self {
             ProgramType::Pixel => "ps",
@@ -341,10 +444,15 @@ impl ProgramType {
 /// A decoded token stream: its target, declarations and instructions, each in program order.
 #[derive(Clone, Debug)]
 pub struct Decoded {
+    /// The program's stage.
     pub kind: ProgramType,
+    /// The shader model's major version.
     pub major: u32,
+    /// The shader model's minor version.
     pub minor: u32,
+    /// The declarations, in program order.
     pub declarations: Vec<Declaration>,
+    /// The instructions, in program order.
     pub instructions: Vec<Instruction>,
 }
 impl Decoded {
@@ -362,21 +470,25 @@ struct Cursor<'a> {
     kind: ProgramType,
 }
 impl Cursor<'_> {
+    /// The word the cursor is at, in the token stream.
+    fn position(&self) -> usize {
+        self.origin.saturating_add(self.at)
+    }
     fn take(&mut self) -> Result<u32> {
         let value = *self
             .words
             .get(self.at)
-            .ok_or_else(|| error(self.origin + self.at, "truncated instruction"))?;
-        self.at += 1;
+            .ok_or_else(|| error(self.position(), "truncated instruction"))?;
+        self.at = self.at.saturating_add(1);
         Ok(value)
     }
     fn rest(&mut self) -> Vec<u32> {
-        let rest = self.words[self.at..].to_vec();
+        let rest = self.words.get(self.at..).unwrap_or_default().to_vec();
         self.at = self.words.len();
         rest
     }
     fn operand(&mut self, depth: usize) -> Result<Operand> {
-        let pos = self.origin + self.at;
+        let pos = self.position();
         if depth > 2 {
             return Err(error(pos, "nested relative operand exceeds bound"));
         }
@@ -386,9 +498,9 @@ impl Cursor<'_> {
             0 => Selection::None,
             1 => Selection::Scalar(0),
             2 => match (t >> 2) & 3 {
-                0 => Selection::Mask(((t >> 4) & 15) as u8),
-                1 => Selection::Swizzle(std::array::from_fn(|i| ((t >> (4 + 2 * i)) & 3) as u8)),
-                2 => Selection::Scalar(((t >> 4) & 3) as u8),
+                0 => Selection::Mask(low8((t >> 4) & 15)),
+                1 => Selection::Swizzle([4, 6, 8, 10].map(|shift| low8((t >> shift) & 3))),
+                2 => Selection::Scalar(low8((t >> 4) & 3)),
                 _ => return Err(error(pos, "reserved component selection")),
             },
             _ => return Err(error(pos, "unsupported N-component operand")),
@@ -404,8 +516,8 @@ impl Cursor<'_> {
                 if ext & 63 != 1 {
                     return Err(error(pos, "unsupported extended operand (precision/modifier)"));
                 }
-                modifier = ((ext >> 6) & 255) as u8;
-                precision = ((ext >> 14) & 7) as u8;
+                modifier = low8((ext >> 6) & 255);
+                precision = low8((ext >> 14) & 7);
                 non_uniform = ext & (1 << 17) != 0;
                 if ext >> 31 == 0 {
                     break;
@@ -425,14 +537,15 @@ impl Cursor<'_> {
             return Err(error(pos, "unexpected operand index dimensions"));
         }
         let mut indices = Vec::new();
-        for d in 0..dimensions {
-            let representation = (t >> (22 + 3 * d)) & 7;
+        // the representation of each index dimension, three bits each from bit 22
+        for shift in [22, 25, 28].into_iter().take(dimensions as usize) {
+            let representation = (t >> shift) & 7;
             if !matches!(representation, 0 | 2 | 3) {
                 return Err(error(pos, "unsupported 64-bit/reserved index"));
             }
             let base = if representation != 2 { self.take()? } else { 0 };
             let relative = if representation != 0 {
-                Some(Box::new(self.operand(depth + 1)?))
+                Some(Box::new(self.operand(depth.saturating_add(1))?))
             } else {
                 None
             };
@@ -463,7 +576,7 @@ impl Cursor<'_> {
 }
 
 fn return_codes(token: u32) -> ReturnCodes {
-    std::array::from_fn(|i| ((token >> (4 * i)) & 15) as u8)
+    [0, 4, 8, 12].map(|shift| low8((token >> shift) & 15))
 }
 
 /// The opcodes that are declarations (and the phase markers of hull programs, which carry none).
@@ -476,8 +589,14 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
     let (Some(&version), Some(&length)) = (words.first(), words.get(1)) else {
         return Err(error(0, "token stream shorter than its header"));
     };
-    if length as usize != words.len() {
-        return Err(error(1, "declared length differs from the token stream"));
+    if usize::try_from(length).ok() != Some(words.len()) {
+        return Err(error(
+            1,
+            format!(
+                "the declared length is {length} words, the stream has {}",
+                words.len()
+            ),
+        ));
     }
     let kind = match version >> 16 {
         0 => ProgramType::Pixel,
@@ -501,21 +620,38 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
         instructions: Vec::new(),
     };
     let mut at = 2;
-    while at < words.len() {
-        let t = words[at];
-        let opcode = (t & 0x7ff) as u16;
+    while let Some(&t) = words.get(at) {
+        let opcode = low16(t & 0x7ff);
         // customdata: its class in the opcode token's upper bits, its length (these two words included) the next word
         if opcode == 53 {
-            let len = words.get(at + 1).copied().unwrap_or(0) as usize;
-            if len < 2 || at + len > words.len() {
-                return Err(error(at, "invalid customdata length"));
-            }
+            let len = words
+                .get(at.saturating_add(1))
+                .and_then(|&n| usize::try_from(n).ok())
+                .unwrap_or(0);
+            let end = at.checked_add(len).filter(|&end| len >= 2 && end <= words.len());
+            let (Some(end), Some(body)) = (end, words.get(at.saturating_add(2)..at.saturating_add(len)))
+            else {
+                return Err(error(
+                    at,
+                    format!(
+                        "customdata of {len} words (at least 2) does not fit the stream's {} words",
+                        words.len()
+                    ),
+                ));
+            };
             let class = t >> 11;
             let kind = if class == 3 {
-                if !(len - 2).is_multiple_of(4) {
-                    return Err(error(at, "an immediate constant buffer of partial rows"));
+                let (rows, rest) = body.as_chunks::<4>();
+                if !rest.is_empty() {
+                    return Err(error(
+                        at,
+                        format!(
+                            "an immediate constant buffer of {} words, expected whole rows of 4",
+                            body.len()
+                        ),
+                    ));
                 }
-                Declared::ImmediateBuffer(words[at + 2..at + len].as_chunks::<4>().0.to_vec())
+                Declared::ImmediateBuffer(rows.to_vec())
             } else {
                 Declared::CustomData { class }
             };
@@ -525,17 +661,27 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 control: class,
                 kind,
             });
-            at += len;
+            at = end;
             continue;
         }
-        let len = ((t >> 24) & 127) as usize;
-        if len == 0 || at + len > words.len() {
-            return Err(error(at, "invalid instruction length"));
+        let len = usize::try_from((t >> 24) & 127).unwrap_or(0);
+        if len == 0 {
+            return Err(error(at, "instruction length 0 (at least 1)"));
         }
+        let end = at.checked_add(len).filter(|&end| end <= words.len());
+        let (Some(end), Some(body)) = (end, words.get(at.saturating_add(1)..at.saturating_add(len))) else {
+            return Err(error(
+                at,
+                format!(
+                    "instruction length {len} (at least 1) does not fit the stream's {} words",
+                    words.len()
+                ),
+            ));
+        };
         let mut c = Cursor {
-            words: &words[at + 1..at + len],
+            words: body,
             at: 0,
-            origin: at + 1,
+            origin: at.saturating_add(1),
             kind,
         };
         let mut extensions = Vec::new();
@@ -553,7 +699,7 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                     at,
                     format!(
                         "{} words after the operands of {}",
-                        c.words.len() - c.at,
+                        c.words.len().saturating_sub(c.at),
                         opcode_name(opcode)
                     ),
                 ));
@@ -579,13 +725,13 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 operands,
             });
         }
-        at += len;
+        at = end;
     }
     Ok(result)
 }
 
 fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared> {
-    let pos = c.origin - 1;
+    let pos = c.origin.saturating_sub(1);
     let slot = |o: &Operand| -> Result<u32> {
         o.indices
             .first()
