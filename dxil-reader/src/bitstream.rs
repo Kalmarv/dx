@@ -211,15 +211,16 @@ impl Reader<'_> {
                 Op::Array => {
                     let element = abbrev[i + 1];
                     let len = self.bits.vbr(6)? as usize;
-                    // Each element takes at least one bit unless it is a literal or zero-width field; those are
-                    // capped by the operand budget instead.
+                    // An element stored takes its width in bits; a literal or zero-width one takes none, so it is
+                    // counted as one bit: the length of an array must not exceed the bits that remain, whatever its
+                    // elements are.
                     let min_bits = match element {
-                        Op::Literal(_) | Op::Fixed(0) => 0,
+                        Op::Literal(_) | Op::Fixed(0) => 1,
                         Op::Fixed(w) | Op::Vbr(w) => w as usize,
                         Op::Char6 => 6,
                         _ => 1,
                     };
-                    if min_bits > 0 && len > self.bits.remaining() / min_bits {
+                    if len > self.bits.remaining() / min_bits {
                         return Err(error(at, "array longer than the bits that remain"));
                     }
                     self.count(len)?;

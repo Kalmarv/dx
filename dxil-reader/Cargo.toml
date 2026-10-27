@@ -15,6 +15,7 @@ publish.workspace = true
 [dependencies]
 dxcontainer.workspace = true
 primase-foundations.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

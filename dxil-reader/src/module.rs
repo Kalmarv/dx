@@ -334,7 +334,13 @@ pub struct Module {
     pub value_types: Vec<TypeId>,
     pub names: Vec<(ValueId, String)>,
     pub metadata: Vec<Metadata>,
+    /// The bit of the bitcode each metadata record (by id) starts at, for the locations of reflection errors.
+    pub metadata_at: Vec<usize>,
     pub named_metadata: Vec<(String, Vec<MetadataId>)>,
+    /// The bit each named metadata record (by index in `named_metadata`) starts at.
+    pub named_metadata_at: Vec<usize>,
+    /// The bit of the bitcode the module block starts at: where a record the module lacks would be.
+    pub at: usize,
     pub functions: Vec<Function>,
 }
 
@@ -499,23 +505,32 @@ impl Module {
         let md = |v: u64, at: usize| usize::try_from(v).map_err(|_| error(at, "metadata id"));
         for r in block.records() {
             match r.code {
-                1 => self.metadata.push(Metadata::String(text(&r.operands, r.at)?)),
-                2 => self.metadata.push(Metadata::Value {
-                    ty: self.ty(op(r, 0)?, r.at)?,
-                    value: md(op(r, 1)?, r.at)?,
-                }),
-                3 | 5 => self.metadata.push(Metadata::Node(
-                    r.operands
-                        .iter()
-                        .map(|&v| {
-                            if v == 0 {
-                                Ok(None)
-                            } else {
-                                md(v - 1, r.at).map(Some)
-                            }
-                        })
-                        .collect::<Result<_>>()?,
-                )),
+                1 => {
+                    self.metadata.push(Metadata::String(text(&r.operands, r.at)?));
+                    self.metadata_at.push(r.at);
+                }
+                2 => {
+                    self.metadata.push(Metadata::Value {
+                        ty: self.ty(op(r, 0)?, r.at)?,
+                        value: md(op(r, 1)?, r.at)?,
+                    });
+                    self.metadata_at.push(r.at);
+                }
+                3 | 5 => {
+                    self.metadata.push(Metadata::Node(
+                        r.operands
+                            .iter()
+                            .map(|&v| {
+                                if v == 0 {
+                                    Ok(None)
+                                } else {
+                                    md(v - 1, r.at).map(Some)
+                                }
+                            })
+                            .collect::<Result<_>>()?,
+                    ));
+                    self.metadata_at.push(r.at);
+                }
                 4 => name = Some(utf8(text(&r.operands, r.at)?, r.at)?),
                 10 => {
                     let n = name
@@ -523,6 +538,7 @@ impl Module {
                         .ok_or_else(|| error(r.at, "named node without a name"))?;
                     let nodes = r.operands.iter().map(|&v| md(v, r.at)).collect::<Result<_>>()?;
                     self.named_metadata.push((n, nodes));
+                    self.named_metadata_at.push(r.at);
                 }
                 6 => {} // KIND: names of attachment kinds
                 other => return Err(error(r.at, format!("metadata record {other}"))),
@@ -1115,7 +1131,10 @@ impl Module {
             [m] if m.id == MODULE => m,
             _ => return Err(error(0, "bitcode is not one module block")),
         };
-        let mut m = Module::default();
+        let mut m = Module {
+            at: module.at,
+            ..Module::default()
+        };
         let mut bodies: Vec<ValueId> = Vec::new();
         let mut version = None;
         for e in &module.elements {

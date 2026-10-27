@@ -26,20 +26,14 @@ pub use module::Module;
 
 /// Something the reader can't read: the bit where it is (in the bitcode, or eight times a byte of the container or
 /// part being read), and what.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("DXIL at bit {bit}: {detail}")]
 pub struct Error {
     /// The bit offset, counted from the start of the bitcode, part or container being read.
     pub bit: usize,
+    /// What was expected there, or what was found instead.
     pub detail: String,
 }
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DXIL at bit {}: {}", self.bit, self.detail)
-    }
-}
-
-impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -112,9 +106,12 @@ pub fn module(chunks: &[dxcontainer::Chunk<'_>], kind: &[u8; 4]) -> Result<Optio
     let Some(c) = chunks.iter().find(|c| &c.kind == kind) else {
         return Ok(None);
     };
-    let part = program(c.data)?;
+    read_module(&program(c.data)?).map(Some)
+}
+
+fn read_module(part: &Part<'_>) -> Result<Module> {
     let blocks = bitstream::read(part.bitcode, *b"BC\xc0\xde")?;
-    Module::read(&blocks).map(Some)
+    Module::read(&blocks)
 }
 
 /// The shader kind (0 pixel, 1 vertex, 2 geometry, 3 hull, 4 domain, 5 compute) of a container and the `dx.op`
@@ -130,34 +127,32 @@ pub fn operations(container: &[u8]) -> Result<(u32, std::collections::BTreeMap<S
             .ok_or_else(|| error(0, "no DXIL part"))?
             .data,
     )?;
-    let module = module(&chunks, b"DXIL")?.ok_or_else(|| error(0, "no DXIL part"))?;
+    let module = read_module(&part)?;
     let mut out = std::collections::BTreeMap::new();
     for f in &module.functions {
         for inst in &f.instructions {
-            let Op::Call { function, .. } = &inst.op else {
+            let Op::Call { function, args, .. } = &inst.op else {
                 continue;
             };
-            if let Some(name) = module.name(*function).filter(|n| n.starts_with("dx.op.")) {
-                let code = match &inst.op {
-                    Op::Call { args, .. } => args.first().and_then(|&a| {
-                        let value = if a < f.first {
-                            module.values.get(a)
-                        } else {
-                            f.locals.get(a - f.first)
-                        };
-                        match value {
-                            Some(module::Value::Constant(module::Constant::Integer(i))) => Some(*i),
-                            _ => None,
-                        }
-                    }),
+            let Some(name) = module.name(*function).filter(|n| n.starts_with("dx.op.")) else {
+                continue;
+            };
+            let code = args.first().and_then(|&a| {
+                let value = if a < f.first {
+                    module.values.get(a)
+                } else {
+                    f.locals.get(a - f.first)
+                };
+                match value {
+                    Some(module::Value::Constant(module::Constant::Integer(i))) => Some(*i),
                     _ => None,
-                };
-                let key = match code {
-                    Some(code) => format!("{name} (op {code})"),
-                    None => name.to_owned(),
-                };
-                *out.entry(key).or_default() += 1;
-            }
+                }
+            });
+            let key = match code {
+                Some(code) => format!("{name} (op {code})"),
+                None => name.to_owned(),
+            };
+            *out.entry(key).or_default() += 1;
         }
     }
     Ok((part.program_version >> 16, out))
