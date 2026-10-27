@@ -2,7 +2,7 @@
 //! fragment program microcode inside them, and the `CellGcmTexture` texture descriptor. All data is big endian.
 //!
 //! The container reader keeps microcode encoded; it does not infer shader behaviour from parameter names. Everything a
-//! reader cannot read is an error naming the byte offset (see [`cgbinary::Error`]). Layout sources and scope are in the
+//! reader cannot read is an error naming the byte offset (see [`cgbinary::Error`], [`fragment::Error`]). Layout sources and scope are in the
 //! crate's README.
 //!
 //! ```

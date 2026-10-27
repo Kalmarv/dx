@@ -1,7 +1,6 @@
 //! RSX fragment instructions. Words in the big-endian microcode are rotated by
 //! 16 bits before field extraction. Inline constants occupy one further slot.
 //! This reads instructions; it neither executes nor lowers them.
-use crate::cgbinary::Error;
 use primase_foundations::bytes::{Endian::Big, View};
 use std::fmt::Write;
 
@@ -155,6 +154,16 @@ pub struct Instruction {
 pub struct Program {
     pub instructions: Vec<Instruction>,
     pub byte_len: usize,
+}
+
+/// What is wrong with a fragment program, and where.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("RSX fragment program at byte {offset}: {detail}")]
+pub struct Error {
+    /// The byte offset in the microcode where the problem is.
+    pub offset: usize,
+    /// What was expected there, or what was found instead.
+    pub detail: String,
 }
 
 fn error(offset: usize, detail: impl Into<String>) -> Error {

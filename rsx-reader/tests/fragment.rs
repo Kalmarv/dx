@@ -291,3 +291,20 @@ fn separate_lod_bias_and_gradient_sources_are_not_lost_when_oracle_text_omits_th
         [(1 << 3) | (1 << 4); 4]
     );
 }
+
+#[test]
+fn a_fragment_program_error_names_the_fragment_program_not_a_container() {
+    // 16 bytes without END: the error is at the end of the microcode
+    let bad = encode(&instruction(1, 0, false));
+    let e = decode(&bad).unwrap_err();
+    assert_eq!(e.offset, 16);
+    let shown = e.to_string();
+    assert!(shown.contains("fragment program at byte 16"), "{shown}");
+    assert!(!shown.contains("CgBinaryProgram"), "{shown}");
+    // the analysis reports its errors the same way
+    let mut call = instruction(0x41, 0, true);
+    call[2] |= 1 << 31;
+    let p = decode(&encode(&call)).unwrap();
+    let shown = analyze(&p, &[r(0)]).unwrap_err().to_string();
+    assert!(shown.contains("fragment program at byte 0"), "{shown}");
+}

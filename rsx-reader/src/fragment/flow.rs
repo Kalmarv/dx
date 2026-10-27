@@ -2,8 +2,7 @@
 //! Component writes and half/full register overlap are tracked; arithmetic
 //! conservatively unions all referenced source components. Branch and predicate
 //! dependencies persist after a join, so results are possible influences.
-use super::{Control, Instruction, Opcode, Program, Register, SourceKind, error};
-use crate::cgbinary::Error;
+use super::{Control, Error, Instruction, Opcode, Program, Register, SourceKind, error};
 use std::collections::BTreeSet;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
