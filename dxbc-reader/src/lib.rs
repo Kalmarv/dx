@@ -24,6 +24,7 @@
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
 pub mod decode;
+mod format;
 mod opcodes;
 pub mod reflection;
 pub mod statistics;
@@ -32,6 +33,7 @@ pub use decode::{
     Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, Selection, decode,
     opcode_name,
 };
+pub use format::{OperandClass, OperandFormat, operand_format};
 pub use reflection::{
     Rdef, RdefBinding, RdefBuffer, RdefMember, RdefType, RdefVariable, SignatureElement,
     patch_signature_elements, program_type, rdef, rdef_target, signature, signature_elements,

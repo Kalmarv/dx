@@ -4,6 +4,7 @@
 //! it cannot read at all (an operand register type it has no name for, a truncated instruction) is an error naming the
 //! word.
 
+use crate::format::{OperandFormat, operand_format};
 use crate::opcodes::NAMES;
 use crate::{Result, error};
 
@@ -239,6 +240,15 @@ impl Instruction {
     }
     fn extension(&self, kind: u32) -> Option<u32> {
         self.extensions.iter().copied().find(|e| e & 63 == kind)
+    }
+    /// The opcode's operand format (see [`operand_format`]); `decode` has checked the operand count against it.
+    pub fn format(&self) -> Option<OperandFormat> {
+        operand_format(self.opcode)
+    }
+    /// The destination operands and the source operands, split as the opcode's format says; `None` for an opcode
+    /// with no format.
+    pub fn destinations_and_sources(&self) -> Option<(&[Operand], &[Operand])> {
+        self.operands.split_at_checked(self.format()?.destinations.len())
     }
 }
 
@@ -715,6 +725,20 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
             let mut operands = Vec::new();
             while c.at < c.words.len() {
                 operands.push(c.operand(0)?);
+            }
+            if let Some(format) = operand_format(opcode)
+                && operands.len() != format.operands()
+            {
+                return Err(error(
+                    at,
+                    format!(
+                        "{} has {} operands, its format is {} destinations and {} sources",
+                        opcode_name(opcode),
+                        operands.len(),
+                        format.destinations.len(),
+                        format.sources.len()
+                    ),
+                ));
             }
             result.instructions.push(Instruction {
                 word: at,

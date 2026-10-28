@@ -29,6 +29,13 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   instruction with its opcode, control bits, extended tokens (sample offset, resource dimension, return type) and operands
   (register kind, component selection, indices including relative ones, immediates, modifiers, minimum precision).
   Opcode names are those of Microsoft's tokenized program format (`opcode_name`).
+- **Operand formats** (`operand_format`, `Instruction::format`, `Instruction::destinations_and_sources`): for each
+  instruction opcode, how many destination and source operands it takes and what each carries (float, double, integer, a
+  register with no data of its own such as a resource, sampler, view or stream, or data typed by the resource). `decode`
+  checks every instruction against it. The table is the one vkd3d's `tpf.c` and DXVK's `dxbc_defs.cpp` both publish (their
+  operand counts agree for every opcode both list); `call`, `callc`, `label` and `interface_call` have none. All 3,415,319
+  instructions of the 7,729 programs of Sekiro, Riders Republic and Sledding Game have the count and the register class
+  their opcode's format gives (109 of the 180 opcodes with a format occur in them).
 - **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag) and the Shader Model 5 one
   (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
 - **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
@@ -44,7 +51,7 @@ Numbers are Direct3D's own (`D3D_NAME`, `D3D_SHADER_INPUT_TYPE`, `D3D_REGISTER_C
 Reflection tables are bounded before they are read, strings must end inside their part and be UTF-8, and a type tree is
 refused where it nests deeper than 32 or refers to itself. Operands nest at most three deep. Whatever cannot be read
 (a truncated instruction, an out-of-range table, an operand register type it has no name for, an unexpected number of index
-dimensions) is an `Error` naming the 32-bit word where it happened.
+dimensions, an operand count other than the opcode's format) is an `Error` naming the 32-bit word where it happened.
 
 ## What it does not do
 
