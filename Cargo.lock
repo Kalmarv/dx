@@ -16,7 +16,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "dxbc-reader"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dxcontainer",
  "thiserror",
@@ -24,7 +24,7 @@ dependencies = [
 
 [[package]]
 name = "dxcontainer"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "primase-foundations",
  "thiserror",
@@ -32,7 +32,7 @@ dependencies = [
 
 [[package]]
 name = "dxil-reader"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dxcontainer",
  "primase-foundations",
@@ -79,7 +79,7 @@ dependencies = [
 
 [[package]]
 name = "rsx-reader"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "primase-foundations",
  "thiserror",
