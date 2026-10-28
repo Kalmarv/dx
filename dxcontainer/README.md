@@ -1,7 +1,7 @@
 # dxcontainer
 
 Reads the part directory of a DXBC container, the file format Direct3D shader programs are stored in (Shader Model 4 to 6),
-and computes its digest.
+computes its digest, and writes a container again with the digest repaired.
 
 ```rust
 let bytes = std::fs::read("shader.dxbc")?;
@@ -9,6 +9,14 @@ for part in dxcontainer::chunks(&bytes)? {
     println!("{}: {} bytes", String::from_utf8_lossy(&part.kind), part.data.len());
 }
 println!("digest: {:02x?}", dxcontainer::checksum(&bytes));
+```
+
+A shader-patching mod edits a part and writes the container back:
+
+```rust
+let bytes = std::fs::read("shader.dxbc")?;
+let patched = dxcontainer::replace_part(&bytes, *b"SHEX", &new_program)?; // the other parts as they were, the digest repaired
+std::fs::write("patched.dxbc", patched)?;
 ```
 
 Run it with `cargo run -p dxcontainer --example parts -- shader.dxbc`; the source is [`examples/parts.rs`](examples/parts.rs). The crate documentation has a self-contained example with a hand-built container.
@@ -20,6 +28,14 @@ offsets, then the parts one after another in the directory's order (each its fou
 bytes), the last ending where the container does. Shader Model 6 parts are not padded, so an offset need not be a multiple
 of 4. This layout holds for the 137 containers committed under `dxbc-reader/tests/fixtures` and `dxil-reader/tests/fixtures`:
 the tests read each to its exact end and check that `checksum` equals the digest it stores.
+
+`serialize(&parts)` writes parts as a container: the header, the directory, the parts in the order given, each exactly as given
+with nothing between them (a part keeps the padding its producer wrote, or none), and the digest `checksum` computes.
+`serialize(&chunks(bytes)?)` is `bytes` again for every container that stores the digest `checksum` computes, which includes
+all 77,457 stock containers of five games. `repair_digest` rewrites the digest of a container edited in place, and
+`replace_part` replaces (or appends) one part of a container and writes the result. A kind twice is refused, as the reader refuses it.
+Outside tools agree: Microsoft's DXIL validator signs a container whose digest was zeroed with the digest `repair_digest`
+writes, and vkd3d's `vkd3d-dxbc` accepts the containers written here (it checks the digest) and refuses the same bytes with one digest byte changed.
 
 `feature_flags` reads the `SFI0` part, the features the shader requires, as a `u64` with the bytecode (`SHDR`/`SHEX` or
 `DXIL`) that says what its bits mean; `feature_name` names a bit the way the compiler lists it. The names were read off

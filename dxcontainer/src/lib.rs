@@ -1,7 +1,9 @@
 //! Reader for the DXBC container, the file format Direct3D shader programs are stored in: Shader Model 4 and 5 programs
 //! (`SHDR`, `SHEX`, signatures, `RDEF`) and Shader Model 6 programs (`DXIL`, `PSV0`, `RDAT`, ...) alike. [`chunks`] reads
 //! the container's part directory and [`checksum`] computes the digest the compiler stores in it. [`feature_flags`]
-//! reads the `SFI0` part, the shader's required features, with names for the bits ([`feature_name`]).
+//! reads the `SFI0` part, the shader's required features, with names for the bits ([`feature_name`]). [`serialize`]
+//! writes parts as a container with a correct digest, [`repair_digest`] fixes the digest of one edited in place, and
+//! [`replace_part`] swaps one part of a container for new bytes.
 //!
 //! The layout: a header (`DXBC`, a 16-byte digest, version 1, the container's size, the number of parts), the directory of
 //! the parts' offsets right after it, then the parts one after another in the directory's order, each its four-character
@@ -181,6 +183,130 @@ pub fn checksum(container: &[u8]) -> Option<[u8; 16]> {
         .copy_from_slice(&((bits >> 2) | 1).to_le_bytes());
     primase_foundations::hash::md5_block(&mut state, &last);
     Some(primase_foundations::hash::md5_bytes(state))
+}
+
+/// A container that cannot be written: what is wrong with the parts it was asked to hold.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("cannot write a DXBC container: {detail}")]
+pub struct WriteError {
+    /// What cannot be written.
+    pub detail: String,
+}
+
+fn write_error(detail: impl Into<String>) -> WriteError {
+    WriteError {
+        detail: detail.into(),
+    }
+}
+
+/// Writes `parts` as a container: the header, the directory of the parts' offsets, then the parts in the order given,
+/// each its kind, its length and its bytes with nothing between them, and the digest [`checksum`] computes over the
+/// result. A part's bytes are written exactly as given, so a part whose producer padded it (or did not) stays so, and
+/// `serialize(&chunks(bytes)?)` is `bytes` again whenever `bytes` stores the digest [`checksum`] computes, as the
+/// games' shipped containers do. Refuses a kind twice (the container [`chunks`] reads has each kind once) and a size or
+/// count that does not fit the header's 32 bits.
+///
+/// ```
+/// let part = dxcontainer::Chunk { kind: *b"ISGN", data: &[] };
+/// let bytes = dxcontainer::serialize(&[part])?;
+/// assert_eq!(bytes.len(), 44);
+/// assert_eq!(dxcontainer::checksum(&bytes).unwrap()[..], bytes[4..20]);
+/// assert_eq!(&dxcontainer::chunks(&bytes).expect("a container reads back")[0].kind, b"ISGN");
+/// # Ok::<(), dxcontainer::WriteError>(())
+/// ```
+pub fn serialize(parts: &[Chunk<'_>]) -> Result<Vec<u8>, WriteError> {
+    let too_big = || write_error("the container is larger than the header's 32-bit size can state");
+    let mut offset = parts
+        .len()
+        .checked_mul(4)
+        .and_then(|n| n.checked_add(32))
+        .ok_or_else(too_big)?;
+    let mut directory = Vec::with_capacity(parts.len());
+    for (i, part) in parts.iter().enumerate() {
+        if let Some(first) = parts.iter().take(i).position(|p| p.kind == part.kind) {
+            return Err(write_error(format!(
+                "parts {first} and {i} are both {}",
+                String::from_utf8_lossy(&part.kind)
+            )));
+        }
+        directory.push(u32::try_from(offset).map_err(|_| too_big())?);
+        offset = offset
+            .checked_add(8)
+            .and_then(|n| n.checked_add(part.data.len()))
+            .ok_or_else(too_big)?;
+    }
+    let size = u32::try_from(offset).map_err(|_| too_big())?;
+    let count = u32::try_from(parts.len()).map_err(|_| too_big())?;
+    let mut out = Vec::with_capacity(offset);
+    out.extend_from_slice(b"DXBC");
+    out.extend_from_slice(&[0; 16]);
+    for word in [1, size, count] {
+        out.extend_from_slice(&u32::to_le_bytes(word));
+    }
+    for at in directory {
+        out.extend_from_slice(&at.to_le_bytes());
+    }
+    for part in parts {
+        out.extend_from_slice(&part.kind);
+        out.extend_from_slice(
+            &u32::try_from(part.data.len())
+                .map_err(|_| too_big())?
+                .to_le_bytes(),
+        );
+        out.extend_from_slice(part.data);
+    }
+    repair_digest(&mut out)?;
+    Ok(out)
+}
+
+/// Rewrites the digest at bytes 4 to 20 of `container` to the one [`checksum`] computes over the rest of it: for a
+/// container whose bytes were edited in place. Refuses bytes that are not a container's (fewer than 20, or not starting
+/// `DXBC`), or too long for the digest's 32-bit bit count.
+///
+/// ```
+/// let mut bytes = dxcontainer::serialize(&[dxcontainer::Chunk { kind: *b"ISGN", data: &[0; 8] }])?;
+/// bytes[36 + 8] ^= 1; // edit a byte of the part
+/// assert_ne!(dxcontainer::checksum(&bytes).unwrap()[..], bytes[4..20]);
+/// dxcontainer::repair_digest(&mut bytes)?;
+/// assert_eq!(dxcontainer::checksum(&bytes).unwrap()[..], bytes[4..20]);
+/// # Ok::<(), dxcontainer::WriteError>(())
+/// ```
+pub fn repair_digest(container: &mut [u8]) -> Result<(), WriteError> {
+    if container.get(..4) != Some(b"DXBC") || container.len() < 20 {
+        return Err(write_error(
+            "the bytes are not a DXBC container (no DXBC magic and 16-byte digest)",
+        ));
+    }
+    let digest = checksum(container)
+        .ok_or_else(|| write_error("the container is too long for the digest's bit count"))?;
+    container
+        .get_mut(4..20)
+        .ok_or_else(|| write_error("the digest field is out of range"))?
+        .copy_from_slice(&digest);
+    Ok(())
+}
+
+/// `container` with the part of kind `kind` replaced by `data` (a part not in it is appended after the others), every
+/// other part kept in its place and as it was, and the digest repaired: the edit a shader patch makes. Refuses a
+/// container [`chunks`] refuses.
+pub fn replace_part(container: &[u8], kind: [u8; 4], data: &[u8]) -> Result<Vec<u8>, ReplaceError> {
+    let mut parts = chunks(container).map_err(ReplaceError::Read)?;
+    match parts.iter_mut().find(|p| p.kind == kind) {
+        Some(part) => part.data = data,
+        None => parts.push(Chunk { kind, data }),
+    }
+    serialize(&parts).map_err(ReplaceError::Write)
+}
+
+/// Why [`replace_part`] failed: the container it was given, or the container it would write.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ReplaceError {
+    /// The container is not one [`chunks`] reads.
+    #[error(transparent)]
+    Read(Error),
+    /// The edited container cannot be written.
+    #[error(transparent)]
+    Write(WriteError),
 }
 
 /// Which bytecode a container's program part holds. It decides what the bits of the container's `SFI0` part name: the
