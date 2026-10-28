@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+Breaking:
+
+- `dxil-reader`: `module::Instruction` has a new field `precise`, set for an instruction that carries the `dx.precise`
+  attachment (the compiler writes it for HLSL's `precise`), and `Module` a new field `precise_kind`; the function
+  body's `METADATA_ATTACHMENT` block is read for it (it was skipped). Code that builds an `Instruction` or a `Module`
+  by struct literal (the former without `..`) must add the field; matching with `..` and reading are unaffected. In
+  skate.'s stock programs 107,109 instructions of 3,185 of 3,341 vertex programs and 360 of 12 compute programs
+  carry it (on calls: 88,541 `tertiary`, 13,005 `loadInput`, 3,546 `unary`, 1,421 `dot3`, 331 `legacyF16ToF32`, 307
+  `binary`, 213 `dot4`, 105 `dot2`), no pixel program does, and none of Elden Ring's 50,283.
+
 Additive (no existing item changes):
 
 - `dxcontainer`: `feature_flags` reads a container's `SFI0` part (the shader's required features, a `u64`), `Bytecode`

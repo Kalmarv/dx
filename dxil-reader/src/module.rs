@@ -1,7 +1,8 @@
 //! LLVM 3.7 IR as DXIL stores it, read from the bitstream tree: the type table, module values (globals, functions,
 //! constants), metadata, value names and function bodies. Only what DXIL programs use is decoded; any other record in a
-//! function body is refused by name. The blocks of a function body that say nothing a reader of the program's behaviour needs (its metadata, the
-//! metadata attached to its instructions and its use-list order) are the only things skipped.
+//! function body is refused by name. The blocks of a function body that say nothing a reader of the program's behaviour needs (its metadata and its
+//! use-list order) are the only things skipped, and of the metadata attached to its instructions only `dx.precise` is
+//! read ([`Instruction::precise`]).
 use crate::bitstream::{Block, Record};
 use crate::{Result, error};
 
@@ -442,6 +443,12 @@ pub struct Instruction {
     pub block: usize,
     /// Bit offset of its record.
     pub at: usize,
+    /// The instruction carries the `dx.precise` attachment, which the compiler writes for HLSL's `precise`: the value
+    /// is not to be fused or reassociated. In skate.'s stock programs it is on calls only: 88,541 `tertiary` (mad),
+    /// 13,005 `loadInput`, 3,546 `unary`, 1,421 `dot3`, 331 `legacyF16ToF32`, 307 `binary`, 213 `dot4` and 105 `dot2`,
+    /// in vertex programs (107,109 instructions in 3,185 of 3,341) and compute programs (360 in 12), in no pixel
+    /// program; none of Elden Ring's has it.
+    pub precise: bool,
 }
 
 /// A function body.
@@ -486,6 +493,8 @@ pub struct Module {
     pub at: usize,
     /// The function bodies, in the order of their definitions.
     pub functions: Vec<Function>,
+    /// The id of the module's `dx.precise` metadata kind (the kind [`Instruction::precise`] reads), where it names one.
+    pub precise_kind: Option<u64>,
 }
 
 fn op(r: &Record, i: usize) -> Result<u64> {
@@ -720,7 +729,12 @@ impl Module {
                     self.named_metadata.push((n, nodes));
                     self.named_metadata_at.push(r.at);
                 }
-                6 => {} // KIND: names of attachment kinds
+                6 => {
+                    // KIND: [kind id, name]
+                    if text(r.operands.get(1..).unwrap_or_default(), r.at)? == b"dx.precise" {
+                        self.precise_kind = Some(op(r, 0)?);
+                    }
+                }
                 other => return Err(error(r.at, format!("metadata record {other}"))),
             }
         }
@@ -860,6 +874,37 @@ fn refused(code: u64) -> &'static str {
     }
 }
 
+/// Marks the instructions a function's attachment block gives the `dx.precise` kind: its records are `[instruction,
+/// (kind, node)...]` (an even number of operands is an attachment of the function itself, which is skipped).
+fn mark_precise(kind: Option<u64>, block: &Block, instructions: &mut [Instruction]) -> Result<()> {
+    let Some(kind) = kind else {
+        return Ok(());
+    };
+    for r in block
+        .records()
+        .filter(|r| r.code == 11 && r.operands.len() % 2 == 1)
+    {
+        let at = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "attachment instruction"))?;
+        if r.operands
+            .get(1..)
+            .unwrap_or_default()
+            .chunks(2)
+            .any(|pair| pair.first() == Some(&kind))
+        {
+            instructions
+                .get_mut(at)
+                .ok_or_else(|| {
+                    error(
+                        r.at,
+                        format!("an attachment names instruction {at} of a shorter body"),
+                    )
+                })?
+                .precise = true;
+        }
+    }
+    Ok(())
+}
+
 impl Module {
     fn read_function(&mut self, block: &Block, value: ValueId) -> Result<Function> {
         let fty = match self.value_types.get(value).and_then(|&t| self.types.get(t)) {
@@ -886,7 +931,8 @@ impl Module {
                     match b.id {
                         CONSTANTS => body.m.read_constants(b)?,
                         VALUE_SYMTAB => body.m.read_symbols(b, 0)?,
-                        METADATA | METADATA_ATTACHMENT | USELIST => {}
+                        METADATA_ATTACHMENT => mark_precise(body.m.precise_kind, b, &mut instructions)?,
+                        METADATA | USELIST => {}
                         other => return Err(error(b.at, format!("block {other} in a function"))),
                     }
                     continue;
@@ -1250,6 +1296,7 @@ impl Module {
                 result,
                 block: body.block,
                 at: r.at,
+                precise: false,
             });
             if terminator {
                 body.block = body.block.saturating_add(1);
