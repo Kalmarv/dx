@@ -79,10 +79,65 @@ pub struct Register {
 pub enum SourceKind {
     /// A register.
     Register(Register),
-    /// An interpolated input, by its 4-bit input index.
+    /// An interpolated input, by its 4-bit input index ([`InputSource::from_index`] names it).
     Input(u8),
     /// The inline constant in the slot after the instruction.
     Constant,
+}
+
+/// The interpolant an input operand reads, from its 4-bit input index ([`SourceKind::Input`]).
+///
+/// On the programs of Tony Hawk's SHRED (3,267 distinct fragment programs) the indices read are 1 (9 programs), 4 to 11
+/// and 13. Index `4 + k` is texture coordinate set `k`: the program header's `tex_coords_input_mask` has bit `k` set
+/// exactly when index `4 + k` is read, in all 3,267 programs for `k` 0 to 7 and 9 (`k` 8 is never read and its bit is
+/// never set). Index 1 is the first colour: the header's `attribute_input_mask` has bits 0 and 2 set in the nine
+/// programs that read it. Indices 0, 2, 3, 12 and 14 are never read there: [`InputSource::TexCoord`] names 12 by the
+/// same rule, the other four are left as [`InputSource::Other`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InputSource {
+    /// Input index 1, the first colour.
+    Color0,
+    /// Input index `4 + k`, texture coordinate set `k` (0 to 9).
+    TexCoord(u8),
+    /// An index that is neither (0, 2, 3, 14, 15 and the 4-bit values nothing names).
+    Other(u8),
+}
+
+impl InputSource {
+    /// The first input index of the texture coordinate sets.
+    const TEXCOORD_BASE: u8 = 4;
+    /// How many texture coordinate sets the indices reach.
+    const TEXCOORDS: u8 = 10;
+
+    /// The interpolant input index `index` (the 4-bit field of the instruction) reads.
+    pub fn from_index(index: u8) -> Self {
+        match index {
+            1 => Self::Color0,
+            i => match i.checked_sub(Self::TEXCOORD_BASE) {
+                Some(k) if k < Self::TEXCOORDS => Self::TexCoord(k),
+                _ => Self::Other(i),
+            },
+        }
+    }
+
+    /// The input index of this interpolant: the inverse of [`InputSource::from_index`].
+    pub fn index(self) -> u8 {
+        match self {
+            Self::Color0 => 1,
+            Self::TexCoord(k) => Self::TEXCOORD_BASE.saturating_add(k),
+            Self::Other(i) => i,
+        }
+    }
+}
+
+impl SourceKind {
+    /// The interpolant this operand reads, if it is an input operand.
+    pub fn input_source(self) -> Option<InputSource> {
+        match self {
+            Self::Input(index) => Some(InputSource::from_index(index)),
+            _ => None,
+        }
+    }
 }
 
 /// A source operand.

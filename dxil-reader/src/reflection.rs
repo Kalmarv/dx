@@ -228,6 +228,68 @@ pub fn num_threads(m: &Module) -> Result<Option<[u32; 3]>> {
     Ok(None)
 }
 
+/// The entry point's shader flags: the value of the properties' tag 0, a 64-bit mask kept as stored. `None` when the
+/// entry point states none (the properties are null, or have no tag 0). The compiler writes the tag in nearly every
+/// entry point of the games read; this reader attaches no meaning to its bits.
+pub fn shader_flags(m: &Module) -> Result<Option<u64>> {
+    let entry = the_entry(m)?;
+    let Some(properties) = entry.maybe(4) else {
+        return Ok(None);
+    };
+    let properties = entry.node(Some(properties), "entry point properties")?;
+    for pair in properties.ops.chunks(2) {
+        let [tag, value] = pair else {
+            return Err(properties.fail("a tag without a value"));
+        };
+        if properties.int_of(*tag, "property tag")? == 0 {
+            let flags = properties.int_of(*value, "shader flags")?;
+            return Ok(Some(u64::from_le_bytes(flags.to_le_bytes())));
+        }
+    }
+    Ok(None)
+}
+
+/// The usage mask of each signature element (tag 3 of the element's trailing tag list: the components of the element
+/// the program reads or writes, bit 0 the element's first component, so a scalar packed into component w states 1,
+/// not 8), in the order of [`elements`]' inputs and outputs and [`patch_elements`]; `None` for an element whose trailing tag list is absent or has no tag 3. In the stock programs
+/// the only tag the lists hold is 3 (138,044 of 145,462 elements of skate.'s, 459,288 of 545,303 of Elden Ring's);
+/// any other tag is ignored.
+pub fn usage_masks(m: &Module) -> Result<[Vec<Option<u8>>; 3]> {
+    let entry = the_entry(m)?;
+    let Some(signatures) = entry.op(2)? else {
+        return Ok([Vec::new(), Vec::new(), Vec::new()]);
+    };
+    let signatures = entry.node(Some(signatures), "signatures")?;
+    let list = |i: usize| -> Result<Vec<Option<u8>>> {
+        let Some(list) = signatures.op(i)? else {
+            return Ok(Vec::new());
+        };
+        let list = signatures.node(Some(list), "signature")?;
+        list.ops
+            .iter()
+            .map(|e| {
+                let e = list.node(*e, "signature element")?;
+                let Some(tail) = e.maybe(10) else {
+                    return Ok(None);
+                };
+                let tail = e.node(Some(tail), "element tags")?;
+                let (pairs, rest) = tail.ops.as_chunks::<2>();
+                if !rest.is_empty() {
+                    return Err(tail.fail("a tag without its value"));
+                }
+                let mut mask = None;
+                for [tag, value] in pairs {
+                    if tail.int_of(*tag, "element tag")? == 3 {
+                        mask = Some(tail.number_of(*value, "usage mask")?);
+                    }
+                }
+                Ok(mask)
+            })
+            .collect()
+    };
+    Ok([list(0)?, list(1)?, list(2)?])
+}
+
 /// The entry point's input and output elements, by id.
 pub fn elements(m: &Module) -> Result<(Vec<Element>, Vec<Element>)> {
     let [inputs, outputs, _] = signature_lists(m)?;

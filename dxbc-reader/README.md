@@ -33,6 +33,8 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
 - **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
   `PCSG` and `PSG1` parts.
+- **Statistics** (`statistics`): the `STAT` part, the compiler's counters, with accessors for the words checked against
+  `D3DReflect`.
 - **Container** (`parts`, over the `dxcontainer` crate).
 
 Numbers are Direct3D's own (`D3D_NAME`, `D3D_SHADER_INPUT_TYPE`, `D3D_REGISTER_COMPONENT_TYPE`, ...), as stored.

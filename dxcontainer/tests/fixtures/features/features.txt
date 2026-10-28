@@ -1,0 +1,46 @@
+# file, SFI0 as stored (- for no SFI0 part), the compiler's own list of what the program requires.
+# dxc 1.7.2308 (cs/ps/vs/ms _6_x, -E main) and fxc 10.0.26100 (_4_x/_5_0, /E main), from the .hlsl beside each.
+atomic64heap.dxil	0x12008000	64-Bit integer | Resource descriptor heap indexing | 64-bit Atomics on Heap Resources
+atomic64shared.dxil	0x808000	64-Bit integer | 64-bit Atomics on Group Shared
+atomic64typed.dxil	0x408000	64-Bit integer | 64-bit Atomics on Typed Resources
+bary.dxil	0x20000	Barycentrics
+cmp9.ps_4_0_level_9_1.dxbc	0x80	Comparison filtering for feature level 9
+dbl2.cs_5_0.dxbc	0x21	Double-precision floating point | Double-precision extensions for 11.1
+dbl2.dxil	0x21	Double-precision floating point | Double-precision extensions for 11.1
+double.cs_5_0.dxbc	0x1	Double-precision floating point
+double.dxil	0x1	Double-precision floating point
+doubleext.cs_5_0.dxbc	0x21	Double-precision floating point | Double-precision extensions for 11.1
+doubleext.dxil	0x21	Double-precision floating point | Double-precision extensions for 11.1
+earlyz.ps_5_0.dxbc	-	Early depth-stencil
+heap.dxil	0x2000000	Resource descriptor heap indexing
+innercov.dxil	0x400	PS Inner Coverage
+innercov.ps_5_0.dxbc	0x400	PS Inner Coverage
+int64.dxil	0x8000	64-Bit integer
+lowp.dxil	0x40000	Use native low precision
+meshderiv.dxil	0x1000000	Derivatives in mesh and amplification shaders
+minprec.dxil	0x10	Minimum-precision data types
+minprec.ps_4_0.dxbc	0x10	Minimum-precision data types
+minprec.ps_5_0.dxbc	0x10	Minimum-precision data types
+msaa.dxil	0x60000000	Advanced Texture Ops | Writeable MSAA Textures
+msad.cs_5_0.dxbc	0x40	Shader extensions for 11.1
+msad.dxil	0x40	Shader extensions for 11.1
+rawps4.ps_4_0.dxbc	0x2	[fxc lists nothing for this bit; the program's dcl_globalFlags has enableRawAndStructuredBuffers]
+rov.dxil	0x1000	Raster Ordered UAVs
+rov1.ps_5_0.dxbc	0x1000	Raster Ordered UAVs
+rq.dxil	0x100000	Raytracing tier 1.1 features
+shadingrate.dxil	0x80000	Shading Rate
+sheap.dxil	0x4000000	Sampler descriptor heap indexing
+stencil.dxil	0x200	PS Output Stencil Ref
+stencil.ps_5_0.dxbc	0x200	PS Output Stencil Ref
+tiled.dxil	0x100	Tiled resources
+tiled.ps_5_0.dxbc	0x100	Tiled resources
+typeduav.cs_5_0.dxbc	0x800	Typed UAV Load Additional Formats
+typeduav.dxil	0x800	Typed UAV Load Additional Formats
+uav64.cs_5_0.dxbc	0x8	64 UAV slots
+uav64.dxil	0x8	64 UAV slots
+uavvs.dxil	0x4	UAVs at every shader stage
+uavvs.vs_5_0.dxbc	0x4	UAVs at every shader stage
+viewid.dxil	0x10000	View Instancing
+vprt.dxil	0x2000	SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer
+vprt.vs_5_0.dxbc	0x2000	SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer
+wave.dxil	0x4000	Wave level operations

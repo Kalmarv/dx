@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+Additive (no existing item changes):
+
+- `dxcontainer`: `feature_flags` reads a container's `SFI0` part (the shader's required features, a `u64`), `Bytecode`
+  says which compiler's bits they are (`SHDR`/`SHEX` or `DXIL`), `feature_name` names a bit. Each named bit was read off
+  `fxc` and `dxc` output for programs that need one feature each (bits 0 to 13 for `fxc`; 0, 2 to 6, 8 to 20, 22 to
+  26 and 28 to 30 for `dxc`); the compilers' own descriptions are the names. Over the stock containers the flags
+  read in all 69,728 `DXIL` containers (skate., Elden Ring) and the 21 of Unity's 4,854 `DXBC` containers that have the
+  part, with no unnamed bit set; Sekiro's 432 and Riders Republic's 2,443 have no `SFI0`. The digest `checksum`
+  equals the stored one in all 77,457 stock containers of the five corpora (none all-zero, none unsigned).
+- `dxbc-reader`: `statistics` reads the `STAT` part of a Shader Model 4 or 5 container, the compiler's counters, with
+  accessors for the words that equal `D3DReflect`'s `D3D11_SHADER_DESC` fields on every container that has the part
+  (432 Sekiro, 16 Unity, 21 compiled for the purpose) and for the `movc` count; it refuses a `DXIL` container's `STAT`
+  part, which is a bitcode module.
+- `dxil-reader`: `psv::read` and `psv::part` read the `PSV0` part (runtime information of 36, 48 or 52 bytes, resource
+  records of 16 or 24 bytes, string and semantic-index tables, 16-byte signature elements, the dependency words).
+  Its stage, thread group, resource ranges, signature elements and vector counts equal the metadata's in the 19,240
+  skate. and 46,002 Elden Ring stock programs that have the part. `reflection::shader_flags` reads the entry
+  properties' tag 0 and `reflection::usage_masks` the usage mask of each signature element (tag 3 of its trailing tag
+  list).
+- `rsx-reader`: `fragment::InputSource` names an input operand's index: 1 is the first colour, `4 + k` texture
+  coordinate set `k` (checked against the program header's masks in all 3,268 distinct fragment programs of Tony
+  Hawk's SHRED); `SourceKind::input_source` gives it for an operand.
+
 ## 0.2.0 (2026-10-27)
 
 - `dxbc-reader`: `patch_signature_elements` reads the `PSG1` part where a hull or domain program has no `PCSG` (fxc

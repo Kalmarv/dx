@@ -38,7 +38,10 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   `mesh_state`, `hull_state`, `domain_state`; a library's `library_kind`); signature elements and their packing
   (`elements`, `patch_elements`); the bound resource ranges of `dx.resources` (`ranges`: class, range id, register, count,
   shape, space, element type and stride tags, counter); the field annotations of `dx.typeAnnotations` (`fields`); and the
-  rows of an `ISG1`/`OSG1`/`PSG1` part (`signature`).
+  rows of an `ISG1`/`OSG1`/`PSG1` part (`signature`); the entry properties' shader flags (`shader_flags`) and each
+  signature element's usage mask (`usage_masks`).
+- **Pipeline state** (`psv`): the `PSV0` part the validator writes: runtime information (36, 48 or 52 bytes), resource
+  records, strings, semantic indices, signature elements and the dependency words.
 - **Runtime data** (`rdat`): a library's subobjects as its `RDAT` part stores them (state object and pipeline configuration,
   root signatures, associations, hit groups), and a function's export name from its decorated name.
 - `operations`: the `dx.op` operations a container's module calls, by name, for surveying shaders.

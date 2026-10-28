@@ -1,0 +1,2 @@
+RWBuffer<float> b0:register(u0);RWBuffer<float> b1:register(u1);RWBuffer<float> b2:register(u2);RWBuffer<float> b3:register(u3);RWBuffer<float> b4:register(u4);RWBuffer<float> b5:register(u5);RWBuffer<float> b6:register(u6);RWBuffer<float> b7:register(u7);RWBuffer<float> b8:register(u8);
+[numthreads(1,1,1)] void main(uint i : SV_DispatchThreadID) { b0[i]=1;b1[i]=1;b2[i]=1;b3[i]=1;b4[i]=1;b5[i]=1;b6[i]=1;b7[i]=1;b8[i]=1; }

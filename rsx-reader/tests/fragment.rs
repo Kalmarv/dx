@@ -1,4 +1,4 @@
-use rsx_reader::fragment::{Control, Opcode, Register, SourceKind, decode, flow::analyze};
+use rsx_reader::fragment::{Control, InputSource, Opcode, Register, SourceKind, decode, flow::analyze};
 
 fn encode(words: &[u32]) -> Vec<u8> {
     words
@@ -327,4 +327,31 @@ fn the_interpolant_flag_and_input_address_are_bits_of_the_last_operand_word() {
     assert_eq!(read(w), (false, true, 0));
     w[3] = XYZW | (3 << 19);
     assert_eq!(read(w), (false, false, 3));
+}
+
+#[test]
+fn an_input_index_names_the_colour_or_the_texture_coordinate_set_it_reads() {
+    // a MOV of input operand `index` (the 4-bit field at bit 13 of the first word), then a register operand
+    let read = |index: u32| {
+        let mut w = instruction(1, 0, true);
+        w[0] |= index << 13;
+        w[1] |= 1;
+        let p = decode(&encode(&w)).unwrap();
+        p.instructions[0].sources[0].kind
+    };
+    assert_eq!(read(1), SourceKind::Input(1));
+    assert_eq!(read(1).input_source(), Some(InputSource::Color0));
+    assert_eq!(read(4).input_source(), Some(InputSource::TexCoord(0)));
+    assert_eq!(read(11).input_source(), Some(InputSource::TexCoord(7)));
+    assert_eq!(read(13).input_source(), Some(InputSource::TexCoord(9)));
+    assert_eq!(read(14).input_source(), Some(InputSource::Other(14)));
+    assert_eq!(read(0).input_source(), Some(InputSource::Other(0)));
+    // a register operand reads no interpolant
+    let register = decode(&encode(&instruction(1, 0, true))).unwrap();
+    assert_eq!(register.instructions[0].sources[0].kind.input_source(), None);
+    // every 4-bit index names an interpolant and the name gives the index back
+    for index in 0..16u8 {
+        assert_eq!(InputSource::from_index(index).index(), index);
+    }
+    assert_eq!(InputSource::from_index(12), InputSource::TexCoord(8));
 }
