@@ -1,7 +1,7 @@
 # rsx-reader
 
 Readers for PlayStation 3 RSX graphics data: `CellGcmTexture` texture descriptors, Cg binary (`CgBinaryProgram`) shader
-program containers, and RSX fragment program microcode decoded to typed instructions.
+program containers, and RSX fragment and vertex program microcode decoded to typed instructions.
 
 ```rust
 use rsx_reader::{cgbinary, fragment, gcm};
@@ -36,6 +36,12 @@ Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the sour
   first. It keeps sources, swizzles, predicates, destination masks, modifier bits, texture units, control-flow offsets and
   inline float bits. A constant takes a full extra slot shared by the instruction's constant sources. `disassemble`
   produces stable inspection text.
+- **`vertex::decode`** reads vertex microcode (16-byte slots of four big-endian words, each slot a vector operation and a
+  scalar operation sharing three sources) into typed instructions: opcodes, sources with their registers, swizzles, negate and
+  absolute value, destinations (a temporary or an output) and write masks of each operation, the saturate and condition
+  fields, relative addressing and the last flag. It refuses an opcode it has no entry for and a program whose last flag is not
+  on the final slot alone. `Program::input_mask`, `output_mask` and `register_count` give what a program header states;
+  `disassemble` prints stable inspection text.
 - **`fragment::flow::analyze`** reports which texture units and interpolators can influence caller-selected output
   registers, discard conditions, sampling coordinates and downstream operations. It tracks component writes, full and half
   register overlap, conditional writes, forward `IF`/`ELSE` regions, `KIL` and `RET`.
@@ -58,11 +64,16 @@ Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the sour
 ## What it does not do
 
 It is container validation and instruction decoding, not microcode validation of hardware behaviour. It does not assemble,
-execute or translate programs, does not decode vertex program microcode (the vertex stage descriptor is read, the
-microcode is returned encoded), and does not assign a sampler a colour, normal or material role. `flow::analyze` refuses
-calls, loops, `BRK` and indexed interpolators; the decoder can still inspect their encoded instructions.
+execute or translate programs, and does not assign a sampler a colour, normal or material role. `flow::analyze` refuses
+calls, loops, `BRK` and indexed interpolators; the decoder can still inspect their encoded instructions. The vertex decoder
+has no entry for the scalar branch and call opcodes: the two public descriptions number them differently and no program of
+Tony Hawk's SHRED uses one.
 
 ## Sources
+
+The vertex instruction layout follows Mesa's nouveau description of the NV40 vertex program format (`nv40_vertprog.h`,
+`nvfx_vertprog.c`; facts only, no code) and is checked against RPCS3's `RSXVertexProgram.h` field declarations; the output
+numbering of the header masks is measured on Tony Hawk's SHRED (see `Program::output_mask`).
 
 Layouts follow RPCS3's public
 [`CgBinaryProgram` declarations](https://github.com/RPCS3/rpcs3/blob/979a52415003fd7a74ddd216e1a5782b3731281f/rpcs3/Emu/RSX/Program/CgBinaryProgram.h)

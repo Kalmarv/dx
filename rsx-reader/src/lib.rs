@@ -33,3 +33,4 @@
 pub mod cgbinary;
 pub mod fragment;
 pub mod gcm;
+pub mod vertex;
