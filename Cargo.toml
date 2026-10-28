@@ -12,7 +12,7 @@ publish = true
 
 [workspace.dependencies]
 dxcontainer = { version = "0.2.0", path = "dxcontainer" }
-primase-foundations = { version = "0.2.0", git = "https://github.com/Kalmarv/primase-foundations", rev = "b3a3d4b3a892b8342fda081ab4449bb57052a2f8" }
+primase-foundations = { version = "0.2.1", git = "https://github.com/Kalmarv/primase-foundations", rev = "e895f966130651bd78c47505b53322cc3f58083a" }
 thiserror = { version = "=2.0.21", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
