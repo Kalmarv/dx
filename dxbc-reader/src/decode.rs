@@ -57,6 +57,8 @@ pub enum Register {
     OutputDepthLessEqual,
     /// `oMask`, the coverage output.
     OutputCoverage,
+    /// `rasterizer`: the render target as `sample_info` and `sample_pos` query it (its sample count, a sample's position).
+    Rasterizer,
     /// `oStencilRef`, the stencil reference output.
     OutputStencilRef,
     /// `g<n>`, thread-group shared memory.
@@ -100,6 +102,7 @@ impl Register {
             | Register::OutputDepthGreaterEqual
             | Register::OutputDepthLessEqual
             | Register::OutputCoverage
+            | Register::Rasterizer
             | Register::OutputStencilRef
             | Register::ThreadId
             | Register::ThreadGroupId
@@ -131,6 +134,7 @@ impl Register {
             11 => Register::PrimitiveId,
             12 => Register::OutputDepth,
             13 => Register::Null,
+            14 => Register::Rasterizer,
             15 => Register::OutputCoverage,
             16 => Register::Stream,
             22 => Register::OutputControlPointId,
