@@ -88,10 +88,14 @@ fn the_declared_operations_carry_their_flag_attributes() {
         flags(&m, "dx.op.createHandle"),
         [Some("nounwind"), Some("readonly")]
     );
-    // the kinds the listings confirm have names, the others none
+    // the kinds the listings confirm have names, the others none: skate.'s `define void @...(%struct.InstanceIdPayload*
+    // noalias nocapture %payload)` is the group [9, 11] in the slot of the first parameter, and a `noreturn nounwind`
+    // function the group [17, 18] in the function slot
+    assert_eq!(attribute_name(9), Some("noalias"));
     assert_eq!(attribute_name(11), Some("nocapture"));
+    assert_eq!(attribute_name(17), Some("noreturn"));
     assert_eq!(attribute_name(39), Some("nonnull"));
-    assert_eq!(attribute_name(9), None);
+    assert_eq!(attribute_name(10), None);
 }
 
 #[test]

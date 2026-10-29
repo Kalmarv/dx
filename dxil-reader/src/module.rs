@@ -494,12 +494,14 @@ pub struct AttributeGroup {
 pub const FUNCTION_SLOT: u64 = 0xFFFF_FFFF;
 
 /// The name of an LLVM 3.7 enum attribute's bitcode kind number (`nounwind` for 18), for the kinds whose number dxc's own
-/// listing confirms: 11 `nocapture`, 12 `noduplicate`, 18 `nounwind`, 20 `readnone`, 21 `readonly`, 39 `nonnull`. The
-/// games' programs use 9 and 17 as well (the reader attaches no name to them).
+/// listing confirms: 9 `noalias`, 11 `nocapture`, 12 `noduplicate`, 17 `noreturn`, 18 `nounwind`, 20 `readnone`, 21
+/// `readonly`, 39 `nonnull`. They are the kinds the games' programs and the test compilations use.
 pub fn attribute_name(kind: u64) -> Option<&'static str> {
     Some(match kind {
+        9 => "noalias",
         11 => "nocapture",
         12 => "noduplicate",
+        17 => "noreturn",
         18 => "nounwind",
         20 => "readnone",
         21 => "readonly",
