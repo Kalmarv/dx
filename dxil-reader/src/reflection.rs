@@ -2,7 +2,9 @@
 //! records the file stores: the entry point and what its properties state (thread group, geometry, mesh, hull and
 //! domain state), its signature elements and their packing, the bound resource ranges of `dx.resources` with their
 //! tags, the field annotations of `dx.typeAnnotations`, and the rows of an `ISG1`/`OSG1`/`PSG1` part, each with DXIL's
-//! and D3D's own numbers. What the numbers mean for a graphics API is the caller's to decide.
+//! and D3D's own numbers, and the entry point's other property tags, the tail tags of its signature elements, the
+//! optional fields of the resource records and the string attributes of the entry function. What the numbers mean for a
+//! graphics API is the caller's to decide.
 use crate::module::{Constant, Metadata, MetadataId, Module, Type, TypeId, Value, ValueId};
 use crate::{Result, error};
 
@@ -198,8 +200,9 @@ pub fn entry(m: &Module) -> Result<ValueId> {
     }
 }
 
-/// The entry point's thread group size (`numthreads`): the value of the properties' tag 4 (a mesh program's, the first
-/// field of its state, tag 9). `None` when the entry point states none (every stage but compute).
+/// The entry point's thread group size (`numthreads`): the value of the properties' tag 4 (a mesh or amplification
+/// program's, the first field of its state, tag 9 or 10). `None` when the entry point states none (every stage but
+/// compute, mesh and amplification).
 pub fn num_threads(m: &Module) -> Result<Option<[u32; 3]>> {
     let entry = the_entry(m)?;
     let Some(properties) = entry.maybe(4) else {
@@ -211,12 +214,12 @@ pub fn num_threads(m: &Module) -> Result<Option<[u32; 3]>> {
             return Err(properties.fail("a tag without a value"));
         };
         let tag = properties.int_of(*tag, "property tag")?;
-        if tag != 4 && tag != 9 {
+        if tag != 4 && tag != 9 && tag != 10 {
             continue;
         }
         let mut size = properties.node(*value, "numthreads")?;
-        // a mesh program states them first in its state
-        if tag == 9 {
+        // a mesh or amplification program states them first in its state
+        if tag == 9 || tag == 10 {
             size = size.node(size.op(0)?, "numthreads")?;
         }
         return Ok(Some([
@@ -253,14 +256,35 @@ pub fn shader_flags(m: &Module) -> Result<Option<u64>> {
 /// the program reads or writes, bit 0 the element's first component, so a scalar packed into component w states 1,
 /// not 8), in the order of [`elements`]' inputs and outputs and [`patch_elements`]; `None` for an element whose trailing tag list is absent or has no tag 3. In the stock programs
 /// the only tag the lists hold is 3 (138,044 of 145,462 elements of skate.'s, 459,288 of 545,303 of Elden Ring's);
-/// any other tag is ignored.
+/// any other tag is ignored (see [`element_tags`] for them).
 pub fn usage_masks(m: &Module) -> Result<[Vec<Option<u8>>; 3]> {
+    Ok(element_tags(m)?.map(|list| list.into_iter().map(|tags| tags.usage_mask).collect()))
+}
+
+/// The trailing tags of one signature element (the element record's operand 10, a list of tag and value pairs). The
+/// compiler writes tag 0 for an output of another stream than 0, tag 2 for an input indexed dynamically and tag 3 for
+/// the components in use. Of the 691,000 elements of skate.'s and Elden Ring's programs only tag 3 occurs.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ElementTags {
+    /// Tag 0: the stream (of a geometry program) the element is written to; `None` where the element states none.
+    pub stream: Option<u32>,
+    /// Tag 2: the components of the element that are indexed dynamically, bit 0 the element's first component.
+    pub dynamic_index_mask: Option<u8>,
+    /// Tag 3: the usage mask ([`usage_masks`]).
+    pub usage_mask: Option<u8>,
+    /// Every other tag with an integer value, as stored.
+    pub other: Vec<(i64, i64)>,
+}
+
+/// The trailing tags of each signature element, in the order of [`elements`]' inputs and outputs and
+/// [`patch_elements`]; an element with no tag list has [`ElementTags::default`].
+pub fn element_tags(m: &Module) -> Result<[Vec<ElementTags>; 3]> {
     let entry = the_entry(m)?;
     let Some(signatures) = entry.op(2)? else {
         return Ok([Vec::new(), Vec::new(), Vec::new()]);
     };
     let signatures = entry.node(Some(signatures), "signatures")?;
-    let list = |i: usize| -> Result<Vec<Option<u8>>> {
+    let list = |i: usize| -> Result<Vec<ElementTags>> {
         let Some(list) = signatures.op(i)? else {
             return Ok(Vec::new());
         };
@@ -270,20 +294,27 @@ pub fn usage_masks(m: &Module) -> Result<[Vec<Option<u8>>; 3]> {
             .map(|e| {
                 let e = list.node(*e, "signature element")?;
                 let Some(tail) = e.maybe(10) else {
-                    return Ok(None);
+                    return Ok(ElementTags::default());
                 };
                 let tail = e.node(Some(tail), "element tags")?;
                 let (pairs, rest) = tail.ops.as_chunks::<2>();
                 if !rest.is_empty() {
                     return Err(tail.fail("a tag without its value"));
                 }
-                let mut mask = None;
+                let mut tags = ElementTags::default();
                 for [tag, value] in pairs {
-                    if tail.int_of(*tag, "element tag")? == 3 {
-                        mask = Some(tail.number_of(*value, "usage mask")?);
+                    match tail.int_of(*tag, "element tag")? {
+                        0 => tags.stream = Some(tail.number_of(*value, "element stream")?),
+                        2 => tags.dynamic_index_mask = Some(tail.number_of(*value, "dynamic index mask")?),
+                        3 => tags.usage_mask = Some(tail.number_of(*value, "usage mask")?),
+                        other => {
+                            if let Ok(v) = tail.int_of(*value, "element tag value") {
+                                tags.other.push((other, v));
+                            }
+                        }
                     }
                 }
-                Ok(mask)
+                Ok(tags)
             })
             .collect()
     };
@@ -462,6 +493,130 @@ pub fn domain_state(m: &Module) -> Result<(u32, u32)> {
     ))
 }
 
+/// One property of the entry point as stored: the tag and the metadata record holding the value (an integer constant
+/// or a node), `None` where the value is null. The tags the compiler writes: 0 shader flags, 1 geometry state, 2 domain
+/// state, 3 hull state, 4 thread group, 5 auto binding space, 6 ray payload size, 7 ray attribute size, 8 shader kind
+/// (libraries), 9 mesh state, 10 amplification state, 11 wave size, 12 root signature, 23 wave size range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EntryProperty {
+    /// The tag.
+    pub tag: i64,
+    /// The value's metadata record.
+    pub value: Option<MetadataId>,
+}
+
+/// Every property of the entry point, in the order stored; none where the entry point states none.
+pub fn entry_properties(m: &Module) -> Result<Vec<EntryProperty>> {
+    let entry = the_entry(m)?;
+    properties_of(entry)
+}
+
+fn properties_of(entry: Node<'_>) -> Result<Vec<EntryProperty>> {
+    let Some(properties) = entry.maybe(4) else {
+        return Ok(Vec::new());
+    };
+    let properties = entry.node(Some(properties), "entry point properties")?;
+    let (pairs, rest) = properties.ops.as_chunks::<2>();
+    if !rest.is_empty() {
+        return Err(properties.fail("a tag without a value"));
+    }
+    pairs
+        .iter()
+        .map(|[tag, value]| {
+            Ok(EntryProperty {
+                tag: properties.int_of(*tag, "property tag")?,
+                value: *value,
+            })
+        })
+        .collect()
+}
+
+/// The integer a property states directly (tags 6, 7 and 8), or the first integer of the node it states (tags 5 and
+/// 11); `None` where the entry point has no such property.
+fn property_integer(m: &Module, wanted: i64) -> Result<Option<u32>> {
+    let entry = the_entry(m)?;
+    for property in properties_of(entry)? {
+        if property.tag != wanted {
+            continue;
+        }
+        let record = entry.node(property.value, "property").ok();
+        return match record {
+            Some(node) => node.number(0, "property value").map(Some),
+            None => entry.number_of(property.value, "property value").map(Some),
+        };
+    }
+    Ok(None)
+}
+
+/// The size in bytes of the ray payload a ray tracing program's entry point states (tag 6); `None` for a program
+/// that states none (a ray generation program, or any other stage).
+pub fn ray_payload_size(m: &Module) -> Result<Option<u32>> {
+    property_integer(m, 6)
+}
+
+/// The size in bytes of the hit attributes a ray tracing program's entry point states (tag 7); `None` where it states none.
+pub fn ray_attribute_size(m: &Module) -> Result<Option<u32>> {
+    property_integer(m, 7)
+}
+
+/// The register space automatic bindings take, as the entry point states it (tag 5, a one-integer node); `None` where
+/// it states none. The stock libraries state 0 on the record that holds their resources (which has no function) and
+/// the compiler option `-auto-binding-space` changes that record's value: [`library_binding_space`] reads it.
+pub fn auto_binding_space(m: &Module) -> Result<Option<u32>> {
+    property_integer(m, 5)
+}
+
+/// The auto binding space the library's resource record (the entry record with no function) states (tag 5). `None`
+/// where the module has no such record or it states none.
+pub fn library_binding_space(m: &Module) -> Result<Option<u32>> {
+    let (at, entries) =
+        named(m, "dx.entryPoints").ok_or_else(|| error(m.at, "the module has no dx.entryPoints metadata"))?;
+    for &id in entries {
+        let entry = Node::new(m, at, id, "entry point")?;
+        if entry.op(0)?.is_some() {
+            continue;
+        }
+        for property in properties_of(entry)? {
+            if property.tag == 5 {
+                let node = entry.node(property.value, "auto binding space")?;
+                return node.number(0, "auto binding space").map(Some);
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// The wave size a compute, mesh or amplification program's entry point requires (tag 11, a node): its integers as
+/// stored, a single one for a fixed size; `None` where the entry point states none.
+pub fn wave_size(m: &Module) -> Result<Option<Vec<u32>>> {
+    let Some(node) = entry_property(m, 11)? else {
+        return Ok(None);
+    };
+    node.ops
+        .iter()
+        .map(|id| node.number_of(*id, "wave size"))
+        .collect::<Result<Vec<u32>>>()
+        .map(Some)
+}
+
+/// The payload size in bytes an amplification program's entry point states (the second field of its state, tag 10);
+/// `None` for any other program. The first field is the thread group ([`num_threads`]).
+pub fn amplification_payload_size(m: &Module) -> Result<Option<u32>> {
+    let Some(state) = entry_property(m, 10)? else {
+        return Ok(None);
+    };
+    state.number(1, "amplification payload size").map(Some)
+}
+
+/// The denormal mode an entry function states for 32-bit floats, as the string attribute `fp32-denorm-mode` has it
+/// (`any`, `preserve` or `ftz`). `None` where the function carries no such attribute, which is the case in all of the
+/// 69,728 programs of skate. and Elden Ring: the compiler writes the attribute only where the option asks for a mode.
+pub fn fp32_denorm_mode(m: &Module) -> Result<Option<String>> {
+    let function = entry(m)?;
+    Ok(m.string_attribute(function, "fp32-denorm-mode")
+        .map(str::to_owned))
+}
+
 fn signature_lists(m: &Module) -> Result<[Vec<Element>; 3]> {
     let entry = the_entry(m)?;
     let Some(signatures) = entry.op(2)? else {
@@ -602,6 +757,90 @@ pub fn ranges(m: &Module) -> Result<Vec<(Range, String, Option<TypeId>)>> {
                 r.string_of(r.op(2)?, "resource name")?,
                 ty,
             ));
+        }
+    }
+    Ok(out)
+}
+
+/// The optional fields of a resource record that [`Range`] leaves out, keyed by the record's class and id.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ResourceExtras {
+    /// The class (0 SRV, 1 UAV, 2 constant buffer, 3 sampler), as in [`Range::class`].
+    pub class: u8,
+    /// The range id, as in [`Range::id`].
+    pub id: u32,
+    /// A shader resource view's sample count (operand 7): 0 for a single-sampled view, 4 for a `Texture2DMS<_, 4>`.
+    pub sample_count: Option<u32>,
+    /// An unordered-access view declared `globallycoherent` (operand 7).
+    pub globally_coherent: bool,
+    /// An unordered-access view that is rasterizer ordered (operand 9).
+    pub rasterizer_ordered: bool,
+    /// Tag 2 of the record's tag list: the kind of the sampler-feedback texture, where it states one.
+    pub sampler_feedback: Option<u32>,
+    /// Tag 3 of the record's tag list: the view is the target of a 64-bit atomic operation.
+    pub atomic64: bool,
+    /// Every tag of the record's tag list with its value, as stored (0 element type, 1 stride, 2 sampler feedback
+    /// kind, 3 64-bit atomics).
+    pub tags: Vec<(i64, i64)>,
+}
+
+/// The optional fields of every resource record, in the order of [`ranges`]. A constant buffer's and a sampler's record
+/// have a tag list as their last operand as well.
+pub fn resource_extras(m: &Module) -> Result<Vec<ResourceExtras>> {
+    let Some((at, [resources])) = named(m, "dx.resources") else {
+        return Ok(Vec::new());
+    };
+    let lists = Node::new(m, at, *resources, "dx.resources")?;
+    let mut out = Vec::new();
+    for (class, list) in lists.ops.iter().enumerate() {
+        let Some(list) = list else { continue };
+        let class =
+            u8::try_from(class).map_err(|_| lists.fail(format!("resource class {class} is out of range")))?;
+        let list = lists.node(Some(*list), "resource list")?;
+        for r in list.ops {
+            let r = list.node(*r, "resource")?;
+            // the tag list is the last operand: 8 for an SRV, 10 for a UAV, 7 for a constant buffer and a sampler
+            let tag_operand = match class {
+                0 => 8,
+                1 => 10,
+                _ => 7,
+            };
+            let mut tags = Vec::new();
+            if let Some(tag_list) = r.maybe(tag_operand) {
+                let tag_list = r.node(Some(tag_list), "resource tags")?;
+                let (pairs, rest) = tag_list.ops.as_chunks::<2>();
+                if !rest.is_empty() {
+                    return Err(tag_list.fail("a tag without its value"));
+                }
+                for [tag, value] in pairs {
+                    tags.push((
+                        tag_list.int_of(*tag, "tag")?,
+                        tag_list.int_of(*value, "tag value")?,
+                    ));
+                }
+            }
+            let tag_value = |wanted: i64| tags.iter().find(|(t, _)| *t == wanted).map(|(_, v)| *v);
+            out.push(ResourceExtras {
+                class,
+                id: r.number(0, "resource id")?,
+                sample_count: match (class, r.maybe(7)) {
+                    (0, Some(_)) => Some(r.number(7, "sample count")?),
+                    _ => None,
+                },
+                globally_coherent: class == 1 && r.maybe(7).is_some() && r.int(7, "globally coherent")? != 0,
+                rasterizer_ordered: class == 1
+                    && r.maybe(9).is_some()
+                    && r.int(9, "rasterizer ordered")? != 0,
+                sampler_feedback: match tag_value(2) {
+                    Some(v) => Some(
+                        u32::try_from(v)
+                            .map_err(|_| r.fail(format!("sampler feedback kind {v} is out of range")))?,
+                    ),
+                    None => None,
+                },
+                atomic64: tag_value(3).is_some_and(|v| v != 0),
+                tags,
+            });
         }
     }
     Ok(out)

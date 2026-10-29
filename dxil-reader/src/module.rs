@@ -1,8 +1,10 @@
 //! LLVM 3.7 IR as DXIL stores it, read from the bitstream tree: the type table, module values (globals, functions,
 //! constants), metadata, value names and function bodies. Only what DXIL programs use is decoded; any other record in a
 //! function body is refused by name. The blocks of a function body that say nothing a reader of the program's behaviour needs (its metadata and its
-//! use-list order) are the only things skipped, and of the metadata attached to its instructions only `dx.precise` is
-//! read ([`Instruction::precise`]).
+//! use-list order) are the only things skipped. The metadata attached to an instruction or a function is kept as the
+//! pairs the file stores ([`Instruction::attachments`], [`Function::attachments`], with the kind names in
+//! [`Module::kinds`]), `dx.precise` also as [`Instruction::precise`]; the attribute groups and lists are kept as stored
+//! ([`Module::attribute_groups`], [`Module::attribute_lists`]) and each function value names its list.
 use crate::bitstream::{Block, Record};
 use crate::{Result, error};
 
@@ -124,6 +126,8 @@ pub enum Value {
         ty: TypeId,
         /// Whether it is only declared (it has no body).
         declaration: bool,
+        /// The attribute list it names (an index into [`Module::attribute_lists`]), where it names one.
+        attributes: Option<usize>,
     },
     /// A global variable.
     Global {
@@ -449,6 +453,59 @@ pub struct Instruction {
     /// in vertex programs (107,109 instructions in 3,185 of 3,341) and compute programs (360 in 12), in no pixel
     /// program; none of Elden Ring's has it.
     pub precise: bool,
+    /// The metadata attached to the instruction, in the order the file stores the pairs (`dx.precise` among them).
+    pub attachments: Vec<Attachment>,
+}
+
+/// A metadata node attached to an instruction or a function: the kind (the id [`Module::kinds`] names) and the node.
+/// In the games' programs the kinds are `dx.controlflow.hints`, `llvm.loop`, `tbaa`, `noalias`, `alias.scope`, `range`
+/// and `dx.precise`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Attachment {
+    /// The metadata kind id (`dx.precise`, `tbaa`, ... by [`Module::kind_name`]).
+    pub kind: u64,
+    /// The attached node, an id into [`Module::metadata`].
+    pub node: MetadataId,
+}
+
+/// An attribute of an attribute group, as the bitcode stores it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Attribute {
+    /// A flag attribute, by LLVM's bitcode kind number (see [`attribute_name`]).
+    Enum(u64),
+    /// An attribute with an integer value: its kind number and the value.
+    Integer(u64, u64),
+    /// A string attribute: the key and the value (empty where the attribute has none).
+    String(String, String),
+}
+
+/// A group of attributes, which an attribute list names by its id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AttributeGroup {
+    /// The group's id, as the lists name it.
+    pub id: u64,
+    /// The slot the attributes apply to: [`FUNCTION_SLOT`] the function itself, 0 its result, 1 and up its parameters.
+    pub slot: u64,
+    /// The attributes, in the order stored.
+    pub attributes: Vec<Attribute>,
+}
+
+/// The slot of an [`AttributeGroup`] that holds a function's own attributes (`0xFFFFFFFF`).
+pub const FUNCTION_SLOT: u64 = 0xFFFF_FFFF;
+
+/// The name of an LLVM 3.7 enum attribute's bitcode kind number (`nounwind` for 18), for the kinds whose number dxc's own
+/// listing confirms: 11 `nocapture`, 12 `noduplicate`, 18 `nounwind`, 20 `readnone`, 21 `readonly`, 39 `nonnull`. The
+/// games' programs use 9 and 17 as well (the reader attaches no name to them).
+pub fn attribute_name(kind: u64) -> Option<&'static str> {
+    Some(match kind {
+        11 => "nocapture",
+        12 => "noduplicate",
+        18 => "nounwind",
+        20 => "readnone",
+        21 => "readonly",
+        39 => "nonnull",
+        _ => return None,
+    })
 }
 
 /// A function body.
@@ -467,6 +524,8 @@ pub struct Function {
     pub locals: Vec<Value>,
     /// The types of [`Function::locals`].
     pub local_types: Vec<TypeId>,
+    /// The metadata attached to the function itself (the attachment records of the body that name no instruction).
+    pub attachments: Vec<Attachment>,
 }
 
 /// A module: its types, values, metadata and function bodies.
@@ -495,6 +554,13 @@ pub struct Module {
     pub functions: Vec<Function>,
     /// The id of the module's `dx.precise` metadata kind (the kind [`Instruction::precise`] reads), where it names one.
     pub precise_kind: Option<u64>,
+    /// The module's metadata kinds: each id and its name, in the order stored.
+    pub kinds: Vec<(u64, String)>,
+    /// The attribute groups, in the order stored.
+    pub attribute_groups: Vec<AttributeGroup>,
+    /// The attribute lists, in the order stored: the ids of the groups each lists. A function value's `attributes` is an
+    /// index into this.
+    pub attribute_lists: Vec<Vec<u64>>,
 }
 
 fn op(r: &Record, i: usize) -> Result<u64> {
@@ -507,6 +573,19 @@ fn text(ops: &[u64], at: usize) -> Result<Vec<u8>> {
     ops.iter()
         .map(|&c| u8::try_from(c).map_err(|_| error(at, "character above 255")))
         .collect()
+}
+/// The zero-terminated string starting at operand `from` of an attribute record, and the index after its terminator.
+fn c_string(r: &Record, from: usize) -> Result<(String, usize)> {
+    let rest = r.operands.get(from..).unwrap_or_default();
+    let n = rest
+        .iter()
+        .position(|&c| c == 0)
+        .ok_or_else(|| error(r.at, "an attribute string without its terminator"))?;
+    let bytes = text(rest.get(..n).unwrap_or_default(), r.at)?;
+    Ok((
+        String::from_utf8_lossy(&bytes).into_owned(),
+        from.saturating_add(n).saturating_add(1),
+    ))
 }
 fn utf8(bytes: Vec<u8>, at: usize) -> Result<String> {
     String::from_utf8(bytes).map_err(|_| error(at, "name is not UTF-8"))
@@ -731,14 +810,116 @@ impl Module {
                 }
                 6 => {
                     // KIND: [kind id, name]
-                    if text(r.operands.get(1..).unwrap_or_default(), r.at)? == b"dx.precise" {
-                        self.precise_kind = Some(op(r, 0)?);
+                    let id = op(r, 0)?;
+                    let bytes = text(r.operands.get(1..).unwrap_or_default(), r.at)?;
+                    if bytes == b"dx.precise" {
+                        self.precise_kind = Some(id);
                     }
+                    self.kinds
+                        .push((id, String::from_utf8_lossy(&bytes).into_owned()));
                 }
                 other => return Err(error(r.at, format!("metadata record {other}"))),
             }
         }
         Ok(())
+    }
+
+    /// The attribute groups: records `[group id, slot, attribute...]`, an attribute being `[0, kind]` (a flag), `[1, kind,
+    /// value]`, `[3, key..., 0]` or `[4, key..., 0, value..., 0]`.
+    fn read_attribute_groups(&mut self, block: &Block) -> Result<()> {
+        for r in block.records().filter(|r| r.code == 3) {
+            let mut attributes = Vec::new();
+            let mut i = 2;
+            while i < r.operands.len() {
+                match op(r, i)? {
+                    0 => {
+                        attributes.push(Attribute::Enum(op(r, i.saturating_add(1))?));
+                        i = i.saturating_add(2);
+                    }
+                    1 => {
+                        attributes.push(Attribute::Integer(
+                            op(r, i.saturating_add(1))?,
+                            op(r, i.saturating_add(2))?,
+                        ));
+                        i = i.saturating_add(3);
+                    }
+                    form @ (3 | 4) => {
+                        let (key, next) = c_string(r, i.saturating_add(1))?;
+                        let (value, next) = if form == 4 {
+                            c_string(r, next)?
+                        } else {
+                            (String::new(), next)
+                        };
+                        attributes.push(Attribute::String(key, value));
+                        i = next;
+                    }
+                    other => return Err(error(r.at, format!("attribute encoding {other}"))),
+                }
+            }
+            self.attribute_groups.push(AttributeGroup {
+                id: op(r, 0)?,
+                slot: op(r, 1)?,
+                attributes,
+            });
+        }
+        Ok(())
+    }
+
+    /// The attribute lists: records `[group id...]`.
+    fn read_attribute_lists(&mut self, block: &Block) {
+        for r in block.records().filter(|r| r.code == 2) {
+            self.attribute_lists.push(r.operands.clone());
+        }
+    }
+
+    /// The name of a metadata kind id, where the module names it.
+    pub fn kind_name(&self, kind: u64) -> Option<&str> {
+        self.kinds
+            .iter()
+            .find(|(k, _)| *k == kind)
+            .map(|(_, n)| n.as_str())
+    }
+
+    /// The node of the attachment among `attachments` whose kind is called `name`.
+    pub fn attachment(&self, attachments: &[Attachment], name: &str) -> Option<MetadataId> {
+        attachments
+            .iter()
+            .find(|a| self.kind_name(a.kind) == Some(name))
+            .map(|a| a.node)
+    }
+
+    /// The attributes a function value carries on itself (the groups of its list whose slot is [`FUNCTION_SLOT`]); none
+    /// for a value that is not a function or names no list.
+    pub fn function_attributes(&self, function: ValueId) -> Vec<&Attribute> {
+        let Some(Value::Function {
+            attributes: Some(list),
+            ..
+        }) = self.values.get(function)
+        else {
+            return Vec::new();
+        };
+        let Some(groups) = self.attribute_lists.get(*list) else {
+            return Vec::new();
+        };
+        groups
+            .iter()
+            .filter_map(|id| {
+                self.attribute_groups
+                    .iter()
+                    .find(|g| g.id == *id && g.slot == FUNCTION_SLOT)
+            })
+            .flat_map(|g| g.attributes.iter())
+            .collect()
+    }
+
+    /// The value of the string attribute `key` on a function (empty where the attribute has no value), if it carries it.
+    pub fn string_attribute(&self, function: ValueId, key: &str) -> Option<&str> {
+        self.function_attributes(function)
+            .into_iter()
+            .find_map(|a| match a {
+                Attribute::String(k, v) if k == key => Some(v.as_str()),
+                _ => None,
+            })
     }
 
     fn read_symbols(&mut self, block: &Block, base: usize) -> Result<()> {
@@ -874,33 +1055,46 @@ fn refused(code: u64) -> &'static str {
     }
 }
 
-/// Marks the instructions a function's attachment block gives the `dx.precise` kind: its records are `[instruction,
-/// (kind, node)...]` (an even number of operands is an attachment of the function itself, which is skipped).
-fn mark_precise(kind: Option<u64>, block: &Block, instructions: &mut [Instruction]) -> Result<()> {
-    let Some(kind) = kind else {
-        return Ok(());
-    };
-    for r in block
-        .records()
-        .filter(|r| r.code == 11 && r.operands.len() % 2 == 1)
-    {
-        let at = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "attachment instruction"))?;
-        if r.operands
-            .get(1..)
+/// Reads a function's attachment block: a record `[instruction, (kind, node)...]` (an odd number of operands) attaches
+/// the pairs to that instruction, a record of an even number of operands, `(kind, node)...`, to the function itself.
+/// An instruction given the `dx.precise` kind is also marked [`Instruction::precise`].
+fn read_attachments(
+    precise: Option<u64>,
+    block: &Block,
+    instructions: &mut [Instruction],
+    function: &mut Vec<Attachment>,
+) -> Result<()> {
+    for r in block.records().filter(|r| r.code == 11) {
+        let per_instruction = r.operands.len() % 2 == 1;
+        let mut attachments = Vec::new();
+        for pair in r
+            .operands
+            .get(usize::from(per_instruction)..)
             .unwrap_or_default()
-            .chunks(2)
-            .any(|pair| pair.first() == Some(&kind))
+            .chunks_exact(2)
         {
-            instructions
-                .get_mut(at)
-                .ok_or_else(|| {
-                    error(
-                        r.at,
-                        format!("an attachment names instruction {at} of a shorter body"),
-                    )
-                })?
-                .precise = true;
+            if let [kind, node] = pair {
+                attachments.push(Attachment {
+                    kind: *kind,
+                    node: usize::try_from(*node).map_err(|_| error(r.at, "attachment node"))?,
+                });
+            }
         }
+        if !per_instruction {
+            function.extend(attachments);
+            continue;
+        }
+        let at = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "attachment instruction"))?;
+        let instruction = instructions.get_mut(at).ok_or_else(|| {
+            error(
+                r.at,
+                format!("an attachment names instruction {at} of a shorter body"),
+            )
+        })?;
+        if precise.is_some_and(|kind| attachments.iter().any(|a| a.kind == kind)) {
+            instruction.precise = true;
+        }
+        instruction.attachments.extend(attachments);
     }
     Ok(())
 }
@@ -925,13 +1119,19 @@ impl Module {
             blocks: 0,
         };
         let mut instructions = Vec::new();
+        let mut function_attachments = Vec::new();
         for e in &block.elements {
             let r = match e {
                 crate::bitstream::Element::Block(b) => {
                     match b.id {
                         CONSTANTS => body.m.read_constants(b)?,
                         VALUE_SYMTAB => body.m.read_symbols(b, 0)?,
-                        METADATA_ATTACHMENT => mark_precise(body.m.precise_kind, b, &mut instructions)?,
+                        METADATA_ATTACHMENT => read_attachments(
+                            body.m.precise_kind,
+                            b,
+                            &mut instructions,
+                            &mut function_attachments,
+                        )?,
                         METADATA | USELIST => {}
                         other => return Err(error(b.at, format!("block {other} in a function"))),
                     }
@@ -1297,6 +1497,7 @@ impl Module {
                 block: body.block,
                 at: r.at,
                 precise: false,
+                attachments: Vec::new(),
             });
             if terminator {
                 body.block = body.block.saturating_add(1);
@@ -1351,6 +1552,7 @@ impl Module {
             first: base,
             locals,
             local_types,
+            attachments: function_attachments,
         })
     }
 
@@ -1411,7 +1613,21 @@ impl Module {
                         let t = m.ty(op(r, 0)?, r.at)?;
                         let pointer = m.intern(Type::Pointer(t, 0));
                         let declaration = op(r, 2)? != 0;
-                        let v = m.push(Value::Function { ty: t, declaration }, pointer, r.at)?;
+                        // the attribute list is named by its 1-based index (0 for none)
+                        let attributes = r
+                            .operands
+                            .get(4)
+                            .and_then(|&n| usize::try_from(n).ok())
+                            .and_then(|n| n.checked_sub(1));
+                        let v = m.push(
+                            Value::Function {
+                                ty: t,
+                                declaration,
+                                attributes,
+                            },
+                            pointer,
+                            r.at,
+                        )?;
                         if !declaration {
                             bodies.push(v);
                         }
@@ -1419,7 +1635,9 @@ impl Module {
                     other => return Err(error(r.at, format!("module record {other}"))),
                 },
                 crate::bitstream::Element::Block(b) => match b.id {
-                    BLOCKINFO | PARAMATTR | PARAMATTR_GROUP | USELIST => {}
+                    BLOCKINFO | USELIST => {}
+                    PARAMATTR_GROUP => m.read_attribute_groups(b)?,
+                    PARAMATTR => m.read_attribute_lists(b),
                     TYPES => m.read_types(b)?,
                     CONSTANTS => m.read_constants(b)?,
                     METADATA => m.read_metadata(b)?,

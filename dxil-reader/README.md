@@ -30,8 +30,10 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   against the bits that remain before anything is allocated. The `llvm-bitcode` crate was considered and not used: it sizes
   allocations from untrusted lengths.
 - **Module** (`module`): LLVM 3.7 IR as DXIL stores it, with relative value ids (module version 1): types, globals and
-  functions, constants (no constant expressions), metadata (strings, values, nodes, named nodes), value names and function
-  bodies. Instructions: binary operators, casts, comparisons, select, extractvalue and insertvalue, vector element and
+  functions, constants (no constant expressions), metadata (strings, values, nodes, named nodes, kind names), the attribute
+  groups and lists (a function names its list; `function_attributes`, `string_attribute`), value names and function
+  bodies; the metadata attached to each instruction (`Instruction::attachments`, with `dx.precise` also as `precise`) and
+  to a function. Instructions: binary operators, casts, comparisons, select, extractvalue and insertvalue, vector element and
   shuffle operations, call, phi, ret, branches, switch, unreachable, alloca, load and store. Any other record is refused by
   name.
 - **Reflection records** (`reflection`): the entry point and what its properties state (`num_threads`, `geometry_state`,
@@ -39,7 +41,13 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   (`elements`, `patch_elements`); the bound resource ranges of `dx.resources` (`ranges`: class, range id, register, count,
   shape, space, element type and stride tags, counter); the field annotations of `dx.typeAnnotations` (`fields`); and the
   rows of an `ISG1`/`OSG1`/`PSG1` part (`signature`); the entry properties' shader flags (`shader_flags`) and each
-  signature element's usage mask (`usage_masks`).
+  signature element's usage mask (`usage_masks`). Every entry property as stored (`entry_properties`) and the typed ones
+  beside the earlier states: the ray payload and attribute sizes, the auto binding space of the entry and of a library's
+  resource record, a required wave size, an amplification program's payload size (its thread group is read by
+  `num_threads` too). Each signature element's tail tags (`element_tags`: the geometry stream, the dynamically indexed
+  components, the usage mask), the optional fields of each resource record (`resource_extras`: an SRV's sample count, a
+  UAV's coherence, rasterizer order and 64-bit atomic use, the tag list), and the string attribute of the entry function
+  that states the denormal mode (`fp32_denorm_mode`).
 - **Pipeline state** (`psv`): the `PSV0` part the validator writes: runtime information (36, 48 or 52 bytes), resource
   records, strings, semantic indices, signature elements and the dependency words.
 - **Runtime data** (`rdat`): a library's subobjects as its `RDAT` part stores them (state object and pipeline configuration,
@@ -65,7 +73,7 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (110 `.dxil` files compiled by dxc 1.7 from the
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (126 `.dxil` files compiled by dxc 1.7 from the
 HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
 in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. No game files are needed.
 

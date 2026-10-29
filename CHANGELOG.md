@@ -18,6 +18,21 @@
 - `rsx-reader`: `vertex::decode` reads RSX vertex program microcode (128-bit slots, a vector and a scalar operation per
   slot) into typed instructions, with `Program::input_mask`, `output_mask` and `register_count` that equal a program
   header's fields in all 170 distinct vertex programs of Tony Hawk's SHRED.
+- `dxil-reader` (breaking: new pub fields): the attribute groups and lists of the module are kept (`Module::attribute_groups`,
+  `attribute_lists`, with `Module::function_attributes` and `string_attribute` for a function value, which names its list
+  in the new field `Value::Function::attributes`), and so are the metadata kind names (`Module::kinds`, `kind_name`) and the
+  metadata attached to each instruction (`Instruction::attachments`; `precise` stays) and to a function
+  (`Function::attachments`). `reflection` reads the entry properties as stored (`entry_properties`) and the ones the
+  games and dxc write beside the existing states: `ray_payload_size`, `ray_attribute_size`, `auto_binding_space` (and
+  `library_binding_space` for the library's resource record), `wave_size`, `amplification_payload_size` (`num_threads`
+  also reads an amplification program's thread group); the tail tags of signature elements (`element_tags`: stream,
+  dynamically indexed components, usage mask; `usage_masks` is the same list through it); the optional fields of the
+  resource records (`resource_extras`: sample count, global coherence, rasterizer order, 64-bit atomic use, the tags);
+  and the entry function's denormal mode (`fp32_denorm_mode`, the string attribute `fp32-denorm-mode`). Code that builds
+  an `Instruction`, a `Function` or a `Value::Function` by struct literal must add the fields. Of the 69,728 programs of
+  skate. and Elden Ring, no function carries `fp32-denorm-mode` (Elden Ring's 4,281 library functions carry nine other
+  string attributes), no element has a tail tag but 3, no resource record sets coherence or rasterizer order, and only
+  seven views of Elden Ring (three with 2 samples, four with 4) and one of skate.'s (2 samples) have a non-zero sample count.
 
 ## 0.3.0 (2026-10-27)
 
