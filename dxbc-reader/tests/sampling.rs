@@ -20,7 +20,10 @@
 //! and its declarations `dcl_sampler s1, mode_default`, `s2, mode_default`, `s4, mode_comparison`.
 use dxbc_reader::{decode, opcode_name, texture_reads};
 
-fn reads(name: &str) -> Vec<(&'static str, u32, Option<u32>, bool, Option<u32>)> {
+/// A texture read as the test compares it: opcode name, texture register, sampler register, comparison, declared mode.
+type Read = (&'static str, u32, Option<u32>, bool, Option<u32>);
+
+fn reads(name: &str) -> Vec<Read> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures")
         .join(name);

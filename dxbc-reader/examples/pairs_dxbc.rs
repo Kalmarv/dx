@@ -6,6 +6,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+/// Per (texture, sampler, comparison, declared mode): the number of instructions, and of each opcode name among them.
+type Pairs = BTreeMap<(String, String, bool, String), (usize, BTreeMap<&'static str, usize>)>;
+
 fn fnv1a64(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325, |h, &b| {
         (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
@@ -50,9 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         programs += 1;
         let hash = fnv1a64(&bytes);
-        // (texture, sampler, comparison, declared mode) -> instruction count and opcode names
-        let mut pairs: BTreeMap<(String, String, bool, String), (usize, BTreeMap<&'static str, usize>)> =
-            BTreeMap::new();
+        let mut pairs = Pairs::new();
         for read in dxbc_reader::texture_reads(&program) {
             let texture = if read.texture_indexed {
                 format!("t[{}+]", read.texture)

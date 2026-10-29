@@ -53,7 +53,6 @@ dependencies = [
 [[package]]
 name = "primase-foundations"
 version = "0.2.1"
-source = "git+https://github.com/Kalmarv/primase-foundations?rev=e895f966130651bd78c47505b53322cc3f58083a#e895f966130651bd78c47505b53322cc3f58083a"
 dependencies = [
  "half",
  "thiserror",
@@ -152,3 +151,187 @@ dependencies = [
  "quote",
  "syn 2.0.119",
 ]
+
+[[patch.unused]]
+name = "primase-naga"
+version = "30.0.1"
+
+[[patch.unused]]
+name = "unity-formats"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "havok-cloth"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "fromsoft-formats"
+version = "0.10.0"
+
+[[patch.unused]]
+name = "frostbite-formats"
+version = "0.2.2"
+
+[[patch.unused]]
+name = "rage-engine-formats"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "monogame-formats"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-animation"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-anvil"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-cache"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-checks"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-core"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-dds"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-exactsum"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-examples"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-fromsoft"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-frostbite"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-glb"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-gltf"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-gta"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-havok"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-image"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-lighting"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-meshops"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-monogame"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-reskate"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-shaunwhite"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-shred"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-skatebird"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-stuntboost"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-texcodec"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-unity"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "primase-web"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "iridia"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-d3d9"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-dxbc"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-dxil"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-exec"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-interface"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "iridia-mojo"
+version = "0.3.0"
+
+[[patch.unused]]
+name = "anvil-formats"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "havok-formats"
+version = "0.8.1"
+
+[[patch.unused]]
+name = "primase-testdata"
+version = "0.1.0"
+
+[[patch.unused]]
+name = "lua51-bytecode"
+version = "0.1.1"
+
+[[patch.unused]]
+name = "rme-formats"
+version = "0.2.0"
+
+[[patch.unused]]
+name = "morpheme-formats"
+version = "0.1.0"

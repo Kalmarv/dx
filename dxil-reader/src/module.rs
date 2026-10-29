@@ -1069,18 +1069,16 @@ fn read_attachments(
     for r in block.records().filter(|r| r.code == 11) {
         let per_instruction = r.operands.len() % 2 == 1;
         let mut attachments = Vec::new();
-        for pair in r
+        let (pairs, _) = r
             .operands
             .get(usize::from(per_instruction)..)
             .unwrap_or_default()
-            .chunks_exact(2)
-        {
-            if let [kind, node] = pair {
-                attachments.push(Attachment {
-                    kind: *kind,
-                    node: usize::try_from(*node).map_err(|_| error(r.at, "attachment node"))?,
-                });
-            }
+            .as_chunks::<2>();
+        for &[kind, node] in pairs {
+            attachments.push(Attachment {
+                kind,
+                node: usize::try_from(node).map_err(|_| error(r.at, "attachment node"))?,
+            });
         }
         if !per_instruction {
             function.extend(attachments);
