@@ -1,8 +1,8 @@
 //! A reader of Shader Model 6 programs (DXIL) as Direct3D stores them in a `DXBC` container: the program part's header
 //! ([`program`]), its LLVM bitcode through a bounded bitstream reader ([`bitstream`]) into the module it holds
 //! ([`mod@module`]), the entry point's metadata, resource records and signature parts ([`reflection`]), the validator's
-//! pipeline state record ([`psv`]), and a library's runtime data ([`rdat`]), each as the records the file stores with
-//! DXIL's and D3D's own numbers.
+//! pipeline state record ([`psv`]), a library's runtime data ([`rdat`]) and the texture and sampler each sampling call
+//! uses ([`sampling`]), each as the records the file stores with DXIL's and D3D's own numbers.
 //!
 //! It reads and checks bytes and never interprets them for an API: a resource is its record's class, range and shape
 //! numbers, a signature element its stored name, index, register and masks. Mapping those into a graphics API's
@@ -29,6 +29,7 @@ pub mod module;
 pub mod psv;
 pub mod rdat;
 pub mod reflection;
+pub mod sampling;
 
 pub use module::Module;
 

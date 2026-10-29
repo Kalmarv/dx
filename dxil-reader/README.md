@@ -36,6 +36,13 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   to a function. Instructions: binary operators, casts, comparisons, select, extractvalue and insertvalue, vector element and
   shuffle operations, call, phi, ret, branches, switch, unreachable, alloca, load and store. Any other record is refused by
   name.
+- **Texture reads** (`sampling::texture_reads`): every `sample`, `sampleBias`, `sampleLevel`, `sampleGrad`, `sampleCmp`,
+  `sampleCmpLevelZero`, `textureGather`, `textureGatherCmp`, `calculateLOD`, `textureLoad`, `bufferLoad` and
+  `rawBufferLoad` call, with the class, space and register of its resource's handle and of its sampler's (the handle is
+  followed through `annotateHandle` to its `createHandle` or `createHandleFromBinding` call), and whether the call
+  compares. In Elden Ring's 12,754 distinct programs a texture register is read with exactly one sampler register in all
+  but 15 of 103,299 sampled slots. `cargo run -p dxil-reader --example pairs_dxil -- <files or folders>` prints the pairs
+  of each program.
 - **Reflection records** (`reflection`): the entry point and what its properties state (`num_threads`, `geometry_state`,
   `mesh_state`, `hull_state`, `domain_state`; a library's `library_kind`); signature elements and their packing
   (`elements`, `patch_elements`); the bound resource ranges of `dx.resources` (`ranges`: class, range id, register, count,
@@ -73,7 +80,7 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (126 `.dxil` files compiled by dxc 1.7 from the
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (129 `.dxil` files compiled by dxc 1.7 from the
 HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
 in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. No game files are needed.
 

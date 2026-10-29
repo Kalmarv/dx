@@ -43,6 +43,12 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   flags (bits 0 to 5 occur), a geometry program's input primitive, output topology and vertex count, and a hull and
   domain program's control point counts, domain, partitioning, output primitive, largest factor and phase instance
   counts. The values are Direct3D's own numbers, as stored.
+- **Texture reads** (`texture_reads`): every `sample`, `gather4`, `lod` and `ld` family instruction that names a `t`
+  register, with the texture register, the sampler register (none for a load, which uses no sampler), whether the
+  instruction compares, and the mode the program declares the sampler with. In Sekiro's 9,204 distinct programs (the
+  renderer, effect, material and character bundles) a texture register is read with exactly one sampler register in all
+  but 11 of 89,699 sampled slots, and an instruction compares exactly when its sampler is declared a comparison sampler.
+  `cargo run -p dxbc-reader --example pairs_dxbc -- <files or folders>` prints the pairs of each program.
 - **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag) and the Shader Model 5 one
   (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
 - **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
@@ -75,7 +81,7 @@ Shader Model 4's and 5's are refused. Shader Model 6 is `dxil-reader`'s.
 ## Tests
 
 `cargo test -p dxbc-reader`: token streams assembled by hand (a vertex program, typed declarations, an instruction's
-controls and extended tokens, the refusals by name) and the 29 committed fixtures in `tests/fixtures`, compiled by `fxc`
+controls and extended tokens, the refusals by name) and the 30 committed fixtures in `tests/fixtures`, compiled by `fxc`
 from the HLSL beside each (`.od` files with `/Od`), each read to its end. No game files are needed.
 
 License: GPL-3.0-or-later.

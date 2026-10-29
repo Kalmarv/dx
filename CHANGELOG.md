@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `dxbc-reader`: `texture_reads(&Decoded)` lists the texture reads of a program (`TextureRead`: the instruction's word and
+  opcode, the `t` register, the `s` register, whether the instruction compares, how `dcl_sampler` declares the sampler),
+  additive. `dxil-reader`: `sampling::texture_reads(&Module)` lists the sampling and loading `dx.op` calls with the class,
+  space and register of the texture's and the sampler's handles (`Handle`, `TextureRead`), additive. Both give a register
+  or a handle the program computes as unresolved (`texture_indexed`, `None`). Run over the 9,204 distinct programs of
+  Sekiro and the 12,754 of Elden Ring that the render-graph work extracted, the pairs equal the instruction counts of
+  fxc's and dxc's own disassembly of every one of them.
 - `dxbc-reader`: every instruction opcode has an operand format, `operand_format(opcode)`: how many destination operands
   and how many source operands the token format gives it, and what each carries (`OperandClass`: float, double, integer,
   a register with no data of its own such as a resource, sampler, view or stream, or data whose type the sources disagree

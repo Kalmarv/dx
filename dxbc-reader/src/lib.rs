@@ -28,6 +28,7 @@ pub mod decode;
 mod format;
 mod opcodes;
 pub mod reflection;
+mod sampling;
 pub mod statistics;
 
 pub use controls::{GlobalFlags, InfoReturn, SyncFlags};
@@ -40,6 +41,7 @@ pub use reflection::{
     Rdef, RdefBinding, RdefBuffer, RdefMember, RdefType, RdefVariable, SignatureElement,
     patch_signature_elements, program_type, rdef, rdef_target, signature, signature_elements,
 };
+pub use sampling::{TextureRead, texture_reads};
 pub use statistics::{Statistics, statistics};
 
 /// Something the reader can't read: the 32-bit word of the container's chunk or token stream where it is, and what.
