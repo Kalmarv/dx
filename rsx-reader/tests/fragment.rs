@@ -187,7 +187,10 @@ fn malformed_programs_and_unproven_flow_cases_refuse_explicitly() {
             .detail
             .contains("unsupported")
     );
-    let p = decode(&encode(&instruction(65, 0, true))).unwrap();
+    // a call (its target here the end of the program) is read and then refused by the flow analysis
+    let mut call = instruction(65, 0, true);
+    call[2] = (1 << 31) | 4;
+    let p = decode(&encode(&call)).unwrap();
     assert!(analyze(&p, &[r(0)]).unwrap_err().detail.contains("calls"));
     let mut branch = instruction(66, 0, false);
     branch[2] |= 5;
@@ -303,7 +306,7 @@ fn a_fragment_program_error_names_the_fragment_program_not_a_container() {
     assert!(!shown.contains("CgBinaryProgram"), "{shown}");
     // the analysis reports its errors the same way
     let mut call = instruction(0x41, 0, true);
-    call[2] |= 1 << 31;
+    call[2] = (1 << 31) | 4; // a call to the end of the program
     let p = decode(&encode(&call)).unwrap();
     let shown = analyze(&p, &[r(0)]).unwrap_err().to_string();
     assert!(shown.contains("fragment program at byte 0"), "{shown}");
@@ -354,4 +357,208 @@ fn an_input_index_names_the_colour_or_the_texture_coordinate_set_it_reads() {
         assert_eq!(InputSource::from_index(index).index(), index);
     }
     assert_eq!(InputSource::from_index(12), InputSource::TexCoord(8));
+}
+
+#[test]
+fn a_call_names_its_target_and_branch_offsets_are_31_bit_words() {
+    // CAL (opcode 0x41, the branch flag in bit 31 of the second operand word) calls word 8 of the program, byte 32
+    let mut call = instruction(0x41, 0, false);
+    call[2] = (1 << 31) | 8;
+    let code = [call, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+    let p = decode(&encode(&code)).unwrap();
+    assert_eq!(
+        p.instructions[0].control,
+        Some(Control::Call {
+            target: 32,
+            encoded: [call[1], call[2], call[3]]
+        })
+    );
+    assert_eq!(p.instructions[2].control, Some(Control::Return));
+    // a target in the middle of an instruction is refused
+    call[2] = (1 << 31) | 3;
+    let code = [call, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+    let error = decode(&encode(&code)).unwrap_err();
+    assert_eq!((error.offset, error.detail.as_str()), (0, "invalid call target"));
+    // the offsets of an IF are 31-bit: bit 31 of the third operand word is not part of the end offset
+    let mut branch = instruction(0x42, 0, false);
+    branch[1] = 6 << 18;
+    branch[2] = (1 << 31) | 12;
+    branch[3] = (1 << 31) | 16;
+    let code = [
+        branch,
+        sample(0, 1, false),
+        instruction(0, 0, false),
+        sample(0, 2, false),
+        instruction(0, 0, true),
+    ]
+    .concat();
+    let p = decode(&encode(&code)).unwrap();
+    assert_eq!(
+        p.instructions[0].control,
+        Some(Control::If {
+            else_offset: 48,
+            end_offset: 64
+        })
+    );
+    // the bit is still reported as stored
+    assert!(p.instructions[0].interpolant_flag);
+}
+
+#[test]
+fn loop_and_repeat_have_their_own_fields() {
+    // LOOP (0x43): count 3, initial counter 1, increment 2, ends at word 8 (byte 32)
+    let mut lp = instruction(0x43, 0, false);
+    lp[2] = (1 << 31) | (3 << 2) | (1 << 10) | (2 << 19);
+    lp[3] = 8;
+    let code = [lp, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+    let p = decode(&encode(&code)).unwrap();
+    assert_eq!(
+        p.instructions[0].control,
+        Some(Control::Loop {
+            count: 3,
+            initial: 1,
+            increment: 2,
+            end_offset: 32
+        })
+    );
+    // REP (0x44): the three byte fields are kept as stored
+    let mut rep = instruction(0x44, 0, false);
+    rep[2] = (1 << 31) | (5 << 2) | (6 << 10) | (7 << 19);
+    rep[3] = 8;
+    let code = [rep, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+    let p = decode(&encode(&code)).unwrap();
+    assert_eq!(
+        p.instructions[0].control,
+        Some(Control::Repeat {
+            counts: [5, 6, 7],
+            end_offset: 32
+        })
+    );
+    // an end in the middle of an instruction is refused for both
+    for op in [0x43, 0x44] {
+        let mut l = instruction(op, 0, false);
+        l[2] |= 1 << 31;
+        l[3] = 5;
+        let code = [l, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+        let error = decode(&encode(&code)).unwrap_err();
+        assert_eq!(
+            (error.offset, error.detail.as_str()),
+            (0, "invalid loop boundary")
+        );
+    }
+    // texture flow analysis refuses both, as it refuses calls
+    for op in [0x43, 0x44, 0x41] {
+        let mut l = instruction(op, 0, false);
+        // a call's target is the second operand word, a loop's end the third
+        l[2] = (1 << 31) | 8;
+        l[3] = 8;
+        let code = [l, instruction(1, 0, false), instruction(0x45, 0, true)].concat();
+        let p = decode(&encode(&code)).unwrap();
+        let error = analyze(&p, &[r(0)]).unwrap_err();
+        assert!(error.detail.contains("calls, loops or BRK"), "{op:#x}: {error:?}");
+    }
+}
+
+/// The opcodes `nvfx_shader.h` of Mesa's nouveau driver defines, with the number each has (read off its
+/// `NVFX_FP_OP_OPCODE_*` and `NV40_FP_OP_BRA_OPCODE_*` defines, an NV30-only or NV40-only suffix removed, a branch
+/// opcode as 0x40 plus its code).
+const MESA: [(&str, u8); 55] = [
+    ("NOP", 0x00),
+    ("MOV", 0x01),
+    ("MUL", 0x02),
+    ("ADD", 0x03),
+    ("MAD", 0x04),
+    ("DP3", 0x05),
+    ("DP4", 0x06),
+    ("DST", 0x07),
+    ("MIN", 0x08),
+    ("MAX", 0x09),
+    ("SLT", 0x0a),
+    ("SGE", 0x0b),
+    ("SLE", 0x0c),
+    ("SGT", 0x0d),
+    ("SNE", 0x0e),
+    ("SEQ", 0x0f),
+    ("FRC", 0x10),
+    ("FLR", 0x11),
+    ("KIL", 0x12),
+    ("PK4B", 0x13),
+    ("UP4B", 0x14),
+    ("DDX", 0x15),
+    ("DDY", 0x16),
+    ("TEX", 0x17),
+    ("TXP", 0x18),
+    ("TXD", 0x19),
+    ("RCP", 0x1a),
+    ("EX2", 0x1c),
+    ("LG2", 0x1d),
+    ("STR", 0x20),
+    ("SFL", 0x21),
+    ("COS", 0x22),
+    ("SIN", 0x23),
+    ("PK2H", 0x24),
+    ("UP2H", 0x25),
+    ("PK4UB", 0x27),
+    ("UP4UB", 0x28),
+    ("PK2US", 0x29),
+    ("UP2US", 0x2a),
+    ("DP2A", 0x2e),
+    ("TXB", 0x31),
+    ("DIV", 0x3a),
+    ("RSQ", 0x1b),
+    ("LIT", 0x1e),
+    ("LRP", 0x1f),
+    ("POW", 0x26),
+    ("RFL", 0x36),
+    ("TXL", 0x2f),
+    ("LITEX2", 0x3c),
+    ("BRK", 0x40),
+    ("CAL", 0x41),
+    ("IF", 0x42),
+    ("LOOP", 0x43),
+    ("REP", 0x44),
+    ("RET", 0x45),
+];
+
+#[test]
+fn mesas_names_for_the_opcode_numbers_are_the_alias_table() {
+    // every number Mesa defines is an opcode here, under the name Mesa gives it
+    for (name, code) in MESA {
+        let opcode = Opcode::from_code(code).unwrap_or_else(|| panic!("{name} ({code:#x}) has no opcode"));
+        assert_eq!(opcode.mesa_name(), Some(name), "{code:#x}");
+        assert_eq!(opcode as u8, code);
+    }
+    // the numbers it does not define are the opcodes without an alias
+    let mut without = Vec::new();
+    for code in 0..=0x7f_u8 {
+        if let Some(opcode) = Opcode::from_code(code)
+            && !MESA.iter().any(|(_, c)| *c == code)
+        {
+            assert_eq!(opcode.mesa_name(), None, "{code:#x}");
+            without.push(opcode.mnemonic());
+        }
+    }
+    assert_eq!(without, ["PKG", "UPG", "DP2", "NRM", "DIVSQ", "FENCT", "FENCB"]);
+    // RPCS3's names are the mnemonics; the two agree except for these
+    let differing: Vec<_> = MESA
+        .iter()
+        .filter(|(name, code)| Opcode::from_code(*code).is_some_and(|o| o.mnemonic() != *name))
+        .map(|(name, code)| (Opcode::from_code(*code).unwrap().mnemonic(), *name))
+        .collect();
+    assert_eq!(
+        differing,
+        [
+            ("PK4", "PK4B"),
+            ("UP4", "UP4B"),
+            ("PK2", "PK2H"),
+            ("UP2", "UP2H"),
+            ("PKB", "PK4UB"),
+            ("UPB", "UP4UB"),
+            ("PK16", "PK2US"),
+            ("UP16", "UP2US"),
+            ("REFL", "RFL"),
+            ("LIF", "LITEX2"),
+            ("IFE", "IF"),
+        ]
+    );
 }

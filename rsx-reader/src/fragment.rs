@@ -43,6 +43,35 @@ opcodes! {
 }
 
 impl Opcode {
+    /// The opcode with this number (the 7-bit value of the instruction's opcode field), if the reader has an entry for it.
+    pub fn from_code(code: u8) -> Option<Self> {
+        Self::read(code)
+    }
+
+    /// The name Mesa's nouveau driver gives the opcode number, where its `nvfx_shader.h` defines one; `None` for the
+    /// numbers it does not (`PKG`, `UPG`, `DP2`, `NRM`, `DIVSQ` and the two fences). [`Opcode::mnemonic`] is the name
+    /// RPCS3's declarations use. The two agree except for `PK4`/`PK4B`, `UP4`/`UP4B`, `PK2`/`PK2H`, `UP2`/`UP2H`,
+    /// `PKB`/`PK4UB`, `UPB`/`UP4UB`, `PK16`/`PK2US`, `UP16`/`UP2US`, `REFL`/`RFL`, `LIF`/`LITEX2` and `IFE`/`IF`.
+    pub fn mesa_name(self) -> Option<&'static str> {
+        Some(match self {
+            Self::PK4 => "PK4B",
+            Self::UP4 => "UP4B",
+            Self::PK2 => "PK2H",
+            Self::UP2 => "UP2H",
+            Self::PKB => "PK4UB",
+            Self::UPB => "UP4UB",
+            Self::PK16 => "PK2US",
+            Self::UP16 => "UP2US",
+            Self::REFL => "RFL",
+            Self::LIF => "LITEX2",
+            Self::IFE => "IF",
+            Self::PKG | Self::UPG | Self::DP2 | Self::NRM | Self::DIVSQ | Self::FENCT | Self::FENCB => {
+                return None;
+            }
+            other => other.mnemonic(),
+        })
+    }
+
     /// Whether the instruction samples a texture.
     pub fn samples_texture(self) -> bool {
         matches!(self, Self::TEX | Self::TXP | Self::TXD | Self::TXL | Self::TXB)
@@ -191,7 +220,8 @@ pub enum Control {
         /// The byte offset where the block ends.
         end_offset: usize,
     },
-    /// `LOOP` or `REP`.
+    /// `LOOP`: the three byte fields of the second operand word are the count (bits 2 to 9), the initial counter value
+    /// (10 to 17) and the increment (19 to 26), as RPCS3 and Mesa name them. No program on Tony Hawk's SHRED disc uses it.
     Loop {
         /// The iteration count.
         count: u8,
@@ -199,11 +229,22 @@ pub enum Control {
         initial: u8,
         /// The counter increment.
         increment: u8,
-        /// The byte offset where the loop ends.
+        /// The byte offset where the loop ends (the third operand word without its top bit).
         end_offset: usize,
     },
-    /// No call-target interpretation or execution is claimed by this reader.
+    /// `REP`: the same three byte fields, which Mesa found always filled with one value (a repeat count) and names
+    /// `count1`, `count2` and `count3`; RPCS3 reads the first as the repeat count. Kept as stored, in that order.
+    Repeat {
+        /// The three counts as stored (bits 2 to 9, 10 to 17 and 19 to 26 of the second operand word).
+        counts: [u8; 3],
+        /// The byte offset where the repeated block ends.
+        end_offset: usize,
+    },
+    /// `CAL`: a subroutine call. The target is the second operand word without its top bit, a count of 32-bit words as
+    /// every other branch offset is (Mesa's `NV40_FP_OP_SUB_OFFSET`); it must be an instruction boundary.
     Call {
+        /// The byte offset of the first instruction of the subroutine.
+        target: usize,
         /// The instruction's three operand words, as stored.
         encoded: [u32; 3],
     },
@@ -375,21 +416,34 @@ pub fn decode(bytes: &[u8]) -> Result<Program, Error> {
                     .map_err(|_| error(at, "branch address overflow"))?
                     .checked_mul(4)
                     .ok_or_else(|| error(at, "branch address overflow"))?,
-                end_offset: usize::try_from(c)
+                end_offset: usize::try_from(c & 0x7fff_ffff)
                     .map_err(|_| error(at, "branch address overflow"))?
                     .checked_mul(4)
                     .ok_or_else(|| error(at, "branch address overflow"))?,
             }),
-            Opcode::LOOP | Opcode::REP => Some(Control::Loop {
+            Opcode::LOOP => Some(Control::Loop {
                 count: bits8(b, 2, 8),
                 initial: bits8(b, 10, 8),
                 increment: bits8(b, 19, 8),
-                end_offset: usize::try_from(c)
+                end_offset: usize::try_from(c & 0x7fff_ffff)
                     .map_err(|_| error(at, "loop address overflow"))?
                     .checked_mul(4)
                     .ok_or_else(|| error(at, "loop address overflow"))?,
             }),
-            Opcode::CAL => Some(Control::Call { encoded: [a, b, c] }),
+            Opcode::REP => Some(Control::Repeat {
+                counts: [bits8(b, 2, 8), bits8(b, 10, 8), bits8(b, 19, 8)],
+                end_offset: usize::try_from(c & 0x7fff_ffff)
+                    .map_err(|_| error(at, "loop address overflow"))?
+                    .checked_mul(4)
+                    .ok_or_else(|| error(at, "loop address overflow"))?,
+            }),
+            Opcode::CAL => Some(Control::Call {
+                target: usize::try_from(b & 0x7fff_ffff)
+                    .map_err(|_| error(at, "call address overflow"))?
+                    .checked_mul(4)
+                    .ok_or_else(|| error(at, "call address overflow"))?,
+                encoded: [a, b, c],
+            }),
             Opcode::BRK => Some(Control::Break),
             Opcode::RET => Some(Control::Return),
             _ => None,
@@ -451,10 +505,13 @@ pub fn decode(bytes: &[u8]) -> Result<Program, Error> {
             {
                 return Err(error(i.offset, "invalid IF boundaries"));
             }
-            Some(Control::Loop { end_offset, .. })
+            Some(Control::Loop { end_offset, .. } | Control::Repeat { end_offset, .. })
                 if !boundary(end_offset) || end_offset < i.offset.saturating_add(i.size) =>
             {
                 return Err(error(i.offset, "invalid loop boundary"));
+            }
+            Some(Control::Call { target, .. }) if !boundary(target) => {
+                return Err(error(i.offset, "invalid call target"));
             }
             _ => {}
         }

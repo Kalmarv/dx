@@ -15,6 +15,15 @@
   digest `checksum` computes), `repair_digest` rewrites the digest of a container edited in place, `replace_part` replaces
   or appends one part. `serialize(&chunks(bytes)?)` is `bytes` again for every container that stores the digest
   `checksum` computes: all 77,457 stock containers of the five games.
+- `rsx-reader` fragment programs (breaking: `fragment::Control` changes): a `CAL` names its target (`Control::Call::target`, a
+  byte offset like every other branch offset, which `decode` now requires to be an instruction boundary), `REP` has its
+  own variant `Control::Repeat { counts, end_offset }` (it shared `Control::Loop`, whose `initial` and `increment` it
+  does not have: Mesa found the three byte fields always filled with one value), and the end offsets of `IFE`, `LOOP`
+  and `REP` are masked to 31 bits as the else offset was. `Opcode::from_code` and `Opcode::mesa_name` give the opcode of a
+  number and Mesa's name for it, the table of the 55 numbers Mesa's `nvfx_shader.h` defines (11 are named differently from
+  RPCS3's; `PKG`, `UPG`, `DP2`, `NRM`, `DIVSQ` and the two fences have no Mesa name). No `CAL`, `LOOP`, `REP` or `BRK` occurs in
+  the 3,267 distinct fragment microcodes of Tony Hawk's SHRED (its branch opcodes are `IFE`, 536 times, with bits 30 and 31
+  of the end offset clear in all, and `RET`, 3 times).
 - `rsx-reader`: `vertex::decode` reads RSX vertex program microcode (128-bit slots, a vector and a scalar operation per
   slot) into typed instructions, with `Program::input_mask`, `output_mask` and `register_count` that equal a program
   header's fields in all 170 distinct vertex programs of Tony Hawk's SHRED.

@@ -159,7 +159,7 @@ pub fn analyze(program: &Program, outputs: &[Register]) -> Result<Analysis, Erro
                 else_offset,
                 end_offset,
             }) => branches.push((n, index(else_offset), index(end_offset))),
-            Some(Control::Loop { .. } | Control::Call { .. } | Control::Break) => {
+            Some(Control::Loop { .. } | Control::Repeat { .. } | Control::Call { .. } | Control::Break) => {
                 return Err(error(
                     i.offset,
                     "texture flow analysis does not support calls, loops or BRK",

@@ -34,8 +34,10 @@ Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the sour
   constant slots.
 - **`fragment::decode`** reads unchanged big-endian fragment microcode into instructions, rotating each word's halfwords
   first. It keeps sources, swizzles, predicates, destination masks, modifier bits, texture units, control-flow offsets and
-  inline float bits. A constant takes a full extra slot shared by the instruction's constant sources. `disassemble`
-  produces stable inspection text.
+  inline float bits. A constant takes a full extra slot shared by the instruction's constant sources. Branch offsets
+  are 31-bit counts of 32-bit words (the top bit of the word is the branch flag, or a flag of its own), a `CAL` names its
+  target as a byte offset, and `LOOP` and `REP` have their own fields. `Opcode::mesa_name` gives the name Mesa's nouveau
+  driver uses where it differs from RPCS3's. `disassemble` produces stable inspection text.
 - **`vertex::decode`** reads vertex microcode (16-byte slots of four big-endian words, each slot a vector operation and a
   scalar operation sharing three sources) into typed instructions: opcodes, sources with their registers, swizzles, negate and
   absolute value, destinations (a temporary or an output) and write masks of each operation, the saturate and condition
@@ -54,7 +56,7 @@ Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the sour
   is added. Errors name the byte offset.
 - `fragment::decode` requires `END` at the exact end of the microcode and refuses reserved source types, opcodes it has no
   entry for (the bump-environment opcodes, whose encoding is unproven, among them; the error gives the opcode number),
-  incomplete constants and branches into constants.
+  incomplete constants and branches into constants, and a branch, loop or call target that is not an instruction boundary.
 - The register overlap in `flow` follows the RSX register file's byte ranges (four 2-byte lanes per H register and four
   4-byte lanes per R register), which is physical binary addressing and differs from the non-overlapping named temporaries
   of the NV program language.
