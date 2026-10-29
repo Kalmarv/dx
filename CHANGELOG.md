@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-10-29)
 
 - `dxbc-reader`: `texture_reads(&Decoded)` lists the texture reads of a program (`TextureRead`: the instruction's word and
   opcode, the `t` register, the `s` register, whether the instruction compares, how `dcl_sampler` declares the sampler),
