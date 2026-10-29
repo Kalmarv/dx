@@ -11,6 +11,14 @@
   `dxbc_defs.cpp` both publish; their operand counts agree for every opcode both list, and every one of the 7,729
   Shader Model 4 and 5 programs of Sekiro, Riders Republic and Sledding Game decodes under it (the class of each slot
   agrees with the register it holds).
+- `dxbc-reader`: typed views of the opcode token's control bits, additive: `Instruction::precise_mask` (the `precise`
+  mask of bits 19 to 22), `sync_flags` (`SyncFlags`: threads in group, group shared memory, UAV group, UAV global),
+  `info_return` (`InfoReturn` of `resinfo` and `sample_info`), `Declaration::global_flags` (`GlobalFlags`),
+  `geometry_input_primitive`, `geometry_output_topology`, `max_output_vertex_count`, `input_control_point_count`,
+  `output_control_point_count`, `tessellator_domain`, `tessellator_partitioning`, `tessellator_output_primitive`,
+  `hull_max_tess_factor`, `fork_phase_instance_count` and `join_phase_instance_count`. Their expected values are read off
+  Microsoft's disassembly of fxc output; the games' programs use all of them but the reciprocal-float query type and the
+  join phase count.
 - `dxcontainer`: `serialize` writes parts as a container (header, directory, the parts in order, exactly as given, the
   digest `checksum` computes), `repair_digest` rewrites the digest of a container edited in place, `replace_part` replaces
   or appends one part. `serialize(&chunks(bytes)?)` is `bytes` again for every container that stores the digest

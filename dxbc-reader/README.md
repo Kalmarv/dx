@@ -36,6 +36,13 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   operand counts agree for every opcode both list); `call`, `callc`, `label` and `interface_call` have none. All 3,415,319
   instructions of the 7,729 programs of Sekiro, Riders Republic and Sledding Game have the count and the register class
   their opcode's format gives (109 of the 180 opcodes with a format occur in them).
+- **Control bits** (`Instruction::precise_mask`, `sync_flags`, `info_return`; `Declaration::global_flags` and the
+  accessors of the geometry and tessellation declarations): the bits of the opcode token that the programs of the three
+  games use, read as the fields the token format gives them: the `precise` mask (4,960 instructions of Riders Republic's
+  programs), the flags of a `sync` (245 in Riders Republic), the return type of `resinfo` and `sample_info`, the global
+  flags (bits 0 to 5 occur), a geometry program's input primitive, output topology and vertex count, and a hull and
+  domain program's control point counts, domain, partitioning, output primitive, largest factor and phase instance
+  counts. The values are Direct3D's own numbers, as stored.
 - **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag) and the Shader Model 5 one
   (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
 - **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
@@ -56,13 +63,19 @@ dimensions, an operand count other than the opcode's format) is an `Error` namin
 ## What it does not do
 
 It does not execute, translate or validate programs. Declarations of the tessellation and geometry stages (and interface
-tables) are kept as `Declared::Other` with their raw words rather than typed. `RDEF` parts of other record layouts than
+tables) are kept as `Declared::Other` with their raw words (`Declaration`'s accessors read their values). Nothing in the
+7,729 programs of Sekiro, Riders Republic and Sledding Game needs more: they hold no Shader Model 5.1 program (their
+version tokens are 4.0 and 5.0), no 64-bit immediate or 64-bit index, no operand register type the decoder lacks, no
+extended operand token but the modifier, no `interface_call` or interface declaration, and no signature element with a
+nonzero stream or minimum-precision column (all 691,630 elements of the `ISG1`, `OSG1`, `OSG5` and `PSG1` parts of the five
+games' containers state stream 0 and minimum precision 0, so the signature records do not carry them); the decoder
+refuses each of the other cases by name rather than reading it. `RDEF` parts of other record layouts than
 Shader Model 4's and 5's are refused. Shader Model 6 is `dxil-reader`'s.
 
 ## Tests
 
 `cargo test -p dxbc-reader`: token streams assembled by hand (a vertex program, typed declarations, an instruction's
-controls and extended tokens, the refusals by name) and the 24 committed fixtures in `tests/fixtures`, compiled by `fxc`
+controls and extended tokens, the refusals by name) and the 29 committed fixtures in `tests/fixtures`, compiled by `fxc`
 from the HLSL beside each (`.od` files with `/Od`), each read to its end. No game files are needed.
 
 License: GPL-3.0-or-later.

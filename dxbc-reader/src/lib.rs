@@ -23,12 +23,14 @@
 #![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
+mod controls;
 pub mod decode;
 mod format;
 mod opcodes;
 pub mod reflection;
 pub mod statistics;
 
+pub use controls::{GlobalFlags, InfoReturn, SyncFlags};
 pub use decode::{
     Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, Selection, decode,
     opcode_name,

@@ -102,7 +102,7 @@ fn every_fixture_instruction_has_its_formats_operand_count() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 418, "instructions with a format in the fixtures");
+    assert_eq!(checked, 467, "instructions with a format in the fixtures");
 }
 
 /// The first instruction of `name` with opcode `from` has its opcode token changed to `to`.
