@@ -61,8 +61,8 @@ compiles; the programs take a file path, for instance `cargo run -p dxbc-reader 
   is not an authenticity check.
 - `dxbc-reader` reads Shader Model 4 and 5 only; `dxil-reader` reads the LLVM IR that DXIL uses, not arbitrary LLVM bitcode,
   and refuses instruction records DXIL does not use.
-- `rsx-reader` keeps vertex program microcode encoded and decodes fragment microcode only; it reads one revision (6) of
-  `CgBinaryProgram`. Its dependency analysis is conservative, not an evaluator.
+- `rsx-reader` decodes both vertex and fragment microcode and reads revision 6 of `CgBinaryProgram`.
+  Its fragment dependency analysis is conservative, not an evaluator.
 - The minimum supported Rust version is the pinned toolchain, 1.99. The four crates are on crates.io
   (`cargo add dxbc-reader`, and so on).
 
@@ -84,6 +84,9 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 
 The crates depend on [`primase-foundations`](https://github.com/Kalmarv/primase-foundations) (a bounds-checked byte `View` and
 an MD5 block function), pinned to a commit.
+
+`dxcontainer` also writes containers (`serialize`), repairs their digest (`repair_digest`) and replaces or appends
+one part (`replace_part`). The reader does not implicitly compare the stored digest with `checksum`.
 
 ## Contributing
 

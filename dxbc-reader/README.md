@@ -84,4 +84,11 @@ Shader Model 4's and 5's are refused. Shader Model 6 is `dxil-reader`'s.
 controls and extended tokens, the refusals by name) and the 30 committed fixtures in `tests/fixtures`, compiled by `fxc`
 from the HLSL beside each (`.od` files with `/Od`), each read to its end. No game files are needed.
 
+## Check the examples
+
+From the repository root, `cargo test -p dxbc-reader --doc` checks the crate documentation, and
+`cargo build -p dxbc-reader --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
+
 License: GPL-3.0-or-later.
+
+`sample_info` and `sample_pos` can query the rasterizer register (operand type 14), retained as the token format names it.

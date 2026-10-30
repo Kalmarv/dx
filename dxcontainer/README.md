@@ -15,6 +15,7 @@ A shader-patching mod edits a part and writes the container back:
 
 ```rust
 let bytes = std::fs::read("shader.dxbc")?;
+let new_program = std::fs::read("replacement.shex")?; // a replacement SHEX part payload
 let patched = dxcontainer::replace_part(&bytes, *b"SHEX", &new_program)?; // the other parts as they were, the digest repaired
 std::fs::write("patched.dxbc", patched)?;
 ```
@@ -58,5 +59,10 @@ digest). It interprets no part but `SFI0`; `dxbc-reader` (Shader Model 4 and 5) 
 
 `cargo test -p dxcontainer`: containers built by hand for each refusal, every truncation of one, and the committed
 fixtures of `dxbc-reader` and `dxil-reader` read to their end. No game files are needed.
+
+## Check the examples
+
+From the repository root, `cargo test -p dxcontainer --doc` checks the crate documentation, and
+`cargo build -p dxcontainer --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
 
 License: GPL-3.0-or-later.

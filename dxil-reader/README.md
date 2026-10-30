@@ -84,4 +84,9 @@ because a metadata node has no position of its own.
 HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
 in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. No game files are needed.
 
+## Check the examples
+
+From the repository root, `cargo test -p dxil-reader --doc` checks the crate documentation, and
+`cargo build -p dxil-reader --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
+
 License: GPL-3.0-or-later.

@@ -93,4 +93,9 @@ that source in the decoded instruction; RPCS3's `GLSLCommon.cpp` sampling templa
 `cargo test -p rsx-reader`: containers, descriptors and fragment programs laid out by hand, bit by bit, without an encoder,
 including metadata fields a compiler may omit, inline constants, flow regions and the refusals. No game files are needed.
 
+## Check the examples
+
+From the repository root, `cargo test -p rsx-reader --doc` checks the crate documentation, and
+`cargo build -p rsx-reader --examples` builds its example programs. Examples that read paths need the caller's files; the repository ships no game assets.
+
 License: GPL-3.0-or-later.
