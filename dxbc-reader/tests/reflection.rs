@@ -34,8 +34,8 @@ fn shape(rdef: &Rdef) -> String {
     for b in &rdef.bindings {
         writeln!(
             out,
-            "binding {} kind {} returns {} dimension {} samples {} register {} count {} flags {}",
-            b.name, b.kind, b.returns, b.dimension, b.samples, b.register, b.count, b.flags
+            "binding {} kind {} returns {} dimension {} samples {} register {} count {} flags {} space {} id {:?}",
+            b.name, b.kind, b.returns, b.dimension, b.samples, b.register, b.count, b.flags, b.space, b.id
         )
         .unwrap();
     }
@@ -49,8 +49,8 @@ fn shape(rdef: &Rdef) -> String {
         for v in &buffer.variables {
             writeln!(
                 out,
-                " variable {} at {} size {} default {:?}",
-                v.name, v.offset, v.size, v.default
+                " variable {} at {} size {} flags {} default {:?}",
+                v.name, v.offset, v.size, v.flags, v.default
             )
             .unwrap();
             shape_type(&mut out, &v.ty, 2);
@@ -128,4 +128,76 @@ fn a_patch_constant_signature_with_minimum_precision_is_read_from_psg1_as_it_is_
 fn a_container_with_neither_patch_constant_part_names_the_first_it_looks_for() {
     let e = dxbc_reader::patch_signature_elements(&fixture("tessellation.vs.dxbc")).unwrap_err();
     assert!(e.detail.contains("PCSG"), "{e}");
+}
+
+#[test]
+fn the_sm51_rdef_layout_puts_bindings_in_register_spaces_and_numbers_them() {
+    let sm51 = dxbc_reader::rdef(&fixture("reflection_sm51.ps51.dxbc"))
+        .unwrap()
+        .unwrap();
+    assert_eq!(sm51.target, 0xffff_0501);
+    let bindings = |rdef: &Rdef| -> Vec<(String, u32, u32, u32, u32, Option<u32>)> {
+        rdef.bindings
+            .iter()
+            .map(|b| (b.name.clone(), b.kind, b.register, b.count, b.space, b.id))
+            .collect()
+    };
+    // name, kind (3 sampler, 2 texture, 0 cbuffer), register, count, space, id: the spaces and the array of four are
+    // the source's, and the ids number each kind's resources from 0
+    assert_eq!(
+        bindings(&sm51),
+        [
+            ("linear_wrap".to_owned(), 3, 2, 1, 3, Some(0)),
+            ("albedo".to_owned(), 2, 3, 1, 1, Some(0)),
+            ("detail".to_owned(), 2, 4, 4, 1, Some(1)),
+            ("Params".to_owned(), 0, 1, 1, 2, Some(0)),
+        ]
+    );
+    // the 40-byte records lie 8 bytes apart more than the 32-byte ones
+    assert_eq!(sm51.bindings[1].word - sm51.bindings[0].word, 10);
+
+    // Shader Model 5.0 has no spaces, and binds only the element of the array the program reads
+    let sm50 = dxbc_reader::rdef(&fixture("reflection_sm51.ps50.dxbc"))
+        .unwrap()
+        .unwrap();
+    assert_eq!(sm50.target, 0xffff_0500);
+    assert_eq!(
+        bindings(&sm50),
+        [
+            ("linear_wrap".to_owned(), 3, 2, 1, 0, None),
+            ("albedo".to_owned(), 2, 3, 1, 0, None),
+            ("detail[2]".to_owned(), 2, 6, 1, 0, None),
+            ("Params".to_owned(), 0, 1, 1, 0, None),
+        ]
+    );
+    assert_eq!(sm50.bindings[1].word - sm50.bindings[0].word, 8);
+}
+
+#[test]
+fn a_variable_the_program_never_reads_has_its_used_flag_clear() {
+    let flags = |name: &str| -> Vec<(String, u32)> {
+        let rdef = dxbc_reader::rdef(&fixture(name)).unwrap().unwrap();
+        rdef.buffers[0]
+            .variables
+            .iter()
+            .map(|v| (v.name.clone(), v.flags))
+            .collect()
+    };
+    // D3D_SVF_USED is 2; the 5.0 build indexes the array with a literal, so it never reads `layer` either
+    assert_eq!(
+        flags("reflection_sm51.ps51.dxbc"),
+        [
+            ("tint".to_owned(), 2),
+            ("unused_scale".to_owned(), 0),
+            ("layer".to_owned(), 2)
+        ]
+    );
+    assert_eq!(
+        flags("reflection_sm51.ps50.dxbc"),
+        [
+            ("tint".to_owned(), 2),
+            ("unused_scale".to_owned(), 0),
+            ("layer".to_owned(), 0)
+        ]
+    );
 }

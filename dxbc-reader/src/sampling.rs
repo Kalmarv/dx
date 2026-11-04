@@ -2,6 +2,14 @@
 //! texture register, with the texture register, the sampler register and whether the instruction compares.
 use crate::decode::{Declared, Decoded, Instruction, Operand, Register};
 
+/// What a texture or sampler operand names: its register, whether a register adds to it, and in Shader Model 5.1 the
+/// id of the declaration whose range holds it (`T1[r1.x + 4]`: id 1, register 4 plus `r1.x`).
+struct Named {
+    register: u32,
+    indexed: bool,
+    id: Option<u32>,
+}
+
 /// One instruction of a program that reads a texture (a shader resource view, `t<n>`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TextureRead {
@@ -9,14 +17,20 @@ pub struct TextureRead {
     pub word: usize,
     /// The instruction's opcode (see [`crate::opcode_name`]).
     pub opcode: u16,
-    /// The number of the `t` register, or the constant part of its index where [`TextureRead::texture_indexed`].
+    /// The number of the `t` register, or the constant part of its index where [`TextureRead::texture_indexed`]. In
+    /// Shader Model 5.1 the register of the declared range the instruction reads, as fxc's disassembly gives it.
     pub texture: u32,
     /// The texture register is indexed by a register (`t[r1.x + 3]`).
     pub texture_indexed: bool,
+    /// The texture's register space: 0 before Shader Model 5.1; in 5.1 its declaration's, `None` where the program
+    /// declares no texture of the id the instruction names.
+    pub texture_space: Option<u32>,
     /// The number of the `s` register the instruction samples with; none for a load, which uses no sampler.
     pub sampler: Option<u32>,
     /// The sampler register is indexed by a register.
     pub sampler_indexed: bool,
+    /// The sampler's register space, as [`TextureRead::texture_space`] gives the texture's; none without a sampler.
+    pub sampler_space: Option<u32>,
     /// The instruction compares the sampled value with a reference (`sample_c`, `sample_c_lz`, `gather4_c`,
     /// `gather4_po_c` and the feedback forms of them).
     pub comparison: bool,
@@ -61,10 +75,22 @@ fn kind(name: &str) -> Option<(bool, bool)> {
     })
 }
 
-/// The register number of an operand and whether a register adds to it; none for an operand without an index.
-fn register(operand: &Operand) -> Option<(u32, bool)> {
-    let index = operand.indices.first()?;
-    Some((index.base, index.relative.is_some()))
+/// The register an operand names, whether a register adds to it and (Shader Model 5.1) its declaration's id; none for
+/// an operand without the indices its model gives it.
+fn named(operand: &Operand, sm51: bool) -> Option<Named> {
+    let (id, index) = if sm51 {
+        let [id, index] = operand.indices.as_slice() else {
+            return None;
+        };
+        (Some(id.base), index)
+    } else {
+        (None, operand.indices.first()?)
+    };
+    Some(Named {
+        register: index.base,
+        indexed: index.relative.is_some(),
+        id,
+    })
 }
 
 fn first(instruction: &Instruction, wanted: Register) -> Option<&Operand> {
@@ -75,41 +101,61 @@ fn first(instruction: &Instruction, wanted: Register) -> Option<&Operand> {
 /// detail of or loads it), in program order. An instruction that reads a raw or structured buffer or an
 /// unordered-access view through a `u` or `g` register names no texture and is not listed.
 pub fn texture_reads(program: &Decoded) -> Vec<TextureRead> {
-    let modes: Vec<(u32, u32)> = program
-        .declarations
-        .iter()
-        .filter_map(|d| match d.kind {
-            Declared::Sampler { slot, mode } => Some((slot, mode)),
-            _ => None,
+    let sm51 = (program.major, program.minor) >= (5, 1);
+    // the declaration a name refers to: by its id in 5.1, by its register before
+    let declared = |name: &Named, sampler: bool| {
+        program.declarations.iter().find(|d| {
+            let slot = match d.kind {
+                Declared::Sampler { slot, .. } if sampler => slot,
+                Declared::Resource { slot, .. }
+                | Declared::ResourceRaw { slot, .. }
+                | Declared::ResourceStructured { slot, .. }
+                    if !sampler =>
+                {
+                    slot
+                }
+                _ => return false,
+            };
+            slot == name.id.unwrap_or(name.register)
         })
-        .collect();
+    };
+    let space = |name: &Named, sampler: bool| {
+        if sm51 {
+            declared(name, sampler)
+                .and_then(|d| d.kind.registers())
+                .map(|r| r.space)
+        } else {
+            Some(0)
+        }
+    };
     let mut reads = Vec::new();
     for instruction in &program.instructions {
         let Some((sampled, comparison)) = kind(instruction.name()) else {
             continue;
         };
-        let Some((texture, texture_indexed)) = first(instruction, Register::Texture).and_then(register)
-        else {
+        let Some(texture) = first(instruction, Register::Texture).and_then(|o| named(o, sm51)) else {
             continue;
         };
         let sampler = if sampled {
-            first(instruction, Register::Sampler).and_then(register)
+            first(instruction, Register::Sampler).and_then(|o| named(o, sm51))
         } else {
             None
         };
         reads.push(TextureRead {
             word: instruction.word,
             opcode: instruction.opcode,
-            texture,
-            texture_indexed,
-            sampler: sampler.map(|(slot, _)| slot),
-            sampler_indexed: sampler.is_some_and(|(_, indexed)| indexed),
+            texture: texture.register,
+            texture_indexed: texture.indexed,
+            texture_space: space(&texture, false),
+            sampler: sampler.as_ref().map(|s| s.register),
+            sampler_indexed: sampler.as_ref().is_some_and(|s| s.indexed),
+            sampler_space: sampler.as_ref().and_then(|s| space(s, true)),
             comparison,
-            sampler_mode: sampler.and_then(|(slot, _)| {
-                modes
-                    .iter()
-                    .find(|(declared, _)| *declared == slot)
-                    .map(|(_, mode)| *mode)
+            sampler_mode: sampler.as_ref().and_then(|s| {
+                declared(s, true).and_then(|d| match d.kind {
+                    Declared::Sampler { mode, .. } => Some(mode),
+                    _ => None,
+                })
             }),
         });
     }

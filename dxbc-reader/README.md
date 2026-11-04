@@ -49,8 +49,9 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   renderer, effect, material and character bundles) a texture register is read with exactly one sampler register in all
   but 11 of 89,699 sampled slots, and an instruction compares exactly when its sampler is declared a comparison sampler.
   `cargo run -p dxbc-reader --example pairs_dxbc -- <files or folders>` prints the pairs of each program.
-- **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag) and the Shader Model 5 one
-  (`RD11`): resource bindings, constant buffers with their variables, default values and type trees.
+- **Reflection** (`rdef`, `rdef_target`): the `RDEF` part of the Shader Model 4 layout (no tag), the Shader Model 5.0
+  one (`RD11`) and the 5.1 one (the tag `13 13 44 25`, whose bindings carry a register space and an id): resource
+  bindings, constant buffers with their variables and their used flags, default values and type trees.
 - **Signatures** (`signature`, `signature_elements`, `patch_signature_elements`): `ISGN`, `OSGN`, `ISG1`, `OSG1`, `OSG5`,
   `PCSG` and `PSG1` parts.
 - **Statistics** (`statistics`): the `STAT` part, the compiler's counters, with accessors for the words checked against
@@ -69,14 +70,16 @@ dimensions, an operand count other than the opcode's format) is an `Error` namin
 ## What it does not do
 
 It does not execute, translate or validate programs. Declarations of the tessellation and geometry stages (and interface
-tables) are kept as `Declared::Other` with their raw words (`Declaration`'s accessors read their values). Nothing in the
-7,729 programs of Sekiro, Riders Republic and Sledding Game needs more: they hold no Shader Model 5.1 program (their
-version tokens are 4.0 and 5.0), no 64-bit immediate or 64-bit index, no operand register type the decoder lacks, no
+tables) are kept as `Declared::Other` with their raw words (`Declaration`'s accessors read their values). Shader Model
+5.1's binding declarations and operands (the id, the register range and the space) are read as fxc's disassembly of
+the `sm51` fixtures gives them; no game program checks them yet, the D3D11 games' being 4.0 and 5.0 (Direct3D 11 does
+not load 5.1). Nothing in the 7,729 programs of Sekiro, Riders Republic and Sledding Game needs more: they hold no
+64-bit immediate or 64-bit index, no operand register type the decoder lacks, no
 extended operand token but the modifier, no `interface_call` or interface declaration, and no signature element with a
 nonzero stream or minimum-precision column (all 691,630 elements of the `ISG1`, `OSG1`, `OSG5` and `PSG1` parts of the five
 games' containers state stream 0 and minimum precision 0, so the signature records do not carry them); the decoder
 refuses each of the other cases by name rather than reading it. `RDEF` parts of other record layouts than
-Shader Model 4's and 5's are refused. Shader Model 6 is `dxil-reader`'s.
+Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s.
 
 ## Tests
 

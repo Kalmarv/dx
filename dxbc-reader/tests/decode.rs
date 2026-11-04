@@ -105,7 +105,14 @@ fn declarations_carry_their_fields() {
             ..
         }
     ));
-    assert!(matches!(kinds[1], Declared::Sampler { slot: 1, mode: 1 }));
+    assert!(matches!(
+        kinds[1],
+        Declared::Sampler {
+            slot: 1,
+            mode: 1,
+            range: None
+        }
+    ));
     assert!(matches!(
         kinds[2],
         Declared::Resource {
@@ -118,7 +125,11 @@ fn declarations_carry_their_fields() {
     ));
     assert!(matches!(
         kinds[3],
-        Declared::ResourceStructured { slot: 2, stride: 64 }
+        Declared::ResourceStructured {
+            slot: 2,
+            stride: 64,
+            range: None
+        }
     ));
 }
 

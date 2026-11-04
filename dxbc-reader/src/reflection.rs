@@ -154,11 +154,13 @@ impl View<'_> {
     }
 }
 
-/// The record sizes of an `RDEF` part's layout that differ. The resource binding (32 bytes), constant buffer (24) and
-/// struct member (12) records are the same in both; Shader Model 5's variable and type records end in fields Shader
-/// Model 4's do not have.
+/// The record sizes of an `RDEF` part's layout that differ. The constant buffer (24 bytes) and struct member (12) records
+/// are the same in all three; Shader Model 5's variable and type records end in fields Shader Model 4's do not have, and
+/// Shader Model 5.1's binding records end in the register space and the resource's id.
 #[derive(Clone, Copy)]
 struct Layout {
+    /// The size of a resource binding record.
+    binding: usize,
     /// The size of a variable record.
     variable: usize,
     /// The size of a type record.
@@ -166,9 +168,26 @@ struct Layout {
 }
 
 /// Shader Model 4: the 28-byte header, then the tables.
-const SM4: Layout = Layout { variable: 24, ty: 16 };
-/// Shader Model 5: the header, the `RD11` tag and the six record sizes it states.
-const SM5: Layout = Layout { variable: 40, ty: 36 };
+const SM4: Layout = Layout {
+    binding: 32,
+    variable: 24,
+    ty: 16,
+};
+/// Shader Model 5.0: the header, the `RD11` tag and the six record sizes it states.
+const SM50: Layout = Layout {
+    binding: 32,
+    variable: 40,
+    ty: 36,
+};
+/// Shader Model 5.1: the header, the tag `13 13 44 25` and the six record sizes it states.
+const SM51: Layout = Layout {
+    binding: 40,
+    variable: 40,
+    ty: 36,
+};
+
+/// The tag of the Shader Model 5.1 layout, the word `0x25441313`.
+const SM51_TAG: &[u8; 4] = &[0x13, 0x13, 0x44, 0x25];
 
 /// One element of a signature as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -320,6 +339,11 @@ pub struct RdefBinding {
     pub count: u32,
     /// `D3D_SHADER_INPUT_FLAGS`.
     pub flags: u32,
+    /// The register space; 0 in the layouts before Shader Model 5.1, which have no spaces.
+    pub space: u32,
+    /// The resource's id, where the layout stores one (Shader Model 5.1): the number the program's declarations and
+    /// instructions name the resource by in place of its register.
+    pub id: Option<u32>,
 }
 
 /// One buffer (`D3D11_SHADER_BUFFER_DESC`) as stored, with its variables.
@@ -348,6 +372,8 @@ pub struct RdefVariable {
     pub offset: u32,
     /// Its size in bytes.
     pub size: u32,
+    /// `D3D_SHADER_VARIABLE_FLAGS`: bit 2 (`D3D_SVF_USED`) is set where the program reads the variable.
+    pub flags: u32,
     /// Its type.
     pub ty: RdefType,
     /// The stored default value's `size` bytes, where the variable has one.
@@ -395,33 +421,45 @@ pub fn rdef_target(bytes: &[u8]) -> Result<Option<u32>> {
         .transpose()
 }
 
-/// The `RD11` tag and record-size directory a Shader Model 5 `RDEF` part has after its 28-byte header.
-fn read_directory(v: &View<'_>) -> Result<()> {
+/// The tag and record-size directory a Shader Model 5 `RDEF` part has after its 28-byte header, and the layout they
+/// state: `RD11` for 5.0, `13 13 44 25` for 5.1.
+fn read_directory(v: &View<'_>) -> Result<Layout> {
     let tag = v.bytes(28, 4)?;
-    if tag != b"RD11" {
+    let (layout, name) = if tag == b"RD11" {
+        (SM50, "RD11")
+    } else if tag == SM51_TAG {
+        (SM51, "5.1")
+    } else {
         return Err(error(
             7,
             format!(
-                "expected the `RD11` tag of the Shader Model 5 RDEF layout, found {:?}",
+                "expected the `RD11` tag of the Shader Model 5.0 RDEF layout or the bytes 13 13 44 25 of the 5.1 one,                  found {:02x?} ({:?})",
+                tag,
                 String::from_utf8_lossy(tag)
             ),
         ));
-    }
-    for (i, size) in [60, 24, 32, 40, 36, 12].into_iter().enumerate() {
+    };
+    for (i, size) in [60, 24, layout.binding, layout.variable, layout.ty, 12]
+        .into_iter()
+        .enumerate()
+    {
         let at = v.record(32, i, 4)?;
-        let found = v.u32(at)?;
+        let found = v.u32(at)? as usize;
         if found != size {
             return Err(error(
                 at / 4,
-                format!("expected record size {size} (entry {i} of the RD11 size directory), found {found}"),
+                format!(
+                    "expected record size {size} (entry {i} of the {name} size directory), found {found}"
+                ),
             ));
         }
     }
-    Ok(())
+    Ok(layout)
 }
 
 /// A container's `RDEF` part (`None` where it has none): the Shader Model 4 layout where its target is a 4.x one (a
-/// 28-byte header, then the tables), the Shader Model 5 layout (the `RD11` record-size directory) where it is a 5.x one.
+/// 28-byte header, then the tables), the Shader Model 5.0 or 5.1 layout (the record-size directory its tag names) where
+/// it is a 5.x one.
 pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
     let directory = parts(bytes)?;
     if !directory.iter().any(|c| &c.kind == b"RDEF") {
@@ -431,15 +469,13 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
     let target = v.u32(16)?;
     let layout = match (target >> 8) & 0xff {
         4 => SM4,
-        _ => {
-            read_directory(&v)?;
-            SM5
-        }
+        _ => read_directory(&v)?,
     };
     let mut bindings = Vec::new();
     let offset = v.field(0, 12)? as usize;
-    for i in v.table(offset, v.field(0, 8)? as usize, 32)? {
-        let p = v.record(offset, i, 32)?;
+    for i in v.table(offset, v.field(0, 8)? as usize, layout.binding)? {
+        let p = v.record(offset, i, layout.binding)?;
+        let spaced = layout.binding == SM51.binding;
         bindings.push(RdefBinding {
             word: p / 4,
             name: v.string(v.u32(p)? as usize)?,
@@ -450,6 +486,8 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
             register: v.field(p, 20)?,
             count: v.field(p, 24)?,
             flags: v.field(p, 28)?,
+            space: if spaced { v.field(p, 32)? } else { 0 },
+            id: if spaced { Some(v.field(p, 36)?) } else { None },
         });
     }
     let mut buffers = Vec::new();
@@ -487,6 +525,7 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
                 name: v.string(v.u32(q)? as usize)?,
                 offset: start,
                 size: len,
+                flags: v.field(q, 12)?,
                 ty,
                 default: if default == 0 {
                     None

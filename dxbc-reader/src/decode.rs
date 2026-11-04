@@ -91,7 +91,7 @@ pub enum Register {
     GsInstanceId,
 }
 impl Register {
-    /// How many index dimensions an operand of this register has in Shader Model 5.0.
+    /// How many index dimensions an operand of this register has in Shader Model 4 and 5.0.
     fn dimensions(self) -> u32 {
         match self {
             Register::Immediate
@@ -268,6 +268,19 @@ pub fn opcode_name(opcode: u16) -> &'static str {
 /// 3 sint, 4 uint, 5 float, 6 mixed, 7 double, 8 continued, 9 unused), one nibble per lane.
 pub type ReturnCodes = [u8; 4];
 
+/// The registers a Shader Model 5.1 declaration binds and their register space (`T1[4:7], space=1`). Shader Model 5.0
+/// declares each register on its own, in space 0; 5.1 names the resource by an id (the declaration's `slot`) and
+/// instructions by the id and a register of the range.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RegisterRange {
+    /// The first register.
+    pub lower: u32,
+    /// The last register; `u32::MAX` for an array of no stated size (`T0[0:*]`).
+    pub upper: u32,
+    /// The register space.
+    pub space: u32,
+}
+
 /// A declaration, typed. `word` is where it starts.
 #[derive(Clone, Debug)]
 pub struct Declaration {
@@ -301,26 +314,30 @@ pub enum Declared {
     GlobalFlags(u32),
     /// `dcl_constantbuffer cb<slot>[rows]`; `dynamic` when it is dynamically indexed.
     ConstantBuffer {
-        /// The buffer slot (the `<slot>` of `cb<slot>`).
+        /// The buffer slot (the `<slot>` of `cb<slot>`) in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The number of 16-byte rows; 0 where the declaration states none.
         rows: u32,
         /// The buffer is dynamically indexed.
         dynamic: bool,
-        /// The number of index dimensions the operand had (1 or 2).
+        /// The number of index dimensions the operand had (1 or 2; 3 in Shader Model 5.1).
         dimensions: usize,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_sampler s<slot>`, its mode: 0 default, 1 comparison, 2 mono.
     Sampler {
-        /// The sampler slot.
+        /// The sampler slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// 0 default, 1 comparison, 2 mono.
         mode: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_resource_<dimension> t<slot>`: the D3D resource dimension code, the sample count of a multisampled one,
     /// and the four return types.
     Resource {
-        /// The resource slot.
+        /// The resource slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The D3D resource dimension code.
         dimension: u32,
@@ -330,22 +347,28 @@ pub enum Declared {
         returns: ReturnCodes,
         /// The return type token as stored.
         token: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_resource_raw t<slot>`.
     ResourceRaw {
-        /// The resource slot.
+        /// The resource slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_resource_structured t<slot>, stride`.
     ResourceStructured {
-        /// The resource slot.
+        /// The resource slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The element stride in bytes.
         stride: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_uav_typed` and its control bits (dimension in bits 0 to 4, globally coherent bit 5).
     UavTyped {
-        /// The UAV slot.
+        /// The UAV slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The D3D resource dimension code.
         dimension: u32,
@@ -355,22 +378,28 @@ pub enum Declared {
         token: u32,
         /// The opcode token's control bits.
         control: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_uav_raw u<slot>`.
     UavRaw {
-        /// The UAV slot.
+        /// The UAV slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The opcode token's control bits.
         control: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_uav_structured u<slot>, stride`.
     UavStructured {
-        /// The UAV slot.
+        /// The UAV slot in Shader Model 5.0, its id in 5.1 (its registers in `range`).
         slot: u32,
         /// The element stride in bytes.
         stride: u32,
         /// The opcode token's control bits.
         control: u32,
+        /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
+        range: Option<RegisterRange>,
     },
     /// `dcl_thread_group x, y, z`.
     ThreadGroup([u32; 3]),
@@ -423,6 +452,29 @@ pub enum Declared {
         /// The declaration's words after its operands, as stored.
         words: Vec<u32>,
     },
+}
+
+impl Declared {
+    /// The registers and space a resource, sampler, view or constant buffer declaration binds: its `range` in Shader
+    /// Model 5.1, its one register in space 0 before; `None` for the other declarations.
+    pub fn registers(&self) -> Option<RegisterRange> {
+        let (slot, range) = match self {
+            Declared::ConstantBuffer { slot, range, .. }
+            | Declared::Sampler { slot, range, .. }
+            | Declared::Resource { slot, range, .. }
+            | Declared::ResourceRaw { slot, range }
+            | Declared::ResourceStructured { slot, range, .. }
+            | Declared::UavTyped { slot, range, .. }
+            | Declared::UavRaw { slot, range, .. }
+            | Declared::UavStructured { slot, range, .. } => (*slot, *range),
+            _ => return None,
+        };
+        Some(range.unwrap_or(RegisterRange {
+            lower: slot,
+            upper: slot,
+            space: 0,
+        }))
+    }
 }
 
 /// The kind of program a version token names.
@@ -482,6 +534,11 @@ struct Cursor<'a> {
     origin: usize,
     /// The program's type: the input registers of a geometry, hull or domain program are indexed by vertex.
     kind: ProgramType,
+    /// The program is Shader Model 5.1, whose resource, sampler, view and constant buffer operands carry the
+    /// resource's id as their first index.
+    sm51: bool,
+    /// The words are a declaration's, whose 5.1 binding operands give the id and the first and last register.
+    declaration: bool,
 }
 impl Cursor<'_> {
     /// The word the cursor is at, in the token stream.
@@ -545,6 +602,11 @@ impl Cursor<'_> {
         let dimensions = (t >> 20) & 3;
         let expected = match (register, self.kind) {
             (Register::Input, ProgramType::Geometry | ProgramType::Hull | ProgramType::Domain) => 2,
+            // Shader Model 5.1: `CB1[id][register][row]`, `T0[id][register]`; declared `CB1[id][lower:upper]`
+            (Register::Constant, _) if self.sm51 => 3,
+            (Register::Texture | Register::Sampler | Register::Uav, _) if self.sm51 => {
+                if self.declaration && depth == 0 { 3 } else { 2 }
+            }
             _ => register.dimensions(),
         };
         if dimensions != expected {
@@ -634,6 +696,7 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
         declarations: Vec::new(),
         instructions: Vec::new(),
     };
+    let sm51 = (result.major, result.minor) >= (5, 1);
     let mut at = 2;
     while let Some(&t) = words.get(at) {
         let opcode = low16(t & 0x7ff);
@@ -698,6 +761,8 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
             at: 0,
             origin: at.saturating_add(1),
             kind,
+            sm51,
+            declaration: is_declaration(opcode),
         };
         let mut extensions = Vec::new();
         let mut extended = t >> 31 != 0;
@@ -767,6 +832,23 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             .map(|i| i.base)
             .ok_or_else(|| error(pos, "missing declaration index"))
     };
+    // A Shader Model 5.1 binding declaration's operand is `[id][lower][upper]`, and its last word the register space.
+    let range = |o: &Operand, c: &mut Cursor<'_>| -> Result<Option<RegisterRange>> {
+        if !c.sm51 {
+            return Ok(None);
+        }
+        let [_, lower, upper] = o.indices.as_slice() else {
+            return Err(error(
+                pos,
+                "a Shader Model 5.1 binding declaration without its three indices",
+            ));
+        };
+        Ok(Some(RegisterRange {
+            lower: lower.base,
+            upper: upper.base,
+            space: c.take()?,
+        }))
+    };
     Ok(match opcode {
         104 => Declared::Temps(c.take()?),
         105 => Declared::IndexableTemp {
@@ -784,15 +866,23 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 samples: (control >> 5) & 127,
                 returns: return_codes(token),
                 token,
+                range: range(&o, c)?,
             }
         }
         89 => {
             let o = c.operand(0)?;
+            // 5.1 states the rows in a word of their own; before, they are the operand's second index
+            let rows = if c.sm51 {
+                c.take()?
+            } else {
+                o.indices.get(1).map_or(0, |i| i.base)
+            };
             Declared::ConstantBuffer {
                 slot: slot(&o)?,
-                rows: o.indices.get(1).map_or(0, |i| i.base),
+                rows,
                 dynamic: control & 1 != 0,
                 dimensions: o.indices.len(),
+                range: range(&o, c)?,
             }
         }
         90 => {
@@ -800,6 +890,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             Declared::Sampler {
                 slot: slot(&o)?,
                 mode: control & 15,
+                range: range(&o, c)?,
             }
         }
         95..=100 => {
@@ -829,6 +920,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 returns: return_codes(token),
                 token,
                 control,
+                range: range(&o, c)?,
             }
         }
         157 => {
@@ -836,6 +928,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             Declared::UavRaw {
                 slot: slot(&o)?,
                 control,
+                range: range(&o, c)?,
             }
         }
         158 => {
@@ -844,6 +937,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 slot: slot(&o)?,
                 stride: c.take()?,
                 control,
+                range: range(&o, c)?,
             }
         }
         155 => Declared::ThreadGroup([c.take()?, c.take()?, c.take()?]),
@@ -864,13 +958,17 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
         }
         161 => {
             let o = c.operand(0)?;
-            Declared::ResourceRaw { slot: slot(&o)? }
+            Declared::ResourceRaw {
+                slot: slot(&o)?,
+                range: range(&o, c)?,
+            }
         }
         162 => {
             let o = c.operand(0)?;
             Declared::ResourceStructured {
                 slot: slot(&o)?,
                 stride: c.take()?,
+                range: range(&o, c)?,
             }
         }
         _ => Declared::Other {

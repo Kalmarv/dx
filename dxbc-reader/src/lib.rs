@@ -1,6 +1,6 @@
 //! A reader of Shader Model 4 and 5 programs as Direct3D stores them in a `DXBC` container: the token stream of any
 //! stage ([`mod@decode`]), the reflection and signature chunks as the records the file holds ([`reflection`]), and the
-//! compiler's own counters ([`statistics`]).
+//! compiler's own counters ([`mod@statistics`]).
 //!
 //! It reads and checks bytes and never interprets them for an API: a register binding is the RDEF record's own
 //! numbers, a signature element its stored name, index and masks. Mapping those into a graphics API's vocabulary is
@@ -33,8 +33,8 @@ pub mod statistics;
 
 pub use controls::{GlobalFlags, InfoReturn, SyncFlags};
 pub use decode::{
-    Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, Selection, decode,
-    opcode_name,
+    Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, RegisterRange,
+    Selection, decode, opcode_name,
 };
 pub use format::{OperandClass, OperandFormat, operand_format};
 pub use reflection::{

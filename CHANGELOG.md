@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+- `dxbc-reader`: Shader Model 5.1 programs decode, where `decode` refused their operands before. A 5.1 resource,
+  sampler, view or constant buffer operand names the declaration's id first (`T1[r1.x + 4]`: id 1, then the register;
+  `CB1[r0.w + 0][0]`: id 1, the register, the row); a 5.1 declaration states `[id][lower][upper]` and the register
+  space, and a constant buffer's rows in a word of their own. The binding variants of `Declared` gain
+  `range: Option<RegisterRange>` (the first and last register, `u32::MAX` for an array of no stated size, and the
+  space; `None` before 5.1), their `slot` is the id in 5.1, and `Declared::registers` gives the registers and space of
+  either model. `TextureRead` gains `texture_space` and `sampler_space`, and in 5.1 its `texture` and `sampler` are the
+  registers the instruction reads and its `sampler_mode` the declaration of the id. A change for code that builds or
+  matches these exhaustively.
+- `dxbc-reader`: `rdef` reads the Shader Model 5.1 layout (the tag `13 13 44 25` in place of `RD11`, 40-byte binding
+  records) where it refused it before. `RdefBinding` gains `space` (the register space, 0 in the earlier layouts) and
+  `id` (the resource's id, `Some` in 5.1 only), and `RdefVariable` gains `flags` (`D3D_SVF_USED` and the rest, stored
+  at the same place in every layout): a change for code that builds these structs.
+- The fixtures `reflection_sm51.hlsl` (fxc 10.0.26100.0 `ps_5_1` and `ps_5_0`: a texture array, three register spaces,
+  a constant buffer variable the program never reads) and `bindings_sm51.hlsl` (`cs_5_1`: every kind of binding
+  declaration, constant buffer arrays, an array of no stated size read through `NonUniformResourceIndex`) check each
+  field against `fxc -dumpbin`. Over the 11,226 Shader Model 4 and 5.0 programs locum captured from eleven D3D11
+  games, `rdef` and `decode` give the bindings, constant buffers and atomics locum's own readers do.
+
 ## 0.4.0 (2026-10-29)
 
 - `dxbc-reader`: `texture_reads(&Decoded)` lists the texture reads of a program (`TextureRead`: the instruction's word and
