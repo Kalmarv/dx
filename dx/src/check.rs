@@ -40,13 +40,13 @@ fn reason(theirs: &str, ours: &str) -> String {
     format!("code: {word}")
 }
 
-pub fn run(path: &Path, verbose: bool) -> Result<ExitCode, String> {
+pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
     let mut by_target: BTreeMap<String, Counts> = BTreeMap::new();
     let mut reasons: BTreeMap<String, (usize, String)> = BTreeMap::new();
     let mut failures: BTreeMap<String, (usize, String)> = BTreeMap::new();
     let mut without = 0usize;
     for program in files::programs(path)? {
-        let Some(stored) = files::stored_listing(&program) else {
+        let Some(stored) = files::stored_listing(&program, flags) else {
             without = without.saturating_add(1);
             continue;
         };
@@ -59,7 +59,7 @@ pub fn run(path: &Path, verbose: bool) -> Result<ExitCode, String> {
         let target = files::target(theirs).unwrap_or_else(|| "unknown".to_owned());
         let counts = by_target.entry(target).or_default();
         let name = program.display().to_string();
-        match files::listing(&bytes) {
+        match files::listing(&bytes, flags) {
             Err(e) => {
                 counts.failed = counts.failed.saturating_add(1);
                 let key = e.split(':').nth(1).unwrap_or(&e).trim().to_owned();

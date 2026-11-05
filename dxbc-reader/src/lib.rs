@@ -33,11 +33,11 @@ mod sampling;
 pub mod statistics;
 
 pub use controls::{GlobalFlags, InfoReturn, SyncFlags};
-pub use disasm::disassemble;
 pub use decode::{
     Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, RegisterRange,
     Selection, decode, opcode_name,
 };
+pub use disasm::{Options, disassemble, disassemble_with};
 pub use format::{OperandClass, OperandFormat, operand_format};
 pub use reflection::{
     Rdef, RdefBinding, RdefBuffer, RdefMember, RdefType, RdefVariable, SignatureElement,

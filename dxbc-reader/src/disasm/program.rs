@@ -2,6 +2,7 @@
 //! a line, indented two spaces in each `if`, `loop` and `switch`.
 use std::fmt::Write;
 
+use super::Options;
 use super::number::{self, Style};
 use crate::decode::{Declaration, Declared, Decoded, Index, Instruction, Operand, Register, Selection};
 use crate::{GlobalFlags, InfoReturn};
@@ -43,23 +44,80 @@ fn mnemonic(opcode: u16) -> &'static str {
 /// How the immediates of an instruction's operands are written.
 fn style(opcode: u16) -> Style {
     match crate::opcode_name(opcode) {
-        "add" | "div" | "dp2" | "dp3" | "dp4" | "eq" | "exp" | "frc" | "ge" | "lt" | "log" | "mad" | "max" | "min"
-        | "mul" | "ne" | "round_ne" | "round_ni" | "round_pi" | "round_z" | "rsq" | "sqrt" | "sincos" | "rcp"
-        | "deriv_rtx" | "deriv_rty" | "deriv_rtx_coarse" | "deriv_rtx_fine" | "deriv_rty_coarse"
-        | "deriv_rty_fine" | "ftoi" | "ftou" | "ftod" | "f32tof16" | "sample" | "sample_c" | "sample_c_lz"
-        | "sample_l" | "sample_d" | "sample_b" | "gather4" | "gather4_c" | "gather4_po" | "gather4_po_c" | "lod"
-        | "dadd" | "dmax" | "dmin" | "dmul" | "deq" | "dge" | "dlt" | "dne" | "dmov" | "dmovc" | "dtof" | "ddiv"
-        | "dfma" | "drcp" | "dtoi" | "dtou" => Style::Float,
-        "iadd" | "ieq" | "ige" | "ilt" | "imad" | "imax" | "imin" | "imul" | "ine" | "ineg" | "ishl" | "ishr"
-        | "itof" | "itod" | "ibfe" | "ld" | "ld_ms" | "ld_uav_typed" | "eval_snapped" | "atomic_and" | "atomic_or"
-        | "atomic_xor" | "atomic_cmp_store" | "atomic_iadd" | "atomic_imax" | "atomic_imin" | "atomic_umax"
-        | "atomic_umin" | "imm_atomic_iadd" | "imm_atomic_and" | "imm_atomic_or" | "imm_atomic_xor"
-        | "imm_atomic_exch" | "imm_atomic_cmp_exch" | "imm_atomic_imax" | "imm_atomic_imin" | "imm_atomic_umax"
-        | "imm_atomic_umin" | "udiv" | "ult" | "uge" | "umul" | "umad" | "umax" | "umin" | "ushr" | "utof"
-        | "utod" | "and" | "or" | "xor" | "not" | "ubfe" | "bfi" | "bfrev" | "countbits" | "firstbit_hi"
-        | "firstbit_lo" | "firstbit_shi" | "f16tof32" | "uaddc" | "usubb" | "msad" | "case" | "switch" => {
-            Style::Integer
+        "add" | "div" | "dp2" | "dp3" | "dp4" | "eq" | "exp" | "frc" | "ge" | "lt" | "log" | "mad"
+        | "max" | "min" | "mul" | "ne" | "round_ne" | "round_ni" | "round_pi" | "round_z" | "rsq"
+        | "sqrt" | "sincos" | "rcp" | "deriv_rtx" | "deriv_rty" | "deriv_rtx_coarse" | "deriv_rtx_fine"
+        | "deriv_rty_coarse" | "deriv_rty_fine" | "ftoi" | "ftou" | "ftod" | "f32tof16" | "sample"
+        | "sample_c" | "sample_c_lz" | "sample_l" | "sample_d" | "sample_b" | "gather4" | "gather4_c"
+        | "gather4_po" | "gather4_po_c" | "lod" | "dadd" | "dmax" | "dmin" | "dmul" | "deq" | "dge"
+        | "dlt" | "dne" | "dmov" | "dmovc" | "dtof" | "ddiv" | "dfma" | "drcp" | "dtoi" | "dtou" => {
+            Style::Float
         }
+        "iadd"
+        | "ieq"
+        | "ige"
+        | "ilt"
+        | "imad"
+        | "imax"
+        | "imin"
+        | "imul"
+        | "ine"
+        | "ineg"
+        | "ishl"
+        | "ishr"
+        | "itof"
+        | "itod"
+        | "ibfe"
+        | "ld"
+        | "ld_ms"
+        | "ld_uav_typed"
+        | "eval_snapped"
+        | "atomic_and"
+        | "atomic_or"
+        | "atomic_xor"
+        | "atomic_cmp_store"
+        | "atomic_iadd"
+        | "atomic_imax"
+        | "atomic_imin"
+        | "atomic_umax"
+        | "atomic_umin"
+        | "imm_atomic_iadd"
+        | "imm_atomic_and"
+        | "imm_atomic_or"
+        | "imm_atomic_xor"
+        | "imm_atomic_exch"
+        | "imm_atomic_cmp_exch"
+        | "imm_atomic_imax"
+        | "imm_atomic_imin"
+        | "imm_atomic_umax"
+        | "imm_atomic_umin"
+        | "udiv"
+        | "ult"
+        | "uge"
+        | "umul"
+        | "umad"
+        | "umax"
+        | "umin"
+        | "ushr"
+        | "utof"
+        | "utod"
+        | "and"
+        | "or"
+        | "xor"
+        | "not"
+        | "ubfe"
+        | "bfi"
+        | "bfrev"
+        | "countbits"
+        | "firstbit_hi"
+        | "firstbit_lo"
+        | "firstbit_shi"
+        | "f16tof32"
+        | "uaddc"
+        | "usubb"
+        | "msad"
+        | "case"
+        | "switch" => Style::Integer,
         _ => Style::Typeless,
     }
 }
@@ -124,9 +182,20 @@ fn register_name(register: Register, sm51: bool) -> (&'static str, bool) {
 /// Writes operands of one program.
 struct Writer {
     sm51: bool,
+    /// Every 32-bit value as eight hex digits (`D3D_DISASM_PRINT_HEX_LITERALS`).
+    hex: bool,
 }
 
 impl Writer {
+    /// One 32-bit value in `style`, or in hex.
+    fn value(&self, bits: u32, style: Style) -> String {
+        if self.hex {
+            format!("0x{bits:08x}")
+        } else {
+            number::value(bits, style)
+        }
+    }
+
     fn operand(&self, out: &mut String, o: &Operand, style: Style) {
         self.annotated(out, o, style, o.precision);
     }
@@ -166,8 +235,12 @@ impl Writer {
             Register::Immediate => {
                 let separator = if style == Style::Typeless { "," } else { ", " };
                 let count = if o.components == 1 { 1 } else { 4 };
-                let values: Vec<String> =
-                    o.immediate.iter().take(count).map(|&v| number::value(v, style)).collect();
+                let values: Vec<String> = o
+                    .immediate
+                    .iter()
+                    .take(count)
+                    .map(|&v| self.value(v, style))
+                    .collect();
                 let _ = write!(out, "l({})", values.join(separator));
                 return;
             }
@@ -240,7 +313,6 @@ impl Writer {
             }
         }
     }
-
 }
 
 /// `D3D11_SB_OPERAND_MIN_PRECISION` as an operand's annotation names it.
@@ -525,9 +597,7 @@ impl Writer {
                 self.declared_binding(out, d);
                 space(out, &d.kind);
             }
-            Declared::UavStructured {
-                stride, control, ..
-            } => {
+            Declared::UavStructured { stride, control, .. } => {
                 let _ = write!(out, "dcl_uav_structured{} ", uav_flags(*control));
                 self.declared_binding(out, d);
                 let _ = write!(out, ", {stride}");
@@ -586,10 +656,7 @@ impl Writer {
                     if i != 0 {
                         let _ = write!(out, ",\n{indent}");
                     }
-                    let values: Vec<String> = row
-                        .iter()
-                        .map(|&v| number::value(v, Style::Typeless))
-                        .collect();
+                    let values: Vec<String> = row.iter().map(|&v| self.value(v, Style::Typeless)).collect();
                     let _ = write!(out, "{{ {}}}", values.join(", "));
                 }
                 out.push_str(" }");
@@ -719,7 +786,12 @@ impl Writer {
                 );
             }
             152 => {
-                let _ = write!(out, "dcl_hs_max_tessfactor l({})", number::float(first));
+                let _ = write!(
+                    out,
+                    "dcl_hs_max_tessfactor l({})",
+                    // a float even with hex literals
+                    number::float(first)
+                );
             }
             153 => {
                 let _ = write!(out, "dcl_hs_fork_phase_instance_count {first}");
@@ -833,11 +905,35 @@ fn indentation(opcode: u16) -> (i32, i32) {
     }
 }
 
+/// Whether a declaration's line is numbered like an instruction's: the phase markers of a hull program but its
+/// `hs_decls`.
+fn numbered(opcode: u16) -> bool {
+    // hs_control_point_phase, hs_fork_phase, hs_join_phase
+    matches!(opcode, 114..=116)
+}
+
 /// The program's lines after the header: the version line, the declarations and instructions in program order.
-pub(super) fn write(out: &mut String, program: &Decoded) {
+pub(super) fn write(out: &mut String, program: &Decoded, options: &Options) {
     let writer = Writer {
         sm51: (program.major, program.minor) >= (5, 1),
+        hex: options.hex_literals,
     };
+    let mut number: u32 = 0;
+    // the prefix of a line at `word` of the token stream, numbered or not
+    let mut prefix = |out: &mut String, word: usize, numbered: bool| {
+        if options.offsets {
+            let _ = write!(out, "0x{:08X}: ", word.saturating_mul(4));
+        }
+        if options.numbering {
+            if numbered {
+                let _ = write!(out, "{number:>4}: ");
+                number = number.saturating_add(1);
+            } else {
+                out.push_str("      ");
+            }
+        }
+    };
+    prefix(out, 0, false);
     let _ = writeln!(out, "{}", program.target());
     let mut declarations = program.declarations.iter().peekable();
     let mut instructions = program.instructions.iter().peekable();
@@ -845,27 +941,25 @@ pub(super) fn write(out: &mut String, program: &Decoded) {
     loop {
         let next_declaration = declarations.peek().map(|d| d.word);
         let next_instruction = instructions.peek().map(|i| i.word);
-        let mut line = String::new();
         match (next_declaration, next_instruction) {
             (Some(d), i) if i.is_none_or(|i| d < i) => {
                 if let Some(d) = declarations.next() {
-                    writer.declaration(&mut line, d);
+                    prefix(out, d.word, numbered(d.opcode));
+                    writer.declaration(out, d);
                 }
             }
             (_, Some(_)) => {
                 if let Some(i) = instructions.next() {
+                    prefix(out, i.word, true);
                     let (before, after) = indentation(i.opcode);
                     depth = depth.saturating_add(before).max(0);
-                    writer.instruction(&mut line, i);
-                    let indent = " ".repeat(usize::try_from(depth).unwrap_or(0).saturating_mul(2));
-                    line.insert_str(0, &indent);
+                    out.push_str(&" ".repeat(usize::try_from(depth).unwrap_or(0).saturating_mul(2)));
+                    writer.instruction(out, i);
                     depth = depth.saturating_add(after);
                 }
             }
-            (None, None) => break,
             _ => break,
         }
-        out.push_str(&line);
         out.push('\n');
     }
 }

@@ -8,12 +8,83 @@ mod header;
 mod number;
 mod program;
 
-/// The listing of a `DXBC` container's Shader Model 4 or 5 program as Microsoft's disassembler writes it, its lines
-/// ending in `\n` (the disassembler's blob also ends in a zero byte, which is not part of the text).
+/// How the listing is written: the switches of Microsoft's `D3D_DISASM_*` flags that this disassembler writes.
+/// [`Options::default`] is `D3DDisassemble` with no flags.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Options {
+    /// The comment block before the program and the instruction count after it; off, only the program's lines
+    /// (`D3D_DISASM_INSTRUCTION_ONLY`, 0x40).
+    pub header: bool,
+    /// Each instruction after its number, `  12: `, other lines after as many spaces
+    /// (`D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING`, 0x04).
+    pub numbering: bool,
+    /// Each line after the byte offset of its token in the program, `0x0000001C: `
+    /// (`D3D_DISASM_ENABLE_INSTRUCTION_OFFSET`, 0x20).
+    pub offsets: bool,
+    /// Every 32-bit value as eight hex digits, `l(0x3f800000)` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80).
+    pub hex_literals: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            header: true,
+            numbering: false,
+            offsets: false,
+            hex_literals: false,
+        }
+    }
+}
+
+impl Options {
+    /// The options of a `D3D_DISASM_*` flags word. `D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS` (0x02) changes nothing
+    /// (the default values are written either way) and `D3D_DISASM_DISABLE_DEBUG_INFO` (0x10) nothing for a program
+    /// without debug information, which is the only kind this disassembler writes. Refuses
+    /// `D3D_DISASM_ENABLE_COLOR_CODE` (0x01, an HTML listing), `D3D_DISASM_ENABLE_INSTRUCTION_CYCLE` (0x08, which
+    /// Microsoft's disassembler refuses too) and bits it does not define, naming the bit.
+    pub fn from_flags(flags: u32) -> Result<Self> {
+        for (bit, name) in [
+            (0x01, "D3D_DISASM_ENABLE_COLOR_CODE (an HTML listing)"),
+            (
+                0x08,
+                "D3D_DISASM_ENABLE_INSTRUCTION_CYCLE, which Microsoft's disassembler refuses too",
+            ),
+        ] {
+            if flags & bit != 0 {
+                return Err(error(0, format!("flag 0x{bit:02x}, {name}, is not written")));
+            }
+        }
+        let unknown = flags & !0xf6;
+        if unknown != 0 {
+            return Err(error(
+                0,
+                format!(
+                    "flag bit 0x{:x} is not a D3D_DISASM flag",
+                    1u32 << unknown.trailing_zeros()
+                ),
+            ));
+        }
+        Ok(Self {
+            header: flags & 0x40 == 0,
+            numbering: flags & 0x04 != 0,
+            offsets: flags & 0x20 != 0,
+            hex_literals: flags & 0x80 != 0,
+        })
+    }
+}
+
+/// The listing of a `DXBC` container's Shader Model 4 or 5 program as Microsoft's disassembler writes it with no
+/// flags, its lines ending in `\n` (the disassembler's blob also ends in a zero byte, which is not part of the text).
 ///
 /// Refuses a container [`parts`] refuses, one without a `SHDR` or `SHEX` part, a `DXIL` container and a program
 /// [`decode()`] refuses.
 pub fn disassemble(container: &[u8]) -> Result<String> {
+    disassemble_with(container, &Options::default())
+}
+
+/// The listing of a `DXBC` container as [`disassemble`] writes it, with `options`.
+pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
     let directory = parts(container)?;
     if directory.iter().any(|c| &c.kind == b"DXIL") {
         return Err(error(
@@ -39,21 +110,26 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
     let patch = read(&[b"PCSG", b"PSG1"])?;
     let stat = statistics(container)?;
     let mut out = String::new();
-    header::write(
-        &mut out,
-        &header::Header {
-            program: &program,
-            rdef: reflection.as_ref(),
-            features: dxcontainer::feature_flags(container)
-                .map_err(|e| error(e.offset / 4, e.detail))?
-                .map_or(0, |f| f.bits),
-            stat: stat.as_ref(),
-            inputs: elements(&inputs),
-            outputs: elements(&outputs),
-            patch: elements(&patch),
-        },
-    );
-    program::write(&mut out, &program);
+    if options.header {
+        header::write(
+            &mut out,
+            &header::Header {
+                program: &program,
+                rdef: reflection.as_ref(),
+                features: dxcontainer::feature_flags(container)
+                    .map_err(|e| error(e.offset / 4, e.detail))?
+                    .map_or(0, |f| f.bits),
+                stat: stat.as_ref(),
+                inputs: elements(&inputs),
+                outputs: elements(&outputs),
+                patch: elements(&patch),
+            },
+        );
+    }
+    program::write(&mut out, &program, options);
+    if !options.header {
+        return Ok(out);
+    }
     // Microsoft's disassembler writes the count of the STAT part, 0 without one
     let slots = stat.and_then(|s| s.instructions()).unwrap_or(0);
     out.push_str(&format!("// Approximately {slots} instruction slots used\n"));

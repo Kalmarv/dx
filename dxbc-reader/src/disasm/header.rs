@@ -96,7 +96,14 @@ fn member_line(out: &mut String, text: &str, offset: u32, size: Option<(u32, boo
 }
 
 /// A variable or struct member at `indent` spaces after the `//`: a struct opens its own block of members.
-fn variable(out: &mut String, indent: usize, name: &str, ty: &RdefType, offset: u32, size: Option<(u32, bool)>) {
+fn variable(
+    out: &mut String,
+    indent: usize,
+    name: &str,
+    ty: &RdefType,
+    offset: u32,
+    size: Option<(u32, bool)>,
+) {
     let pad = " ".repeat(indent);
     if ty.class == 5 {
         let title = match &ty.name {
@@ -109,12 +116,7 @@ fn variable(out: &mut String, indent: usize, name: &str, ty: &RdefType, offset: 
             members(out, indent.saturating_add(4), &ty.members, member, offset);
         }
         out.push_str("//\n");
-        member_line(
-            out,
-            &format!("//{pad}}} {};", declarator(name, ty)),
-            offset,
-            size,
-        );
+        member_line(out, &format!("//{pad}}} {};", declarator(name, ty)), offset, size);
     } else {
         member_line(
             out,
@@ -285,8 +287,12 @@ fn bindings(out: &mut String, rdef: &Rdef, sm51: bool) {
         out.push_str("// Name                                 Type  Format         Dim      ID      HLSL Bind  Count\n");
         out.push_str("// ------------------------------ ---------- ------- ----------- ------- -------------- ------\n");
     } else {
-        out.push_str("// Name                                 Type  Format         Dim      HLSL Bind  Count\n");
-        out.push_str("// ------------------------------ ---------- ------- ----------- -------------- ------\n");
+        out.push_str(
+            "// Name                                 Type  Format         Dim      HLSL Bind  Count\n",
+        );
+        out.push_str(
+            "// ------------------------------ ---------- ------- ----------- -------------- ------\n",
+        );
     }
     for b in &rdef.bindings {
         let bind = if b.space != 0 {
@@ -321,11 +327,11 @@ fn system_value(e: &SignatureElement, output: bool, kind: ProgramType) -> u32 {
         return e.system_value;
     }
     match e.name.to_ascii_lowercase().as_str() {
-            "sv_target" => 64,
-            "sv_depth" => 65,
-            "sv_coverage" => 66,
-            "sv_depthgreaterequal" => 67,
-            "sv_depthlessequal" => 68,
+        "sv_target" => 64,
+        "sv_depth" => 65,
+        "sv_coverage" => 66,
+        "sv_depthgreaterequal" => 67,
+        "sv_depthlessequal" => 68,
         "sv_stencilref" => 69,
         "sv_innercoverage" => 70,
         _ => 0,

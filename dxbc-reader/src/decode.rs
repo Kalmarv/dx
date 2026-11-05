@@ -861,7 +861,13 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 operands.push(c.operand(0)?);
             }
             // fxc pads some instructions (`samplepos`, `sample_cl_s`) with zero words after their operands
-            if let Some(nonzero) = c.words.get(c.at..).unwrap_or_default().iter().position(|&w| w != 0) {
+            if let Some(nonzero) = c
+                .words
+                .get(c.at..)
+                .unwrap_or_default()
+                .iter()
+                .position(|&w| w != 0)
+            {
                 return Err(error(
                     c.position().saturating_add(nonzero),
                     format!(

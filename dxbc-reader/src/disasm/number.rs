@@ -44,8 +44,13 @@ pub(crate) fn integer(bits: u32) -> String {
 /// A 32-bit float as `%f` writes it.
 pub(crate) fn float(bits: u32) -> String {
     let value = f32::from_bits(bits);
-    special(value.is_nan(), value.is_infinite(), bits >> 31 != 0, bits == 0xffc0_0000)
-        .unwrap_or_else(|| format!("{:.6}", f64::from(value)))
+    special(
+        value.is_nan(),
+        value.is_infinite(),
+        bits >> 31 != 0,
+        bits == 0xffc0_0000,
+    )
+    .unwrap_or_else(|| format!("{:.6}", f64::from(value)))
 }
 
 /// A 64-bit float as `%f` writes it, with the `l` suffix of a double literal.

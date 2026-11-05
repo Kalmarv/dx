@@ -29,6 +29,11 @@ enum Command {
         /// With --check, list every differing program with its first differing line.
         #[arg(long, short)]
         verbose: bool,
+        /// Microsoft's `D3D_DISASM_*` flags, in hex (`0x04` numbers instructions, `0x20` writes their offsets,
+        /// `0x40` leaves out the header, `0x80` writes literals in hex); with --check, compared with
+        /// `NAME.flagNN.asm`.
+        #[arg(long, value_parser = flags, default_value = "0")]
+        flags: u32,
     },
 }
 
@@ -39,8 +44,9 @@ fn main() -> ExitCode {
             path,
             check: true,
             verbose,
-        } => check::run(&path, verbose),
-        Command::Disasm { path, .. } => disasm(&path),
+            flags,
+        } => check::run(&path, flags, verbose),
+        Command::Disasm { path, flags, .. } => disasm(&path, flags),
     };
     match result {
         Ok(code) => code,
@@ -51,14 +57,20 @@ fn main() -> ExitCode {
     }
 }
 
+/// A flags word in hex, with or without `0x`.
+fn flags(text: &str) -> Result<u32, String> {
+    let digits = text.strip_prefix("0x").unwrap_or(text);
+    u32::from_str_radix(digits, 16).map_err(|e| format!("{text}: not a hex flags word: {e}"))
+}
+
 /// The listing of every program under `path`; a folder's each after a `// FILE` line.
-fn disasm(path: &Path) -> Result<ExitCode, String> {
+fn disasm(path: &Path, flags: u32) -> Result<ExitCode, String> {
     let paths = files::programs(path)?;
     let many = path.is_dir();
     let mut failed = false;
     for path in paths {
         let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        match files::listing(&bytes) {
+        match files::listing(&bytes, flags) {
             Ok(text) => {
                 if many {
                     println!("// {}", path.display());

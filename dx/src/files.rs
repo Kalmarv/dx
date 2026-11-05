@@ -32,8 +32,12 @@ pub fn programs(path: &Path) -> Result<Vec<PathBuf>, String> {
 }
 
 /// Microsoft's listing of `program` stored beside it: `NAME.txt`, `NAME.asm`, or the program's file name with `.asm`
-/// or `.txt` appended.
-pub fn stored_listing(program: &Path) -> Option<PathBuf> {
+/// or `.txt` appended; with flags, `NAME.flagNN.asm` (`NN` the flags word in two hex digits).
+pub fn stored_listing(program: &Path, flags: u32) -> Option<PathBuf> {
+    if flags != 0 {
+        let listing = program.with_extension(format!("flag{flags:02x}.asm"));
+        return listing.is_file().then_some(listing);
+    }
     let mut candidates = vec![program.with_extension("txt"), program.with_extension("asm")];
     for ext in ["asm", "txt"] {
         let mut name = program.as_os_str().to_owned();
@@ -44,10 +48,12 @@ pub fn stored_listing(program: &Path) -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
-/// The listing of a program file: a `DXBC` container's Shader Model 4 or 5 program.
-pub fn listing(bytes: &[u8]) -> Result<String, String> {
+/// The listing of a program file with Microsoft's `D3D_DISASM_*` `flags`: a `DXBC` container's Shader Model 4 or 5
+/// program.
+pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
     if bytes.starts_with(b"DXBC") {
-        return dxbc_reader::disassemble(bytes).map_err(|e| e.to_string());
+        let options = dxbc_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
+        return dxbc_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string());
     }
     Err("not a DXBC container".to_owned())
 }
@@ -56,12 +62,13 @@ pub fn listing(bytes: &[u8]) -> Result<String, String> {
 pub fn target(listing: &str) -> Option<String> {
     listing
         .lines()
+        .filter(|l| !l.starts_with("//"))
+        // after the offset and number prefixes of D3D_DISASM_ENABLE_INSTRUCTION_OFFSET and _NUMBERING
+        .map(|l| l.split_once(": ").filter(|(at, _)| at.starts_with("0x")).map_or(l, |(_, rest)| rest).trim())
         .find(|l| {
-            let l = l.trim_end();
             l.len() >= 6
-                && !l.starts_with("//")
                 && ["vs_", "ps_", "gs_", "hs_", "ds_", "cs_"].iter().any(|p| l.starts_with(p))
                 && !l.contains(' ')
         })
-        .map(|l| l.trim_end().to_owned())
+        .map(str::to_owned)
 }
