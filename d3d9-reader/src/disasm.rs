@@ -82,7 +82,6 @@ fn type_name(ty: &Type) -> String {
         1 => format!("{kind}{}", ty.columns),
         2 => format!("row_major {kind}{}x{}", ty.rows, ty.columns),
         3 => format!("{kind}{}x{}", ty.rows, ty.columns),
-        5 => "struct".to_owned(),
         _ => kind.to_owned(),
     }
 }
@@ -108,12 +107,7 @@ fn header(out: &mut String, table: &ConstantTable) {
     constants.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
     out.push_str("//\n// Parameters:\n//\n");
     for c in &constants {
-        let array = if c.ty.elements > 1 {
-            format!("[{}]", c.ty.elements)
-        } else {
-            String::new()
-        };
-        let _ = writeln!(out, "//   {} {}{array};", type_name(&c.ty), c.name);
+        parameter(out, 3, &c.ty, &c.name);
     }
     out.push_str("//\n//\n// Registers:\n//\n");
     constants.sort_by_key(|c| (c.register_set, c.register));
@@ -126,6 +120,40 @@ fn header(out: &mut String, table: &ConstantTable) {
         let _ = writeln!(out, "//   {:<width$} {register:<5} {:>4}", c.name, c.count);
     }
     out.push_str("//\n\n");
+}
+
+/// One line of the Parameters list, `type name[elements];`, at `indent` spaces after the `//`. A struct is a block, with
+/// its members `indent + 4` in and a blank comment line before and after it (one between two structs):
+///
+/// ```text
+/// //
+/// //   struct
+/// //   {
+/// //       float4 colour;
+/// //
+/// //   } lights[3];
+/// //
+/// ```
+fn parameter(out: &mut String, indent: usize, ty: &Type, name: &str) {
+    let pad = " ".repeat(indent);
+    let array = if ty.elements > 1 {
+        format!("[{}]", ty.elements)
+    } else {
+        String::new()
+    };
+    if ty.class == 5 {
+        let blank = format!("//{pad}\n");
+        if !out.ends_with(&blank) {
+            out.push_str(&blank);
+        }
+        let _ = write!(out, "//{pad}struct\n//{pad}{{\n");
+        for member in &ty.members {
+            parameter(out, indent.saturating_add(4), &member.ty, &member.name);
+        }
+        let _ = write!(out, "//\n//{pad}}} {name}{array};\n//{pad}\n");
+    } else {
+        let _ = writeln!(out, "//{pad}{} {name}{array};", type_name(ty));
+    }
 }
 
 fn register(r: Register, program: &Program) -> String {
@@ -393,46 +421,48 @@ fn general(value: f32) -> String {
     trim(&format!("{value:.decimals$}"))
 }
 
-/// The instruction slots an instruction takes, as Microsoft's listings count them (fitted to every footer of a
-/// vs_3_0 and ps_3_0 corpus, which they then match exactly).
-fn slots(i: &Instruction, program: &Program) -> u32 {
+/// The texture and arithmetic instruction slots an instruction takes, as Microsoft's listings count them: checked
+/// against every footer of a vs_3_0 and ps_3_0 corpus and against fixtures of one operation each. `loop`, `endloop`,
+/// `call`, `callnz`, `ret`, `break`, `breakp` and `setp` take what Microsoft's instruction reference states, unchecked.
+fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
     let pixel = program.version.stage == Stage::Pixel;
     match i.opcode {
-        Opcode::SinCos => 8,
-        Opcode::M4x4 | Opcode::M3x4 => 4,
-        Opcode::Nrm | Opcode::M4x3 | Opcode::M3x3 => 3,
-        Opcode::Pow => {
-            if pixel {
-                2
-            } else {
-                3
-            }
-        }
-        Opcode::Log | Opcode::Dp2Add if pixel => 2,
-        Opcode::M3x2 | Opcode::Crs => 2,
-        Opcode::Label | Opcode::Phase => 0,
-        _ => 1,
+        Opcode::Tex => (1, 0),
+        Opcode::TexLdl => (2, 0),
+        Opcode::TexLdd => (1, 2),
+        Opcode::SinCos => (0, 8),
+        Opcode::M4x4 | Opcode::M3x4 => (0, 4),
+        Opcode::Nrm | Opcode::Pow | Opcode::M4x3 | Opcode::M3x3 => (0, 3),
+        Opcode::If
+        | Opcode::IfC
+        | Opcode::BreakC
+        | Opcode::BreakP
+        | Opcode::CallNz
+        | Opcode::Rep
+        | Opcode::Loop => (0, 3),
+        Opcode::EndRep
+        | Opcode::EndLoop
+        | Opcode::Call
+        | Opcode::M3x2
+        | Opcode::Crs
+        | Opcode::Dsx
+        | Opcode::Dsy => (0, 2),
+        Opcode::Dp2Add if pixel => (0, 2),
+        Opcode::Label | Opcode::Phase => (0, 0),
+        _ => (0, 1),
     }
 }
 
-/// `// approximately N instruction slots used`, with a pixel program's split into texture and arithmetic slots when it
-/// samples a texture.
+/// `// approximately N instruction slots used`, split into texture and arithmetic slots when the program samples.
 fn footer(out: &mut String, program: &Program) {
-    let mut texture: u32 = 0;
-    let mut arithmetic: u32 = 0;
-    for i in program.instructions() {
-        let n = slots(i, program);
-        let is_texture = matches!(i.opcode, Opcode::Tex | Opcode::TexLdd | Opcode::TexLdl);
-        if is_texture {
-            texture = texture.saturating_add(n);
-        } else {
-            arithmetic = arithmetic.saturating_add(n);
-        }
-    }
+    let (texture, arithmetic) = program.instructions().fold((0u32, 0u32), |(t, a), i| {
+        let (ti, ai) = slots(i, program);
+        (t.saturating_add(ti), a.saturating_add(ai))
+    });
     let total = texture.saturating_add(arithmetic);
     let slots = if total == 1 { "slot" } else { "slots" };
     let _ = write!(out, "// approximately {total} instruction {slots} used");
-    if program.version.stage == Stage::Pixel && texture > 0 {
+    if texture > 0 {
         let _ = write!(out, " ({texture} texture, {arithmetic} arithmetic)");
     }
     out.push('\n');
