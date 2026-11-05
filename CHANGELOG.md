@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+- `dx`, a new command-line tool (`cargo install --path dx`): `dx disasm FILE|DIR` writes the listing of each DXBC or
+  Direct3D 9 program as Microsoft's disassembler does, with its `D3D_DISASM_*` flags (`--flags 0x04`), and
+  `--check` compares each with Microsoft's listing stored beside it and counts identical, differing and failed programs
+  by shader model and stage; `dx reflect FILE` writes the `RDEF` bindings and buffer layouts, the signatures, the
+  `STAT` counters, the `SFI0` flags and the level 9 mappings of a DXBC container, or a Direct3D 9 program's constant
+  table, as JSON (`--json`) or indented text, each record with D3D's numbers and the disassembler's names; `dx info
+  FILE` writes a container's parts with their offsets and sizes, its digest and whether it matches.
+- `dxbc-reader`: `disassemble` and `disassemble_with(&[u8], &Options)` write a Shader Model 4, 5 or 5.1 container's
+  listing as `D3DDisassemble` (d3dcompiler_47 10.0.26100.4654) does, byte for byte: the header (buffer definitions,
+  resource bindings, signatures, functionality notes, tessellation tables), the program and its slot count.
+  `Options::from_flags` takes Microsoft's flags word: `0x40` leaves out the header, `0x04` numbers the instructions,
+  `0x20` writes their offsets, `0x80` writes literals in hex (`0x02` and `0x10` change nothing in the text); it
+  refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's disassembler refuses too. The listings are identical to
+  Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 390 of Sekiro's, and for 455 listings of
+  65 fixture programs under seven flag words; a container with an `IFCE` part (class linkage) or an `SDBG` part
+  (debug locations) differs, in those tables only.
+- `dxbc-reader`: `level9` reads the `Aon9` part of a container compiled for a Direct3D 9 feature level
+  (`ps_4_0_level_9_1` and the like): the Direct3D 9 program and the tables that map constant buffers, samplers and
+  resources onto its registers (`Level9`, `ConstantMapping`, `ScalarMapping`, `SamplerMapping`, `RuntimeConstant`).
+  The listing writes them and the program, as Microsoft's does. `dxbc-reader` now depends on `d3d9-reader`.
+- `dxbc-reader`: the names the listing gives reflection records are methods, so a caller can print the same ones:
+  `RdefBinding::type_name`, `format_name`, `dimension_name` and `register_prefix`; `RdefType::type_name` and
+  `scalar_name`; `SignatureElement::system_value_for` (a pixel program's outputs store no system value; theirs is the one
+  the semantic names), `system_value_name` and `format_name`.
+- `d3d9-reader`: `disassemble_with(&[u8], &Options)` and `Options::from_flags`, the same flags as `dxbc-reader`'s. The
+  listings are identical to Microsoft's for all 7,306 programs of Shaun White Snowboarding (6,207 `ps_3_0`, 1,099
+  `vs_3_0`) and 182 listings of 26 fixture programs (`vs_2_0` to `ps_3_0`) under seven flag words, struct parameters
+  and the texture and arithmetic slot split included.
+- `dxbc-reader`: `decode` refuses an instruction whose trailing words decode as more operands than its opcode's
+  format has, naming the count, where it took the first operands before. A change for code that relied on it.
+
 - `d3d9-reader`, a new crate: Direct3D 9 shader bytecode (vs/ps 1.x, 2.0, 2.x and 3.0, and the 2.x and 3.0 software
   profiles), from the version token to `END`, as typed records. `read` gives a `Program` of declarations, `def`/`defi`/
   `defb` definitions, instructions (opcode, control bits, predicate, co-issue, destination with mask, modifiers and

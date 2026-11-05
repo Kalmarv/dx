@@ -224,6 +224,74 @@ pub struct SignatureElement {
     pub min_precision: u32,
 }
 
+impl SignatureElement {
+    /// The element's `D3D_NAME`: as stored, but for a pixel program's outputs, which store none; theirs is the one
+    /// their semantic names (`SV_Target` is 64, `SV_Depth` 65, ...). `output` says which signature the element is in.
+    pub fn system_value_for(&self, output: bool, kind: ProgramType) -> u32 {
+        if self.system_value != 0 || !output || kind != ProgramType::Pixel {
+            return self.system_value;
+        }
+        match self.name.to_ascii_lowercase().as_str() {
+            "sv_target" => 64,
+            "sv_depth" => 65,
+            "sv_coverage" => 66,
+            "sv_depthgreaterequal" => 67,
+            "sv_depthlessequal" => 68,
+            "sv_stencilref" => 69,
+            "sv_innercoverage" => 70,
+            _ => 0,
+        }
+    }
+
+    /// [`Self::system_value_for`] as Microsoft's disassembler names it in the SysValue column (`POS`, `TARGET`; `SV`
+    /// and the number for one it has no name for).
+    pub fn system_value_name(&self, output: bool, kind: ProgramType) -> String {
+        match self.system_value_for(output, kind) {
+            0 => "NONE",
+            1 => "POS",
+            2 => "CLIPDST",
+            3 => "CULLDST",
+            4 => "RTINDEX",
+            5 => "VPINDEX",
+            6 => "VERTID",
+            7 => "PRIMID",
+            8 => "INSTID",
+            9 => "FFACE",
+            10 => "SAMPLE",
+            11 => "QUADEDGE",
+            12 => "QUADINT",
+            13 => "TRIEDGE",
+            14 => "TRIINT",
+            15 => "LINEDET",
+            16 => "LINEDEN",
+            64 => "TARGET",
+            65 => "DEPTH",
+            66 => "COVERAGE",
+            67 => "DEPTHGE",
+            68 => "DEPTHLE",
+            69 => "STENCILREF",
+            70 => "INNERCOV",
+            other => return format!("SV{other}"),
+        }
+        .to_owned()
+    }
+
+    /// The component type as Microsoft's disassembler names it in the Format column, or the minimum precision where
+    /// the element has one (`float`, `min16f`).
+    pub fn format_name(&self) -> &'static str {
+        match (self.min_precision, self.component_type) {
+            (1, _) => "min16f",
+            (2, _) => "min2_8f",
+            (4, _) => "min16i",
+            (5, _) => "min16u",
+            (_, 1) => "uint",
+            (_, 2) => "int",
+            (_, 3) => "float",
+            _ => "unknown",
+        }
+    }
+}
+
 /// A signature part's records. Layouts: `ISGN`/`OSGN`/`PCSG` (name, index, system value, component type, register,
 /// masks), `ISG1`/`OSG1`/`PSG1` (a stream and a minimum precision besides) and `OSG5` (a stream besides). `kind` is the
 /// part's tag, which says which layout `bytes` has.
@@ -366,6 +434,93 @@ pub struct RdefBinding {
     pub id: Option<u32>,
 }
 
+impl RdefBinding {
+    /// `D3D_SHADER_INPUT_TYPE` as Microsoft's disassembler names it in the Type column (`cbuffer`, `texture`,
+    /// `sampler_c` for a comparison sampler, `UAV`).
+    pub fn type_name(&self) -> &'static str {
+        match self.kind {
+            0 => "cbuffer",
+            1 => "tbuffer",
+            // D3D_SIF_COMPARISON_SAMPLER
+            3 if self.flags & 2 != 0 => "sampler_c",
+            3 => "sampler",
+            4 | 6 | 8..=11 | 13 => "UAV",
+            _ => "texture",
+        }
+    }
+
+    /// What the binding returns, as Microsoft's disassembler names it in the Format column (`float4`, `struct`,
+    /// `byte`; `NA` for a buffer or sampler, which return none).
+    pub fn format_name(&self) -> String {
+        match self.kind {
+            0 | 1 | 3 => "NA".to_owned(),
+            5 | 6 | 9..=11 => "struct".to_owned(),
+            7 | 8 => "byte".to_owned(),
+            _ => {
+                let name = match self.returns {
+                    1 => "unorm",
+                    2 => "snorm",
+                    3 => "sint",
+                    4 => "uint",
+                    5 => "float",
+                    6 => "mixed",
+                    7 => "double",
+                    8 => "continued",
+                    _ => "NA",
+                };
+                // D3D_SIF_TEXTURE_COMPONENTS: the number of components less one
+                let components = ((self.flags >> 2) & 3).saturating_add(1);
+                if components > 1 {
+                    format!("{name}{components}")
+                } else {
+                    name.to_owned()
+                }
+            }
+        }
+    }
+
+    /// The resource's shape, as Microsoft's disassembler names it in the Dim column (`2d`, `2dMS4`, `r/w`, `NA`).
+    pub fn dimension_name(&self) -> String {
+        match self.kind {
+            0 | 1 | 3 => return "NA".to_owned(),
+            5 | 7 => return "r/o".to_owned(),
+            6 | 8 => return "r/w".to_owned(),
+            9 => return "append".to_owned(),
+            10 => return "consume".to_owned(),
+            11 => return "r/w+cnt".to_owned(),
+            _ => {}
+        }
+        let name = match self.dimension {
+            1 | 11 => "buf",
+            2 => "1d",
+            3 => "1darray",
+            4 => "2d",
+            5 => "2darray",
+            6 => "2dMS",
+            7 => "2darrayMS",
+            8 => "3d",
+            9 => "cube",
+            10 => "cubearray",
+            _ => "NA",
+        };
+        if matches!(self.dimension, 6 | 7) && self.samples != 0 && self.samples != u32::MAX {
+            format!("{name}{}", self.samples)
+        } else {
+            name.to_owned()
+        }
+    }
+
+    /// The register file the binding is in: `cb`, `s`, `u` or `t`.
+    pub fn register_prefix(&self) -> &'static str {
+        match self.type_name() {
+            "cbuffer" => "cb",
+            "sampler" | "sampler_c" => "s",
+            "UAV" => "u",
+            _ => "t",
+        }
+    }
+}
+
 /// One buffer (`D3D11_SHADER_BUFFER_DESC`) as stored, with its variables.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RdefBuffer {
@@ -419,6 +574,74 @@ pub struct RdefType {
     pub members: Vec<RdefMember>,
     /// The type's name (`float4`, `float3x4`, a struct's own name), where the layout stores one (Shader Model 5).
     pub name: Option<String>,
+}
+
+impl RdefType {
+    /// `D3D_SHADER_VARIABLE_TYPE` as HLSL names it (`float`, `uint`, `Texture2D`; `type` and the number for one it
+    /// has no name for).
+    pub fn scalar_name(&self) -> String {
+        match self.scalar {
+            0 => "void",
+            1 => "bool",
+            2 => "int",
+            3 => "float",
+            4 => "string",
+            5 => "texture",
+            6 => "Texture1D",
+            7 => "Texture2D",
+            8 => "Texture3D",
+            9 => "TextureCube",
+            10 => "SamplerState",
+            19 => "uint",
+            20 => "uint8",
+            25 => "Buffer",
+            26 => "cbuffer",
+            27 => "tbuffer",
+            28 => "Texture1DArray",
+            29 => "Texture2DArray",
+            32 => "Texture2DMS",
+            33 => "Texture2DMSArray",
+            34 => "TextureCubeArray",
+            39 => "double",
+            40 => "RWTexture1D",
+            41 => "RWTexture1DArray",
+            42 => "RWTexture2D",
+            43 => "RWTexture2DArray",
+            44 => "RWTexture3D",
+            45 => "RWBuffer",
+            46 => "ByteAddressBuffer",
+            47 => "RWByteAddressBuffer",
+            48 => "StructuredBuffer",
+            49 => "RWStructuredBuffer",
+            50 => "AppendStructuredBuffer",
+            51 => "ConsumeStructuredBuffer",
+            52 => "min8float",
+            53 => "min10float",
+            54 => "min16float",
+            55 => "min12int",
+            56 => "min16int",
+            57 => "min16uint",
+            other => return format!("type{other}"),
+        }
+        .to_owned()
+    }
+
+    /// The type's name as Microsoft's disassembler writes it before a variable's name: `float4`, `row_major float3x4`,
+    /// `interface ILight`. Built from the class and scalar type, as the disassembler does (the stored name of a `uint`
+    /// is `dword`); an interface's from its stored name. A struct is `struct` (the disassembler opens a block of its
+    /// members instead).
+    pub fn type_name(&self) -> String {
+        let scalar = self.scalar_name();
+        match self.class {
+            1 => format!("{scalar}{}", self.columns),
+            2 => format!("row_major {scalar}{}x{}", self.rows, self.columns),
+            3 => format!("{scalar}{}x{}", self.rows, self.columns),
+            5 => "struct".to_owned(),
+            // an interface class (6) or pointer (7)
+            6 | 7 => format!("interface {}", self.name.as_deref().unwrap_or("")),
+            _ => scalar,
+        }
+    }
 }
 
 /// A struct member: its name, its byte offset in the struct and its type.

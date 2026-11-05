@@ -13,6 +13,7 @@ Rust libraries that read compiled shader programs and their containers: Direct3D
 - Lists the texture and sampler registers each texture read of a DXBC or DXIL program uses
 - Reads PS3 `CellGcmTexture` descriptors and `CgBinaryProgram` containers, and decodes RSX fragment and vertex microcode
 - Traces which texture units and interpolants can influence an RSX fragment program's outputs
+- Writes Shader Model 4, 5 and 5.1 and Direct3D 9 listings byte for byte as Microsoft's disassembler does
 - Reports values as the file stores them, with Direct3D's own enum numbers
 - Reports every refusal with the byte, word or bit where it happened and what was expected there
 - Contains no `unsafe` code and does no file, environment or process access in the libraries
@@ -66,6 +67,22 @@ fn main() -> Result<(), dxbc_reader::Error> {
     Ok(())
 }
 ```
+
+### Command line
+
+The `dx` tool reads compiled programs from disk:
+
+```sh
+cargo install --path dx
+dx disasm shader.dxbc                 # Microsoft's listing; a folder lists every program in it
+dx disasm --flags 0x04 shader.cso     # with D3D_DISASM_* flags: 0x04 numbers the instructions
+dx disasm --check shaders/            # compare with NAME.txt / NAME.asm beside each, counted by model and stage
+dx reflect --json shader.dxbc         # bindings, buffers, signatures, STAT, SFI0 and level 9 tables as JSON
+dx info shader.dxbc                   # parts, offsets, sizes, digest
+```
+
+A DXBC container and a Direct3D 9 token stream are told apart by their first bytes. DXIL containers are not
+disassembled.
 
 Each crate has runnable examples that take file paths:
 

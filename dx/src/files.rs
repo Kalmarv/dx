@@ -48,22 +48,42 @@ pub fn stored_listing(program: &Path, flags: u32) -> Option<PathBuf> {
     candidates.into_iter().find(|p| p.is_file())
 }
 
-/// The listing of a program file with Microsoft's `D3D_DISASM_*` `flags`: a `DXBC` container's Shader Model 4 or 5
-/// program, or a Direct3D 9 token stream.
-pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
+/// What a program file is.
+pub enum Kind {
+    /// A `DXBC` container.
+    Dxbc,
+    /// A Direct3D 9 token stream.
+    D3d9,
+}
+
+/// Whether `bytes` are a `DXBC` container or a Direct3D 9 token stream.
+pub fn kind(bytes: &[u8]) -> Result<Kind, String> {
     if bytes.starts_with(b"DXBC") {
-        let options = dxbc_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
-        return dxbc_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string());
+        return Ok(Kind::Dxbc);
     }
     // a Direct3D 9 token stream starts with its version token: 0xfffe (vertex) or 0xffff (pixel) in the high half
     if bytes
         .get(2..4)
         .is_some_and(|h| h == [0xfe, 0xff] || h == [0xff, 0xff])
     {
-        let options = d3d9_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
-        return d3d9_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string());
+        return Ok(Kind::D3d9);
     }
-    Err("not a DXBC container".to_owned())
+    Err("neither a DXBC container nor a Direct3D 9 token stream".to_owned())
+}
+
+/// The listing of a program file with Microsoft's `D3D_DISASM_*` `flags`: a `DXBC` container's Shader Model 4 or 5
+/// program, or a Direct3D 9 token stream.
+pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
+    match kind(bytes)? {
+        Kind::Dxbc => {
+            let options = dxbc_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
+            dxbc_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string())
+        }
+        Kind::D3d9 => {
+            let options = d3d9_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
+            d3d9_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string())
+        }
+    }
 }
 
 /// The shader model and stage a program's listing names on its version line (`ps_5_0`), for grouping counts.
