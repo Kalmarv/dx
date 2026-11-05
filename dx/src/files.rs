@@ -49,11 +49,23 @@ pub fn stored_listing(program: &Path, flags: u32) -> Option<PathBuf> {
 }
 
 /// The listing of a program file with Microsoft's `D3D_DISASM_*` `flags`: a `DXBC` container's Shader Model 4 or 5
-/// program.
+/// program, or a Direct3D 9 token stream.
 pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
     if bytes.starts_with(b"DXBC") {
         let options = dxbc_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
         return dxbc_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string());
+    }
+    // a Direct3D 9 token stream starts with its version token: 0xfffe (vertex) or 0xffff (pixel) in the high half
+    if bytes
+        .get(2..4)
+        .is_some_and(|h| h == [0xfe, 0xff] || h == [0xff, 0xff])
+    {
+        if flags != 0 {
+            return Err(format!(
+                "flags 0x{flags:02x}: a Direct3D 9 listing is written with no flags only"
+            ));
+        }
+        return d3d9_reader::disassemble(bytes).map_err(|e| e.to_string());
     }
     Err("not a DXBC container".to_owned())
 }
@@ -64,10 +76,17 @@ pub fn target(listing: &str) -> Option<String> {
         .lines()
         .filter(|l| !l.starts_with("//"))
         // after the offset and number prefixes of D3D_DISASM_ENABLE_INSTRUCTION_OFFSET and _NUMBERING
-        .map(|l| l.split_once(": ").filter(|(at, _)| at.starts_with("0x")).map_or(l, |(_, rest)| rest).trim())
+        .map(|l| {
+            l.split_once(": ")
+                .filter(|(at, _)| at.starts_with("0x"))
+                .map_or(l, |(_, rest)| rest)
+                .trim()
+        })
         .find(|l| {
             l.len() >= 6
-                && ["vs_", "ps_", "gs_", "hs_", "ds_", "cs_"].iter().any(|p| l.starts_with(p))
+                && ["vs_", "ps_", "gs_", "hs_", "ds_", "cs_", "tx_"]
+                    .iter()
+                    .any(|p| l.starts_with(p))
                 && !l.contains(' ')
         })
         .map(str::to_owned)

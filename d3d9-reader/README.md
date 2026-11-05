@@ -17,8 +17,8 @@ if let Some(table) = &program.constants {
 }
 ```
 
-Run it with `cargo run -p d3d9-reader --example disassemble_d3d9 -- <files>`, which prints each program spelled close
-to Microsoft's disassembler; the source is [`examples/disassemble_d3d9.rs`](examples/disassemble_d3d9.rs).
+`disassemble` writes a program's listing as Microsoft's disassembler does with no flags, byte for byte: the constant
+table's parameters and registers, the program, and the instruction slot count. `dx disasm` runs it over files.
 
 ## What it reads
 

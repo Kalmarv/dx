@@ -39,10 +39,12 @@
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
 mod ctab;
+mod disasm;
 mod opcodes;
 mod program;
 
 pub use ctab::{Constant, ConstantTable, Type, TypeMember};
+pub use disasm::disassemble;
 pub use opcodes::Opcode;
 pub use program::{
     Comment, Comparison, Declaration, Declared, Definition, Destination, Instruction, Item, Literal,

@@ -80,10 +80,16 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
             },
         }
     }
-    println!("{:<10} {:>9} {:>9} {:>7}", "target", "identical", "differing", "failed");
+    println!(
+        "{:<10} {:>9} {:>9} {:>7}",
+        "target", "identical", "differing", "failed"
+    );
     let mut total = Counts::default();
     for (target, c) in &by_target {
-        println!("{target:<10} {:>9} {:>9} {:>7}", c.identical, c.differing, c.failed);
+        println!(
+            "{target:<10} {:>9} {:>9} {:>7}",
+            c.identical, c.differing, c.failed
+        );
         total.identical = total.identical.saturating_add(c.identical);
         total.differing = total.differing.saturating_add(c.differing);
         total.failed = total.failed.saturating_add(c.failed);

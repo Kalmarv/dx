@@ -9,9 +9,18 @@ use std::path::{Path, PathBuf};
 /// differ, so the list cannot go stale.
 const GAPS: &[(&str, &str)] = &[
     ("interfaces.ps50", "the class linkage tables of an IFCE part"),
-    ("level9.ps91", "the feature level 9 mapping tables and the embedded Direct3D 9 listing"),
-    ("level9.vs93", "the feature level 9 mapping tables and the embedded Direct3D 9 listing"),
-    ("ps_sm5.debug", "the source and variable locations of an SDBG part"),
+    (
+        "level9.ps91",
+        "the feature level 9 mapping tables and the embedded Direct3D 9 listing",
+    ),
+    (
+        "level9.vs93",
+        "the feature level 9 mapping tables and the embedded Direct3D 9 listing",
+    ),
+    (
+        "ps_sm5.debug",
+        "the source and variable locations of an SDBG part",
+    ),
 ];
 
 /// The flags words the listings were made with: no flags, and every flag Microsoft's disassembler accepts but the
@@ -37,7 +46,9 @@ fn listing(container: &Path, flags: u32) -> Option<String> {
     } else {
         format!("{stem}.flag{flags:02x}.asm")
     };
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/disasm/listings").join(name);
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/disasm/listings")
+        .join(name);
     std::fs::read_to_string(path).ok()
 }
 
@@ -62,7 +73,11 @@ fn listings_are_microsofts() {
             }
             compared += 1;
             if ours != theirs {
-                let line = ours.lines().zip(theirs.lines()).position(|(a, b)| a != b).unwrap_or(0);
+                let line = ours
+                    .lines()
+                    .zip(theirs.lines())
+                    .position(|(a, b)| a != b)
+                    .unwrap_or(0);
                 differing.push(format!(
                     "{stem} flags 0x{flags:02x} line {}:\n  dx: {:?}\n  ms: {:?}",
                     line + 1,
@@ -72,7 +87,12 @@ fn listings_are_microsofts() {
             }
         }
     }
-    assert!(differing.is_empty(), "{} of {compared} listings differ:\n{}", differing.len(), differing.join("\n"));
+    assert!(
+        differing.is_empty(),
+        "{} of {compared} listings differ:\n{}",
+        differing.len(),
+        differing.join("\n")
+    );
     // 54 programs outside the gaps, each with seven listings
     assert_eq!(compared, 378);
 }

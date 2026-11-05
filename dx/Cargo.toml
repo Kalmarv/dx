@@ -14,6 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
+d3d9-reader = { path = "../d3d9-reader" }
 dxbc-reader = { path = "../dxbc-reader" }
 dxcontainer.workspace = true
 

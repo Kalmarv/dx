@@ -70,7 +70,6 @@ fn main() -> Result<(), dxbc_reader::Error> {
 Each crate has runnable examples that take file paths:
 
 ```sh
-cargo run -p d3d9-reader --example disassemble_d3d9 -- shader.bin
 cargo run -p dxbc-reader --example inspect_dxbc -- dxbc-reader/tests/fixtures/modes.dxbc
 cargo run -p dxbc-reader --example pairs_dxbc -- shaders/
 cargo run -p dxil-reader --example inspect_dxil -- shader.dxil
