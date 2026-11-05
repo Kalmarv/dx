@@ -27,8 +27,8 @@ Rust 1.99 or newer (edition 2024).
 
 | Crate | Reads |
 |-------|-------|
-| [`d3d9-reader`](d3d9-reader) | Direct3D 9 token streams, Shader Model 1.x to 3.0 |
 | [`dxcontainer`](dxcontainer) | The DXBC container and its digest |
+| [`d3d9-reader`](d3d9-reader) | Direct3D 9 token streams, Shader Model 1.x to 3.0 |
 | [`dxbc-reader`](dxbc-reader) | DXBC, Shader Model 4 and 5, with reflection and signatures |
 | [`dxil-reader`](dxil-reader) | DXIL, Shader Model 6, with reflection and `RDAT` |
 | [`rsx-reader`](rsx-reader) | PS3 RSX textures, Cg binary programs and fragment microcode |
