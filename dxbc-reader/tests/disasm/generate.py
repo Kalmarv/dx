@@ -8,13 +8,20 @@ writes none). `../disasm.rs` compares the disassembler with them.
 
     python -I generate.py [--fxc PATH] [--dll PATH]
 
-Under Wine, give the fxc and d3dcompiler_47 builds the listings were made with, as Wine paths (Z:\\...): fxc
+Sources are compiled from copies in `C:\\dx-fixtures` (see STAGE). Under Wine, give the fxc and d3dcompiler_47
+builds the listings were made with, as Wine paths (Z:\\...): fxc
 10.0.26100.4654 and its d3dcompiler_47.dll write the same bytes there as on Windows. Windows Python needs a console
 under Wine, so run it in a pseudo-terminal (`script -qec "wine python.exe generate.py ..." /dev/null`).
 """
-import argparse, ctypes, glob, hashlib, os, re, shlex, subprocess, sys
+import argparse, ctypes, glob, hashlib, os, re, shlex, shutil, subprocess, sys
 
 FLAGS = [0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80]
+
+# fxc /Zi stores the source's absolute path in the container (and the listing prints it), so every source is compiled
+# from a copy in this folder: the stored path is the same on every machine, under Wine too (the prefix's drive_c),
+# and names no user. A /Zi build still differs on every run in its digest and its PDB's GUID and timestamp; its listings
+# do not.
+STAGE = r"C:\dx-fixtures"
 
 
 def find_fxc():
@@ -79,7 +86,10 @@ def main():
     print(f"fxc {a.fxc} {version(a.fxc)} {sha256(a.fxc)}")
     print(f"dll {a.dll} {version(a.dll)} {sha256(a.dll)}")
     built, failed = sorted(glob.glob(os.path.join(here, "..", "fixtures", "*.dxbc"))), 0
-    for src in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
+    os.makedirs(STAGE, exist_ok=True)
+    for original in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
+        src = os.path.join(STAGE, os.path.basename(original))
+        shutil.copyfile(original, src)
         for line in open(src, encoding="utf-8"):
             m = re.match(r"//\s*fxc:\s*(.*)", line)
             if not m:
