@@ -52,7 +52,9 @@ pub fn run(path: &Path, verbose: bool) -> Result<ExitCode, String> {
         };
         let bytes = std::fs::read(&program).map_err(|e| format!("{}: {e}", program.display()))?;
         let theirs = std::fs::read(&stored).map_err(|e| format!("{}: {e}", stored.display()))?;
-        let theirs = String::from_utf8_lossy(&theirs);
+        // Microsoft's disassembler writes LF and ends its blob in a NUL; fxc's /Fc and listings saved in text mode on
+        // Windows end their lines in CRLF
+        let theirs = String::from_utf8_lossy(&theirs).replace("\r\n", "\n");
         let theirs = theirs.trim_end_matches('\0');
         let target = files::target(theirs).unwrap_or_else(|| "unknown".to_owned());
         let counts = by_target.entry(target).or_default();

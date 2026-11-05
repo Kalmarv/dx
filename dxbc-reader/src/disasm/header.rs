@@ -2,6 +2,7 @@
 //! signatures, as the `RDEF` and signature parts state them.
 use std::fmt::Write;
 
+use crate::Statistics;
 use crate::decode::{Declared, Decoded, ProgramType};
 use crate::reflection::{Rdef, RdefBinding, RdefType, RdefVariable, SignatureElement};
 
@@ -486,30 +487,12 @@ fn notes(out: &mut String, features: u64, program: &Decoded) {
     out.push_str("//\n");
 }
 
-/// The control bits of the first declaration with `opcode`.
-fn declared(program: &Decoded, opcode: u16) -> Option<u32> {
-    program
-        .declarations
-        .iter()
-        .find(|d| d.opcode == opcode)
-        .map(|d| d.control)
-}
-
-/// The tessellation tables of a hull program (domain, output control points, output primitive and partitioning) and
-/// of a domain program (domain and input control points).
-fn tessellation(out: &mut String, program: &Decoded) {
-    let points = match program.kind {
-        // dcl_output_control_point_count
-        ProgramType::Hull => declared(program, 148),
-        // dcl_input_control_point_count
-        ProgramType::Domain => declared(program, 147),
-        _ => return,
-    };
-    // dcl_tessellator_domain
-    let Some(domain) = declared(program, 149) else {
-        return;
-    };
-    let domain = match domain & 7 {
+/// The tessellation tables, from the `STAT` part (a container without one has none): the domain and control points
+/// of a hull or domain program, and a hull program's output primitive and partitioning.
+fn tessellation(out: &mut String, kind: ProgramType, stat: &Statistics) {
+    let field = |value: Option<u32>| value.unwrap_or(0);
+    let domain = match field(stat.tessellator_domain()) {
+        0 => return,
         1 => "Isoline",
         2 => "Triangle",
         3 => "Quadrilateral",
@@ -517,19 +500,18 @@ fn tessellation(out: &mut String, program: &Decoded) {
     };
     out.push_str("// Tessellation Domain   # of control points\n");
     out.push_str("// -------------------- --------------------\n");
-    let _ = writeln!(out, "// {domain:<20} {:>20}\n//", points.unwrap_or(0) & 63);
-    if program.kind != ProgramType::Hull {
+    let _ = writeln!(out, "// {domain:<20} {:>20}\n//", field(stat.control_points()));
+    if kind != ProgramType::Hull {
         return;
     }
-    // dcl_tessellator_output_primitive, dcl_tessellator_partitioning
-    let primitive = match declared(program, 151).unwrap_or(0) & 7 {
+    let primitive = match field(stat.tessellator_output_primitive()) {
         1 => "Point",
         2 => "Line",
         3 => "Clockwise Triangles",
         4 => "Counter-Clockwise Triangles",
         _ => "Undefined",
     };
-    let partitioning = match declared(program, 150).unwrap_or(0) & 7 {
+    let partitioning = match field(stat.tessellator_partitioning()) {
         1 => "Integer",
         2 => "Integer Power of 2",
         3 => "Odd Fractional",
@@ -539,14 +521,6 @@ fn tessellation(out: &mut String, program: &Decoded) {
     out.push_str("// Tessellation Output Primitive  Partitioning Type \n");
     out.push_str("// ------------------------------ ------------------\n");
     let _ = writeln!(out, "// {primitive:<30} {partitioning:<18}\n//");
-}
-
-/// Whether a pixel program runs once per sample: an input interpolated per sample, or the sample index.
-fn per_sample(program: &Decoded) -> bool {
-    program.kind == ProgramType::Pixel
-        && program.declarations.iter().any(|d| {
-            matches!(d.kind, Declared::Input { interpolation: Some(6 | 7), .. } | Declared::Input { name: Some(10), .. })
-        })
 }
 
 /// A signature part's elements, and whether the rows name their streams (where an element is on a stream other
@@ -563,6 +537,8 @@ pub(super) struct Header<'a> {
     pub rdef: Option<&'a Rdef>,
     /// The `SFI0` bits, 0 where there is no such part.
     pub features: u64,
+    /// The `STAT` part, which the tessellation tables and the sample-frequency note come from.
+    pub stat: Option<&'a Statistics>,
     pub inputs: Option<Elements<'a>>,
     pub outputs: Option<Elements<'a>>,
     pub patch: Option<Elements<'a>>,
@@ -591,8 +567,10 @@ pub(super) fn write(out: &mut String, h: &Header<'_>) {
     if let Some(outputs) = &h.outputs {
         signature(out, "Output", outputs, true, kind);
     }
-    tessellation(out, program);
-    if per_sample(program) {
-        out.push_str("// Pixel Shader runs at sample frequency\n//\n");
+    if let Some(stat) = h.stat {
+        tessellation(out, kind, stat);
+        if stat.sample_frequency().is_some_and(|f| f != 0) {
+            out.push_str("// Pixel Shader runs at sample frequency\n//\n");
+        }
     }
 }

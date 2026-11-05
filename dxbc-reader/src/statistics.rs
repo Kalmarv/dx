@@ -65,6 +65,20 @@ counters! {
     /// Word 20: the `movc` instructions (equal to the decoder's count of them in all 466 containers that have the part
     /// and decode, the 21 small programs among them).
     movc_instructions = 20;
+    /// Word 28: 1 for a pixel program that runs once per sample (an input interpolated per sample, or the sample
+    /// index), 0 otherwise; the disassembler's "runs at sample frequency" note follows it.
+    sample_frequency = 28;
+    /// Word 30: a hull program's output control points, a domain program's input control points.
+    control_points = 30;
+    /// Word 31: a hull program's tessellator output primitive (`D3D_TESSELLATOR_OUTPUT_PRIMITIVE`: 1 point, 2 line, 3
+    /// clockwise triangles, 4 counter-clockwise).
+    tessellator_output_primitive = 31;
+    /// Word 32: a hull program's tessellator partitioning (`D3D_TESSELLATOR_PARTITIONING`: 1 integer, 2 power of two,
+    /// 3 odd fractional, 4 even fractional).
+    tessellator_partitioning = 32;
+    /// Word 33: the tessellator domain of a hull or domain program (`D3D_TESSELLATOR_DOMAIN`: 1 isoline, 2 triangle,
+    /// 3 quad).
+    tessellator_domain = 33;
 }
 
 /// The `STAT` part of a Shader Model 4 or 5 container: `None` for a container without one (Riders Republic's have none; Sekiro's

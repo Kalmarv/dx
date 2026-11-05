@@ -37,6 +37,7 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
     let inputs = read(&[b"ISGN", b"ISG1"])?;
     let outputs = read(&[b"OSGN", b"OSG1", b"OSG5"])?;
     let patch = read(&[b"PCSG", b"PSG1"])?;
+    let stat = statistics(container)?;
     let mut out = String::new();
     header::write(
         &mut out,
@@ -46,6 +47,7 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
             features: dxcontainer::feature_flags(container)
                 .map_err(|e| error(e.offset / 4, e.detail))?
                 .map_or(0, |f| f.bits),
+            stat: stat.as_ref(),
             inputs: elements(&inputs),
             outputs: elements(&outputs),
             patch: elements(&patch),
@@ -53,7 +55,7 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
     );
     program::write(&mut out, &program);
     // Microsoft's disassembler writes the count of the STAT part, 0 without one
-    let slots = statistics(container)?.and_then(|s| s.instructions()).unwrap_or(0);
+    let slots = stat.and_then(|s| s.instructions()).unwrap_or(0);
     out.push_str(&format!("// Approximately {slots} instruction slots used\n"));
     Ok(out)
 }
