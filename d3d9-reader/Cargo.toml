@@ -1,0 +1,19 @@
+[package]
+name = "d3d9-reader"
+description = "Direct3D 9 shader bytecode parser: reads vs/ps 1.x, 2.x and 3.0 token streams into typed declarations, definitions and instructions, with the CTAB constant table"
+keywords = ["d3d9", "shader", "bytecode", "direct3d", "parser"]
+categories = ["parser-implementations", "graphics"]
+readme = "README.md"
+documentation = "https://docs.rs/d3d9-reader"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

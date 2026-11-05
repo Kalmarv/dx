@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `d3d9-reader`, a new crate: Direct3D 9 shader bytecode (vs/ps 1.x, 2.0, 2.x and 3.0, and the 2.x and 3.0 software
+  profiles), from the version token to `END`, as typed records. `read` gives a `Program` of declarations, `def`/`defi`/
+  `defb` definitions, instructions (opcode, control bits, predicate, co-issue, destination with mask, modifiers and
+  result shift, sources with swizzles, modifiers and relative addressing through `a0` or `aL`) and comments, with the
+  `CTAB` constant table read; `records` gives the same records one at a time, and `frame` reads a program at the start
+  of a larger buffer and returns the bytes it spans. Each program is read under its own version's opcodes, register
+  types and operand counts, and every refusal names its word. The reader and the `CTAB` reader come from
+  `iridia-d3d9`, which kept only the `vs_3_0`/`ps_3_0` subset it lifts and now reads through this crate. Tests are token
+  streams laid out by hand; the example `disassemble_d3d9` prints a program as assembly.
 - `dxbc-reader`: Shader Model 5.1 programs decode, where `decode` refused their operands before. A 5.1 resource,
   sampler, view or constant buffer operand names the declaration's id first (`T1[r1.x + 4]`: id 1, then the register;
   `CB1[r0.w + 0][0]`: id 1, the register, the row); a 5.1 declaration states `[id][lower][upper]` and the register
