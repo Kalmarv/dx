@@ -25,6 +25,7 @@
 
 mod controls;
 pub mod decode;
+mod disasm;
 mod format;
 mod opcodes;
 pub mod reflection;
@@ -32,6 +33,7 @@ mod sampling;
 pub mod statistics;
 
 pub use controls::{GlobalFlags, InfoReturn, SyncFlags};
+pub use disasm::disassemble;
 pub use decode::{
     Declaration, Declared, Decoded, Index, Instruction, Operand, ProgramType, Register, RegisterRange,
     Selection, decode, opcode_name,

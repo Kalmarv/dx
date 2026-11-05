@@ -35,6 +35,27 @@ pub enum Register {
     Constant,
     /// An immediate operand (`l(...)`), its values in [`Operand::immediate`].
     Immediate,
+    /// A 64-bit immediate operand (`d(...)`): its values in [`Operand::immediate`] as pairs of words, low word first
+    /// (two words for one value, four for two).
+    Immediate64,
+    /// A subroutine label (`label <n>`), the operand of `label`, `call` and `callc`.
+    Label,
+    /// A function body of a program with class linkage (`fb<n>`).
+    FunctionBody,
+    /// A function table of a program with class linkage (`ft<n>`).
+    FunctionTable,
+    /// An interface pointer of a program with class linkage (`fp<n>[array][call site]`).
+    Interface,
+    /// A function's input register (`fi<n>`).
+    FunctionInput,
+    /// A function's output register (`fo<n>`).
+    FunctionOutput,
+    /// The `this` pointer of a class instance (`this[<n>]`).
+    ThisPointer,
+    /// `vCycleCounter`, the input clock counter.
+    CycleCounter,
+    /// `vInnerCoverage`, the input inner coverage.
+    InnerCoverage,
     /// A shader resource view (`t<n>`).
     Texture,
     /// A sampler (`s<n>`).
@@ -95,6 +116,9 @@ impl Register {
     fn dimensions(self) -> u32 {
         match self {
             Register::Immediate
+            | Register::Immediate64
+            | Register::CycleCounter
+            | Register::InnerCoverage
             | Register::Null
             | Register::PrimitiveId
             | Register::InputCoverage
@@ -116,7 +140,8 @@ impl Register {
             Register::Constant
             | Register::IndexableTemp
             | Register::InputControlPoint
-            | Register::OutputControlPoint => 2,
+            | Register::OutputControlPoint
+            | Register::Interface => 2,
             _ => 1,
         }
     }
@@ -127,6 +152,16 @@ impl Register {
             2 => Register::Output,
             3 => Register::IndexableTemp,
             4 => Register::Immediate,
+            5 => Register::Immediate64,
+            10 => Register::Label,
+            17 => Register::FunctionBody,
+            18 => Register::FunctionTable,
+            19 => Register::Interface,
+            20 => Register::FunctionInput,
+            21 => Register::FunctionOutput,
+            29 => Register::ThisPointer,
+            40 => Register::CycleCounter,
+            42 => Register::InnerCoverage,
             6 => Register::Sampler,
             7 => Register::Texture,
             8 => Register::Constant,
@@ -180,6 +215,9 @@ pub struct Operand {
     pub register: Register,
     /// Which components it selects.
     pub selection: Selection,
+    /// The number of components the operand token states (0, 1 or 4): a one-component operand (`oDepth`, `l(1.0)`)
+    /// and a four-component register selecting one lane (`r0.x`) both have a [`Selection::Scalar`].
+    pub components: u8,
     /// Its index dimensions, outermost first: none for an immediate, one for `r3`, two for `cb2[5]`.
     pub indices: Vec<Index>,
     /// The values of an immediate operand (one lane repeated, or four); zero for other registers.
@@ -221,6 +259,8 @@ pub struct Instruction {
     pub nonzero: bool,
     /// The operands, destination first where the instruction has one.
     pub operands: Vec<Operand>,
+    /// The function table index an `interface_call` stores before its operand; `None` for other instructions.
+    pub function: Option<u32>,
 }
 impl Instruction {
     /// The opcode's name (`mov`, `add`, ...), or `unknown opcode`.
@@ -436,6 +476,15 @@ pub enum Declared {
         /// The system value (`D3D_NAME`) of a `_siv` or `_sgv` declaration.
         name: Option<u32>,
     },
+    /// `dcl_indexrange`: registers from the operand's that a program indexes as one array, `count` of them.
+    IndexRange {
+        /// The first register of the range.
+        operand: Operand,
+        /// The number of registers.
+        count: u32,
+    },
+    /// `dcl_stream m<n>`: a geometry program's output stream that the declarations after it describe.
+    Stream(Operand),
     /// `dcl_immediateConstantBuffer`.
     ImmediateBuffer(Vec<[u32; 4]>),
     /// Custom data that is not an immediate constant buffer (a comment, debug information, ...) by its class.
@@ -628,20 +677,31 @@ impl Cursor<'_> {
             indices.push(Index { base, relative });
         }
         let mut immediate = [0; 4];
-        if register == Register::Immediate {
-            match components {
-                1 => immediate = [self.take()?; 4],
-                2 => {
-                    for x in &mut immediate {
-                        *x = self.take()?;
-                    }
+        match (register, components) {
+            (Register::Immediate, 1) => immediate = [self.take()?; 4],
+            // four 32-bit values, or two 64-bit values of two words each
+            (Register::Immediate | Register::Immediate64, 2) => {
+                for x in &mut immediate {
+                    *x = self.take()?;
                 }
-                _ => return Err(error(pos, "immediate requires one or four components")),
             }
+            (Register::Immediate64, 1) => {
+                let (low, high) = (self.take()?, self.take()?);
+                immediate = [low, high, low, high];
+            }
+            (Register::Immediate | Register::Immediate64, _) => {
+                return Err(error(pos, "immediate requires one or four components"));
+            }
+            _ => {}
         }
         Ok(Operand {
             register,
             selection,
+            components: match components {
+                0 => 0,
+                1 => 1,
+                _ => 4,
+            },
             indices,
             immediate,
             modifier,
@@ -650,6 +710,9 @@ impl Cursor<'_> {
         })
     }
 }
+
+/// `interface_call`, whose first word after its token is a function table index, not an operand.
+const INTERFACE_CALL: u16 = 120;
 
 fn return_codes(token: u32) -> ReturnCodes {
     [0, 4, 8, 12].map(|shift| low8((token >> shift) & 15))
@@ -791,11 +854,24 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 kind,
             });
         } else {
+            let function = (opcode == INTERFACE_CALL).then(|| c.take()).transpose()?;
+            let format = operand_format(opcode);
             let mut operands = Vec::new();
-            while c.at < c.words.len() {
+            while c.at < c.words.len() && format.is_none_or(|f| operands.len() < f.operands()) {
                 operands.push(c.operand(0)?);
             }
-            if let Some(format) = operand_format(opcode)
+            // fxc pads some instructions (`samplepos`, `sample_cl_s`) with zero words after their operands
+            if let Some(nonzero) = c.words.get(c.at..).unwrap_or_default().iter().position(|&w| w != 0) {
+                return Err(error(
+                    c.position().saturating_add(nonzero),
+                    format!(
+                        "a nonzero word after the {} operands of {}",
+                        operands.len(),
+                        opcode_name(opcode)
+                    ),
+                ));
+            }
+            if let Some(format) = format
                 && operands.len() != format.operands()
             {
                 return Err(error(
@@ -817,6 +893,7 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 saturate: t & 0x2000 != 0,
                 nonzero: t & 0x4_0000 != 0,
                 operands,
+                function,
             });
         }
         at = end;
@@ -941,6 +1018,11 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             }
         }
         155 => Declared::ThreadGroup([c.take()?, c.take()?, c.take()?]),
+        91 => Declared::IndexRange {
+            operand: c.operand(0)?,
+            count: c.take()?,
+        },
+        143 => Declared::Stream(c.operand(0)?),
         159 => {
             let o = c.operand(0)?;
             Declared::GroupSharedRaw {

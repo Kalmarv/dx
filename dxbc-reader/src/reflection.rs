@@ -142,8 +142,18 @@ impl View<'_> {
             });
         }
         stack.pop();
+        // Shader Model 5 type records name the type in their last field
+        let name = if layout.ty >= 36 {
+            match self.field(at, 32)? as usize {
+                0 => None,
+                offset => Some(self.string(offset)?),
+            }
+        } else {
+            None
+        };
         Ok(RdefType {
             word: at / 4,
+            name,
             class: self.u16(at)?,
             scalar: self.field16(at, 2)?,
             rows: self.field16(at, 4)?,
@@ -208,6 +218,10 @@ pub struct SignatureElement {
     pub read_write_mask: u8,
     /// Where the record starts, in words of the chunk.
     pub at: usize,
+    /// The output stream of a geometry program's element (`OSG5`, `OSG1`); 0 in the other layouts.
+    pub stream: u32,
+    /// `D3D_MIN_PRECISION` (`ISG1`, `OSG1`, `PSG1`); 0 (default) in the other layouts.
+    pub min_precision: u32,
 }
 
 /// A signature part's records. Layouts: `ISGN`/`OSGN`/`PCSG` (name, index, system value, component type, register,
@@ -243,6 +257,8 @@ pub fn signature(bytes: &[u8], kind: &[u8; 4]) -> Result<Vec<SignatureElement>> 
             mask,
             read_write_mask,
             at: p / 4,
+            stream: if skip == 4 { v.u32(p)? } else { 0 },
+            min_precision: if record == 32 { v.field(q, 24)? } else { 0 },
         });
     }
     Ok(result)
@@ -312,6 +328,10 @@ pub fn program_type(directory: &[dxcontainer::Chunk<'_>]) -> Result<ProgramType>
 pub struct Rdef {
     /// The part's own version token (`0xffff0500`: an SM5.0 pixel program, `0xfffe0500`: vertex, ...).
     pub target: u32,
+    /// `D3DCOMPILE_*` flags the program was compiled with, as stored.
+    pub flags: u32,
+    /// The compiler that wrote the part (`Microsoft (R) HLSL Shader Compiler 10.1`).
+    pub creator: String,
     /// The resource bindings, in the order the part lists them.
     pub bindings: Vec<RdefBinding>,
     /// The constant buffers, in the order the part lists them.
@@ -397,6 +417,8 @@ pub struct RdefType {
     pub elements: u16,
     /// The struct's members, in order.
     pub members: Vec<RdefMember>,
+    /// The type's name (`float4`, `float3x4`, a struct's own name), where the layout stores one (Shader Model 5).
+    pub name: Option<String>,
 }
 
 /// A struct member: its name, its byte offset in the struct and its type.
@@ -544,6 +566,8 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
     }
     Ok(Some(Rdef {
         target,
+        flags: v.u32(20)?,
+        creator: v.string(v.u32(24)? as usize)?,
         bindings,
         buffers,
     }))

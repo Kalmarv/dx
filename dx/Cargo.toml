@@ -1,0 +1,21 @@
+[package]
+name = "dx"
+description = "Command-line tool over the dx readers: Microsoft-dialect disassembly, reflection as JSON and container info for Direct3D shader programs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "dx"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+dxbc-reader = { path = "../dxbc-reader" }
+dxcontainer.workspace = true
+
+[lints]
+workspace = true
