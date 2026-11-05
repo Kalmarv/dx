@@ -79,9 +79,9 @@ DOut ds_tri(TriPC pc, float3 uvw : SV_DomainLocation, const OutputPatch<CP, 3> p
 DOut ds_quad(QuadPC pc, float2 uv : SV_DomainLocation, const OutputPatch<CP, 4> patch, uint id : SV_PrimitiveID) {
     DOut o;
     float4 a = lerp(patch[0].p, patch[1].p, uv.x), b = lerp(patch[3].p, patch[2].p, uv.x);
-    o.pos = mul(lerp(a, b, uv.y) * pc.i[id & 1], viewProj);
-    // a domain program indexes its patch by literals only
-    o.n = (id & 1) ? patch[3].n : patch[1].n;
+    // a domain program indexes its inputs, the patch and its constants, by literals only
+    o.pos = mul(lerp(a, b, uv.y) * lerp(pc.i[0], pc.i[1], (float)(id & 1)), viewProj);
+    o.n = lerp(patch[1].n, patch[3].n, (float)(id & 1));
     return o;
 }
 [domain("isoline")]

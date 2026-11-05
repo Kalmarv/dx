@@ -44,7 +44,7 @@ void main(uint3 tid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 lid : S
     items[c].p = tile[lid.x][lid.y].xyz;
     items[c].id = gid.x + gid.y * 3 + gid.z;
     // a buffer may increment its counter or decrement it, not both
-    dec[0] = dec.DecrementCounter();
+    dec[flat] = dec.DecrementCounter();
     outq.Append(inq.Consume() + old);
     AllMemoryBarrierWithGroupSync();
     f2a[uint3(tid.xy, gid.z)] = f2a[uint3(lid.xy, 0)] + float2(c, v);

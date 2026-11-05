@@ -93,8 +93,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 54 programs outside the gaps, each with seven listings
-    assert_eq!(compared, 378);
+    // 57 programs outside the gaps, each with seven listings
+    assert_eq!(compared, 399);
 }
 
 #[test]

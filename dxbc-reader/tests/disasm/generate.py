@@ -1,4 +1,5 @@
-"""Compile the fixtures here with Microsoft's fxc and record Microsoft's listings of them (Windows only).
+"""Compile the fixtures here with Microsoft's fxc and record Microsoft's listings of them (a Windows Python: on Windows,
+or under Wine).
 
 Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.dxbc` lines. Every build's container is written
 here; D3DDisassemble's listings of it, and of every container in `../fixtures`, go to `listings/`: `<name>.asm` with
@@ -6,6 +7,10 @@ no flags and `<name>.flag<hex>.asm` with each D3D_DISASM flag but the HTML one (
 writes none). `../disasm.rs` compares the disassembler with them.
 
     python -I generate.py [--fxc PATH] [--dll PATH]
+
+Under Wine, give the fxc and d3dcompiler_47 builds the listings were made with, as Wine paths (Z:\\...): fxc
+10.0.26100.4654 and its d3dcompiler_47.dll write the same bytes there as on Windows. Windows Python needs a console
+under Wine, so run it in a pseudo-terminal (`script -qec "wine python.exe generate.py ..." /dev/null`).
 """
 import argparse, ctypes, glob, hashlib, os, re, shlex, subprocess, sys
 
@@ -44,9 +49,18 @@ def disassembler(path):
 
 
 def version(path):
-    out = subprocess.run(["powershell", "-NoProfile", "-Command", f"(Get-Item '{path}').VersionInfo.FileVersion"],
-                         capture_output=True, text=True)
-    return out.stdout.strip()
+    """The file version in a binary's version resource, as `major.minor.build.revision`."""
+    api = ctypes.WinDLL("version")
+    size = api.GetFileVersionInfoSizeW(path, None)
+    data = ctypes.create_string_buffer(size)
+    if not size or not api.GetFileVersionInfoW(path, 0, size, data):
+        return "unknown"
+    info, length = ctypes.c_void_p(), ctypes.c_uint()
+    if not api.VerQueryValueW(data, "\\", ctypes.byref(info), ctypes.byref(length)):
+        return "unknown"
+    # VS_FIXEDFILEINFO: signature, struct version, then the file version's high and low words
+    high, low = ctypes.cast(info, ctypes.POINTER(ctypes.c_uint32))[2:4]
+    return f"{high >> 16}.{high & 0xFFFF}.{low >> 16}.{low & 0xFFFF}"
 
 
 def sha256(path):
