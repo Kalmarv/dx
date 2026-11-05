@@ -1,11 +1,11 @@
 """Compile the fixtures here with Microsoft's fxc and record Microsoft's listings of them (Windows only).
 
-Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.dxbc` lines. For every build this writes the
-container, fxc's own listing (`<name>.fxc.txt`, from `/Fc`) and D3DDisassemble's listing with no flags
-(`<name>.asm`), the listing the disassembler tests compare against. With `--flags` it also writes one listing per
-D3D_DISASM flag (`<name>.flag<hex>.asm`), to see which flags change the text.
+Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.dxbc` lines. Every build's container is written
+here; D3DDisassemble's listings of it, and of every container in `../fixtures`, go to `listings/`: `<name>.asm` with
+no flags and `<name>.flag<hex>.asm` with each D3D_DISASM flag but the HTML one (0x08, which the disassembler refuses,
+writes none). `../disasm.rs` compares the disassembler with them.
 
-    python -I generate.py [--fxc PATH] [--dll PATH] [--flags] [--out DIR] [extra .dxbc files...]
+    python -I generate.py [--fxc PATH] [--dll PATH]
 """
 import argparse, ctypes, glob, hashlib, os, re, shlex, subprocess, sys
 
@@ -57,25 +57,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fxc", default=find_fxc())
     ap.add_argument("--dll", default=r"C:\Windows\System32\d3dcompiler_47.dll")
-    ap.add_argument("--flags", action="store_true")
-    ap.add_argument("--out", default=os.path.dirname(os.path.abspath(__file__)))
-    ap.add_argument("extra", nargs="*")
     a = ap.parse_args()
     here = os.path.dirname(os.path.abspath(__file__))
+    listings = os.path.join(here, "listings")
+    os.makedirs(listings, exist_ok=True)
     disasm = disassembler(a.dll)
     print(f"fxc {a.fxc} {version(a.fxc)} {sha256(a.fxc)}")
     print(f"dll {a.dll} {version(a.dll)} {sha256(a.dll)}")
-    built, failed = list(a.extra), 0
+    built, failed = sorted(glob.glob(os.path.join(here, "..", "fixtures", "*.dxbc"))), 0
     for src in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
         for line in open(src, encoding="utf-8"):
             m = re.match(r"//\s*fxc:\s*(.*)", line)
             if not m:
                 continue
             args = shlex.split(m.group(1), posix=False)
-            out = os.path.join(a.out, args[args.index("/Fo") + 1])
+            out = os.path.join(here, args[args.index("/Fo") + 1])
             args[args.index("/Fo") + 1] = out
-            stem = out[: -len(".dxbc")]
-            cmd = [a.fxc, "/nologo", *args, "/Fc", stem + ".fxc.txt", src]
+            cmd = [a.fxc, "/nologo", *args, src]
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0:
                 failed += 1
@@ -84,8 +82,8 @@ def main():
             built.append(out)
     for path in built:
         data = open(path, "rb").read()
-        stem = path[: -len(".dxbc")] if path.endswith(".dxbc") else path
-        for flags in [0] + (FLAGS if a.flags else []):
+        stem = os.path.join(listings, os.path.basename(path)[: -len(".dxbc")])
+        for flags in [0] + FLAGS:
             text, hr = disasm(data, flags)
             name = stem + (".asm" if flags == 0 else f".flag{flags:02x}.asm")
             if text is None:

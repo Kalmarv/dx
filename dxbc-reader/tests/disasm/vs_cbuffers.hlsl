@@ -3,7 +3,7 @@
 // a tbuffer, a texture read in a vertex program and relative constant buffer addressing.
 // fxc: /T vs_4_0 /E main /Fo vs_cbuffers.vs40.dxbc
 // fxc: /T vs_5_0 /E main /D SM5 /Fo vs_cbuffers.vs50.dxbc
-// fxc: /T vs_5_0 /E main /D SM5 /Qstrip_reflection /Fo vs_cbuffers.strip.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Qstrip_reflect /Fo vs_cbuffers.strip.dxbc
 // fxc: /T vs_5_0 /E main /D SM5 /Od /Fo vs_cbuffers.od.dxbc
 struct Light { float3 dir; float range; float4 color[2]; };
 struct Bones { row_major float3x4 m; float weight; };

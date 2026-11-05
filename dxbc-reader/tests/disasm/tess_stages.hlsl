@@ -80,7 +80,8 @@ DOut ds_quad(QuadPC pc, float2 uv : SV_DomainLocation, const OutputPatch<CP, 4> 
     DOut o;
     float4 a = lerp(patch[0].p, patch[1].p, uv.x), b = lerp(patch[3].p, patch[2].p, uv.x);
     o.pos = mul(lerp(a, b, uv.y) * pc.i[id & 1], viewProj);
-    o.n = patch[id & 3].n;
+    // a domain program indexes its patch by literals only
+    o.n = (id & 1) ? patch[3].n : patch[1].n;
     return o;
 }
 [domain("isoline")]

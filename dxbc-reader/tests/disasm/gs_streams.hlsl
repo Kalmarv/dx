@@ -7,7 +7,7 @@ struct G { float4 pos : SV_Position; float2 uv : TEXCOORD0; uint layer : SV_Rend
 struct S { float4 data : DATA; };
 [maxvertexcount(6)]
 [instance(3)]
-void main(triangleadj V input[6], uint prim : SV_PrimitiveID, uint inst : SV_GSInstanceID, inout TriangleStream<G> s, inout PointStream<S> s1) {
+void main(triangleadj V input[6], uint prim : SV_PrimitiveID, uint inst : SV_GSInstanceID, inout PointStream<G> s, inout PointStream<S> s1) {
     for (uint i = 0; i < 6; i += 2) {
         G g;
         g.pos = input[i].pos;

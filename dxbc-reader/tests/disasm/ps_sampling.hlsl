@@ -13,7 +13,12 @@ TextureCube<float4> tc : register(t5);
 Texture2DMS<float4, 4> tms : register(t6);
 Buffer<int2> tb : register(t7);
 Texture2D<uint2> tu : register(t8);
+#ifdef SM41
 Texture2DMSArray<snorm float4> tmsa : register(t9);
+#else
+// ps_4_0 has no unsized multisampled textures
+Texture2DMSArray<snorm float4, 2> tmsa : register(t9);
+#endif
 Texture2D<unorm float4> tun : register(t10);
 #ifdef SM41
 TextureCubeArray<float4> tca : register(t11);
@@ -21,11 +26,17 @@ TextureCubeArray<float4> tca : register(t11);
 SamplerState ss : register(s0);
 SamplerComparisonState sc : register(s1);
 SamplerState ss2 : register(s3);
+#ifdef SM41
+#define SAMPLE p.i.z
+#else
+// ps_4_0 takes a literal sample index
+#define SAMPLE 3
+#endif
 cbuffer P { float4 k; int4 n; uint4 u; };
 static const float4 table[6] = { float4(1, 0, 0, 1), float4(0, 1, 0, 1), float4(0, 0, 1, 1), float4(0.5, 0.25, 1e-8, -1e20), float4(3.402823466e+38, -0, 1.0/3.0, 100000), float4(asfloat(0x7f800000), asfloat(0xff800000), asfloat(1), asfloat(0x80000001)) };
 static const uint ints[5] = { 1, 0xffffffff, 0x80000000, 12345678, 10000 };
 
-struct PIn { float4 pos : SV_Position; float4 uv : TEXCOORD0; nointerpolation int4 i : TEXCOORD1; noperspective float2 np : TEXCOORD2; centroid float c : TEXCOORD3; bool front : SV_IsFrontFace; uint prim : SV_PrimitiveID; };
+struct PIn { float4 pos : SV_Position; float4 uv : TEXCOORD0; nointerpolation int4 i : TEXCOORD1; noperspective float2 np : TEXCOORD2; centroid float c : TEXCOORD3; uint prim : SV_PrimitiveID; bool front : SV_IsFrontFace; };
 struct POut { float4 a : SV_Target0; int4 b : SV_Target2; uint c : SV_Target3; float d : SV_Depth; };
 
 POut main(PIn p) {
@@ -34,7 +45,7 @@ POut main(PIn p) {
     c += t2a.SampleBias(ss, p.uv.xyz, k.x) + t3.SampleGrad(ss, p.uv.xyz, ddx(p.uv.xyz), ddy(p.uv.xyz));
     c += tc.Sample(ss2, p.uv.xyz);
     c.x += t2.SampleCmp(sc, p.uv.xy, k.y) + t2.SampleCmpLevelZero(sc, p.uv.zw, k.z, int2(3, 4));
-    c += tms.Load(p.i.xy, p.i.z) + tmsa.Load(p.i.xyz, 1) + tun.Load(int3(p.i.xy, 0), int2(-1, 1));
+    c += tms.Load(p.i.xy, SAMPLE) + tmsa.Load(p.i.xyz, 1) + tun.Load(int3(p.i.xy, 0), int2(-1, 1));
     c += t2.Load(int3(p.i.xy, p.i.w)) + t3.Load(p.i);
     uint w, h, levels;
     t2.GetDimensions(1, w, h, levels);
@@ -63,7 +74,7 @@ POut main(PIn p) {
     }
     switch (n.w) {
     case 0: c.x = 1; break;
-    case 3: c.y = 2;
+    case 3: c.y = 2; break;
     case 7: c.z = 3; break;
     default: c.w = -4; break;
     }

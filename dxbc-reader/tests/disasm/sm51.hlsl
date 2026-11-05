@@ -1,9 +1,9 @@
 // Shader Model 5.1 pixel and vertex programs: resource arrays with dynamic and non-uniform indices, register spaces,
 // constant buffers declared as structured ConstantBuffer<T> arrays, a rasterizer-ordered view and a stencil
 // reference output.
-// fxc: /T ps_5_1 /E main /Fo sm51.ps51.dxbc
+// fxc: /T ps_5_1 /E main /enable_unbounded_descriptor_tables /Fo sm51.ps51.dxbc
 // fxc: /T vs_5_1 /E vs /Fo sm51.vs51.dxbc
-struct Material { float4 color; uint texture; float3 pad; };
+struct Material { float4 color; uint tex; float3 pad; };
 ConstantBuffer<Material> materials[8] : register(b0, space1);
 cbuffer Frame : register(b2) { float4x4 viewProj; uint drawIndex; };
 Texture2D<float4> textures[] : register(t0, space2);
@@ -16,12 +16,12 @@ struct POut { float4 c : SV_Target; uint stencil : SV_StencilRef; };
 POut main(PIn p) {
     POut o;
     Material m = materials[p.id & 7];
-    float4 c = textures[NonUniformResourceIndex(m.texture)].Sample(samplers[drawIndex & 3], p.uv) * m.color;
+    float4 c = textures[NonUniformResourceIndex(m.tex)].Sample(samplers[drawIndex & 3], p.uv) * m.color;
     c += single.Sample(samplers[0], p.uv);
     rov[uint2(p.pos.xy)] = rov[uint2(p.pos.xy)] * 0.5 + c;
     InterlockedAdd(counts[p.id & 1][0], 1);
     o.c = c;
-    o.stencil = m.texture & 255;
+    o.stencil = m.tex & 255;
     return o;
 }
 float4 vs(float3 pos : POSITION, uint iid : SV_InstanceID) : SV_Position {

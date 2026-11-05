@@ -14,35 +14,37 @@ RWTexture2DArray<float2> f2a : register(u5);
 RWTexture3D<uint> u3 : register(u6);
 RWBuffer<float4> fb : register(u7);
 RWTexture1DArray<unorm float4> un : register(u8);
+RWStructuredBuffer<uint> dec : register(u9);
 StructuredBuffer<Item> src : register(t0);
 ByteAddressBuffer rsrc : register(t1);
-groupshared uint shared[64];
+groupshared uint gshared[64];
 groupshared float4 tile[8][8];
 [numthreads(8, 8, 1)]
 void main(uint3 tid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID, uint flat : SV_GroupIndex) {
-    shared[flat] = tid.x;
+    gshared[flat] = tid.x;
     tile[lid.y][lid.x] = float4(src[flat].p, 1);
     GroupMemoryBarrierWithGroupSync();
-    uint v = shared[(flat + 1) & 63], old;
-    InterlockedAdd(shared[0], v, old);
-    InterlockedMin(shared[1], v);
-    InterlockedMax(shared[2], (int)v);
-    InterlockedAnd(shared[3], v);
-    InterlockedOr(shared[4], v);
-    InterlockedXor(shared[5], v);
-    InterlockedExchange(shared[6], v, old);
-    InterlockedCompareExchange(shared[7], v, old, old);
-    InterlockedCompareStore(shared[8], v, old);
+    uint v = gshared[(flat + 1) & 63], old;
+    InterlockedAdd(gshared[0], v, old);
+    InterlockedMin(gshared[1], v);
+    InterlockedMax(gshared[2], (int)v);
+    InterlockedAnd(gshared[3], v);
+    InterlockedOr(gshared[4], v);
+    InterlockedXor(gshared[5], v);
+    InterlockedExchange(gshared[6], v, old);
+    InterlockedCompareExchange(gshared[7], v, old, old);
+    InterlockedCompareStore(gshared[8], v, old);
     raw.InterlockedAdd(0, v);
     raw.InterlockedCompareExchange(4, v, 1, old);
-    raw.InterlockedUMin(8, v, old);
+    raw.InterlockedMin(8, v, old);
     InterlockedMin(i1[gid.x], -(int)v, old);
     InterlockedMax(u3[tid], v);
     DeviceMemoryBarrier();
     uint c = items.IncrementCounter();
     items[c].p = tile[lid.x][lid.y].xyz;
     items[c].id = gid.x + gid.y * 3 + gid.z;
-    items.DecrementCounter();
+    // a buffer may increment its counter or decrement it, not both
+    dec[0] = dec.DecrementCounter();
     outq.Append(inq.Consume() + old);
     AllMemoryBarrierWithGroupSync();
     f2a[uint3(tid.xy, gid.z)] = f2a[uint3(lid.xy, 0)] + float2(c, v);
@@ -58,7 +60,7 @@ void main(uint3 tid : SV_DispatchThreadID, uint3 gid : SV_GroupID, uint3 lid : S
 }
 RWStructuredBuffer<uint> out4 : register(u0);
 groupshared uint shared4[256];
-[numthreads(64, 1, 1)]
+[numthreads(256, 1, 1)]
 void main4(uint tid : SV_DispatchThreadID, uint flat : SV_GroupIndex) {
     shared4[flat] = tid;
     GroupMemoryBarrierWithGroupSync();

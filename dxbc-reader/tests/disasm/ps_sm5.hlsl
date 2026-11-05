@@ -4,9 +4,9 @@
 // fxc: /T ps_5_0 /E main /Fo ps_sm5.ps50.dxbc
 // fxc: /T ps_5_0 /E main /D EARLY /Fo ps_sm5.early.dxbc
 // fxc: /T ps_5_0 /E main /Od /Zi /Fo ps_sm5.debug.dxbc
-RWTexture2D<float4> image : register(u1);
-RWStructuredBuffer<uint> counts : register(u2);
-globallycoherent RWByteAddressBuffer bytes : register(u3);
+RWTexture2D<float4> image : register(u2);
+RWStructuredBuffer<uint> counts : register(u3);
+globallycoherent RWByteAddressBuffer bytes : register(u4);
 cbuffer C { float4 k; double2 dk; uint sel; };
 struct PIn {
     float4 pos : SV_Position;
@@ -27,7 +27,7 @@ POut main(PIn p) {
     float4 arr[5];
     [unroll] for (int i = 0; i < 5; ++i) arr[i] = p.a * i;
     float4 c = arr[sel % 5];
-    c += EvaluateAttributeAtSample(p.a, p.index) + EvaluateAttributeAtCentroid(p.a) + EvaluateAttributeSnapped(p.a, int2(1, -1));
+    c += EvaluateAttributeAtSample(p.a, p.index) + EvaluateAttributeCentroid(p.a) + EvaluateAttributeSnapped(p.a, int2(1, -1));
     c.xy += p.s + GetRenderTargetSamplePosition(p.index) * GetRenderTargetSampleCount();
     double d = dk.x * (double)c.x + dk.y;
     d = fma(d, dk.y, dk.x);
