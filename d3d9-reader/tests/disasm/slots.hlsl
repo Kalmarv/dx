@@ -13,6 +13,7 @@
 // fxc: /T ps_3_0 /E main /D ELSE /Fo slots.else.30.ps.bin
 // fxc: /T ps_3_0 /E main /D CALL /Fo slots.call.30.ps.bin
 // fxc: /T ps_3_0 /E main /D PRED /Fo slots.pred.30.ps.bin
+// fxc: /T ps_3_0 /E main /D LITERAL /Fo slots.literal.30.ps.bin
 sampler2D s;
 float4 a[8];
 int n;
@@ -44,6 +45,11 @@ float4 main(float4 uv : TEXCOORD0) : COLOR0 {
 #elif defined(PRED)
     float4 c = uv;
     [loop] for (int k = 0; k < n; k++) { [branch] if (c.x > a[k].x) break; c += a[k]; }
+    return c;
+#elif defined(LITERAL)
+    // a loop of a literal count: its integer constant is a defi
+    float4 c = uv;
+    [loop] for (int k = 0; k < 5; k++) c = c * c.yzwx + a[0];
     return c;
 #endif
 }

@@ -10,14 +10,6 @@ use std::path::{Path, PathBuf};
 const GAPS: &[(&str, &str)] = &[
     ("interfaces.ps50", "the class linkage tables of an IFCE part"),
     (
-        "level9.ps91",
-        "the feature level 9 mapping tables and the embedded Direct3D 9 listing",
-    ),
-    (
-        "level9.vs93",
-        "the feature level 9 mapping tables and the embedded Direct3D 9 listing",
-    ),
-    (
         "ps_sm5.debug",
         "the source and variable locations of an SDBG part",
     ),
@@ -93,8 +85,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 57 programs outside the gaps, each with seven listings
-    assert_eq!(compared, 399);
+    // 65 programs outside the gaps, each with seven listings
+    assert_eq!(compared, 455);
 }
 
 #[test]

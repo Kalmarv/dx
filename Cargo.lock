@@ -131,6 +131,7 @@ dependencies = [
 name = "dxbc-reader"
 version = "0.4.0"
 dependencies = [
+ "d3d9-reader",
  "dxcontainer",
  "thiserror",
 ]

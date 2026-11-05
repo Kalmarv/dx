@@ -5,6 +5,7 @@ use crate::reflection::{rdef, signature};
 use crate::{Result, chunk, code, decode, error, parts, statistics};
 
 mod header;
+mod level9;
 mod number;
 mod program;
 
@@ -125,6 +126,9 @@ pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
                 patch: elements(&patch),
             },
         );
+        if let Some(part) = crate::level9(container)? {
+            level9::write(&mut out, &part, options)?;
+        }
     }
     program::write(&mut out, &program, options);
     if !options.header {

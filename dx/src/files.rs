@@ -60,12 +60,8 @@ pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
         .get(2..4)
         .is_some_and(|h| h == [0xfe, 0xff] || h == [0xff, 0xff])
     {
-        if flags != 0 {
-            return Err(format!(
-                "flags 0x{flags:02x}: a Direct3D 9 listing is written with no flags only"
-            ));
-        }
-        return d3d9_reader::disassemble(bytes).map_err(|e| e.to_string());
+        let options = d3d9_reader::Options::from_flags(flags).map_err(|e| e.to_string())?;
+        return d3d9_reader::disassemble_with(bytes, &options).map_err(|e| e.to_string());
     }
     Err("not a DXBC container".to_owned())
 }

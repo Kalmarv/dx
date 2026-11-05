@@ -44,7 +44,7 @@ mod opcodes;
 mod program;
 
 pub use ctab::{Constant, ConstantTable, Type, TypeMember};
-pub use disasm::disassemble;
+pub use disasm::{Options, disassemble, disassemble_with};
 pub use opcodes::Opcode;
 pub use program::{
     Comment, Comparison, Declaration, Declared, Definition, Destination, Instruction, Item, Literal,

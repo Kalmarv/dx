@@ -1,12 +1,73 @@
-//! A text listing of a Direct3D 9 program in the dialect of Microsoft's disassembler (`D3DDisassemble` with no
-//! flags): the constant table as comments, the program's lines indented four spaces, and the instruction slots it
-//! uses.
+//! A text listing of a Direct3D 9 program in the dialect of Microsoft's disassembler (`D3DDisassemble`): the
+//! constant table as comments, the program's lines indented four spaces, and the instruction slots it uses.
 use std::fmt::Write;
 
 use crate::{
-    Comparison, Constant, ConstantTable, Declared, Destination, Instruction, Item, Literal, Modifier, Opcode,
-    Program, Register, RegisterType, Relative, Result, Source, Stage, TextureType, Type, read,
+    Comparison, Constant, ConstantTable, Declared, Destination, Error, Instruction, Item, Literal, Modifier,
+    Opcode, Program, Register, RegisterType, Relative, Result, Source, Stage, TextureType, Type, read,
 };
+
+/// What the listing writes, as the `D3D_DISASM_*` flags of Microsoft's disassembler choose it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Options {
+    /// The constant table's comments (cleared by `D3D_DISASM_DISABLE_DEFAULT_VALUE_PRINTS`, 0x40; the slot count is
+    /// written either way).
+    pub header: bool,
+    /// The arithmetic slots before each instruction, `%4u: ` (texture slots not counted), and six spaces before the
+    /// other lines but the version
+    /// (`D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING`, 0x04).
+    pub numbering: bool,
+    /// Each line's byte offset from the version token, `0x%08X: `, before every line but the version
+    /// (`D3D_DISASM_ENABLE_INSTRUCTION_OFFSET`, 0x20).
+    pub offsets: bool,
+    /// A `def`'s floats as their bits, `0x%08x` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80); `defi` stays decimal.
+    pub hex_literals: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            header: true,
+            numbering: false,
+            offsets: false,
+            hex_literals: false,
+        }
+    }
+}
+
+impl Options {
+    /// The options of a `D3D_DISASM_*` flags word. 0x02 and 0x10 change nothing. Refuses 0x01 (an HTML listing), 0x08
+    /// (which Microsoft's disassembler refuses too) and bits it does not define, naming the bit.
+    pub fn from_flags(flags: u32) -> Result<Self> {
+        let refuse = |detail: String| Error { word: 0, detail };
+        if flags & 0x01 != 0 {
+            return Err(refuse(
+                "flag 0x01, D3D_DISASM_ENABLE_COLOR_CODE (an HTML listing), is not written".into(),
+            ));
+        }
+        if flags & 0x08 != 0 {
+            return Err(refuse(
+                "flag 0x08, D3D_DISASM_ENABLE_INSTRUCTION_CYCLE, which Microsoft's disassembler refuses too, is not \
+                 written"
+                    .into(),
+            ));
+        }
+        let unknown = flags & !0xf6;
+        if unknown != 0 {
+            return Err(refuse(format!(
+                "flag bit 0x{:x} is not a D3D_DISASM flag",
+                1u32 << unknown.trailing_zeros()
+            )));
+        }
+        Ok(Self {
+            header: flags & 0x40 == 0,
+            numbering: flags & 0x04 != 0,
+            offsets: flags & 0x20 != 0,
+            hex_literals: flags & 0x80 != 0,
+        })
+    }
+}
 
 const LANES: [char; 4] = ['x', 'y', 'z', 'w'];
 
@@ -14,19 +75,40 @@ const LANES: [char; 4] = ['x', 'y', 'z', 'w'];
 /// writes it with no flags, its lines ending in `\n` (the disassembler's blob also ends in a zero byte, which is not
 /// part of the text). Refuses what [`read`] refuses.
 pub fn disassemble(bytes: &[u8]) -> Result<String> {
+    disassemble_with(bytes, &Options::default())
+}
+
+/// The listing [`disassemble`] writes, with what `options` choose.
+pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
     let program = read(bytes)?;
     let mut out = String::new();
-    match &program.constants {
-        Some(table) => header(&mut out, table),
-        None => out.push('\n'),
+    // a program without a constant table starts at its version (as inside a feature level 9 container's listing)
+    if let Some(table) = program.constants.as_ref().filter(|_| options.header) {
+        header(&mut out, table);
     }
     let _ = writeln!(out, "    {}", program.version);
     let mut depth: usize = 0;
+    // the arithmetic slots before the next instruction, which the numbering writes (texture slots don't count)
+    let mut slot: u32 = 0;
     for item in &program.items {
+        let prefix = if options.offsets {
+            format!("0x{:08X}: ", item.word().saturating_mul(4))
+        } else if options.numbering {
+            match item {
+                Item::Instruction(i) => {
+                    let first = slot;
+                    slot = slot.saturating_add(slots(i, &program).1);
+                    format!("{first:>4}: ")
+                }
+                _ => "      ".to_owned(),
+            }
+        } else {
+            String::new()
+        };
         let line = match item {
             Item::Comment(_) => continue,
             Item::Declaration(d) => declaration(d, &program),
-            Item::Definition(d) => definition(&d.literal, d.destination.register, &program),
+            Item::Definition(d) => definition(&d.literal, d.destination.register, &program, options),
             Item::Instruction(i) => {
                 if matches!(
                     i.opcode,
@@ -45,7 +127,7 @@ pub fn disassemble(bytes: &[u8]) -> Result<String> {
                 line
             }
         };
-        let _ = writeln!(out, "    {}", line.trim_end());
+        let _ = writeln!(out, "{prefix}    {}", line.trim_end());
     }
     out.push('\n');
     footer(&mut out, &program);
@@ -375,12 +457,18 @@ fn declaration(d: &crate::Declaration, program: &Program) -> String {
     )
 }
 
-fn definition(literal: &Literal, register_: Register, program: &Program) -> String {
+fn definition(literal: &Literal, register_: Register, program: &Program, options: &Options) -> String {
     let (op, values) = match literal {
         Literal::Float(f) => (
             "def",
             f.iter()
-                .map(|&w| general(f32::from_bits(w)))
+                .map(|&w| {
+                    if options.hex_literals {
+                        format!("0x{w:08x}")
+                    } else {
+                        general(f32::from_bits(w))
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join(", "),
         ),

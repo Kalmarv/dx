@@ -2,7 +2,8 @@
 Python: on Windows, or under Wine).
 
 Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.bin` lines. Every build's program is written here
-and its listing with no flags to `listings/<name>.asm`; `../disasm.rs` compares the disassembler with them.
+and its listings to `listings/`: `<name>.asm` with no flags and `<name>.flag<hex>.asm` with each D3D_DISASM flag but
+the HTML one; `../disasm.rs` compares the disassembler with them.
 
     python -I generate.py --fxc PATH --dll PATH
 
@@ -12,15 +13,17 @@ Give the fxc and d3dcompiler_47 builds the listings were made with (10.0.26100.4
 """
 import argparse, ctypes, glob, hashlib, os, re, shlex, subprocess, sys
 
+FLAGS = [0, 0x2, 0x4, 0x10, 0x20, 0x40, 0x80]
+
 
 def disassembler(path):
     fn = ctypes.WinDLL(path).D3DDisassemble
     fn.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint, ctypes.c_char_p, ctypes.POINTER(ctypes.c_void_p)]
     fn.restype = ctypes.c_long
 
-    def call(data):
+    def call(data, flags):
         out = ctypes.c_void_p()
-        hr = fn(ctypes.create_string_buffer(data, len(data)), len(data), 0, None, ctypes.byref(out))
+        hr = fn(ctypes.create_string_buffer(data, len(data)), len(data), flags, None, ctypes.byref(out))
         if hr != 0:
             return None, hr & 0xFFFFFFFF
         vt = ctypes.cast(out, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
@@ -64,13 +67,16 @@ def main():
                 continue
             built.append(out)
     for path in built:
-        text, hr = disasm(open(path, "rb").read())
-        if text is None:
-            failed += 1
-            print(f"D3DDisassemble {os.path.basename(path)}: hr {hr:#010x}")
-            continue
-        name = os.path.basename(path)[: -len(".bin")] + ".asm"
-        open(os.path.join(listings, name), "wb").write(text.rstrip(b"\0"))
+        data = open(path, "rb").read()
+        stem = os.path.join(listings, os.path.basename(path)[: -len(".bin")])
+        for flags in FLAGS:
+            text, hr = disasm(data, flags)
+            if text is None:
+                failed += 1
+                print(f"D3DDisassemble {os.path.basename(path)} flags {flags:#x}: hr {hr:#010x}")
+                continue
+            name = stem + (".asm" if flags == 0 else f".flag{flags:02x}.asm")
+            open(name, "wb").write(text.rstrip(b"\0"))
         print(f"ok {os.path.basename(path)}")
     print(f"{len(built)} built, {failed} failed")
     return 1 if failed else 0

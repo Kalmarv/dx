@@ -1,8 +1,11 @@
 #![allow(clippy::unwrap_used)]
-//! The listings of `disassemble` against Microsoft's own, byte for byte: `tests/disasm/listings` holds
-//! `D3DDisassemble`'s listing of every program in `tests/disasm` (built from the HLSL there by `generate.py`).
-use d3d9_reader::disassemble;
+//! The listings of `disassemble_with` against Microsoft's own, byte for byte: `tests/disasm/listings` holds
+//! `D3DDisassemble`'s listing of every program in `tests/disasm` (built from the HLSL there by `generate.py`), with
+//! no flags (`NAME.asm`) and with each flag Microsoft's disassembler accepts but the HTML one (`NAME.flagNN.asm`).
+use d3d9_reader::{Options, disassemble_with};
 use std::path::Path;
+
+const FLAGS: [u32; 7] = [0, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
 
 #[test]
 fn listings_are_microsofts() {
@@ -14,10 +17,21 @@ fn listings_are_microsofts() {
         .collect();
     programs.sort();
     let mut differing = Vec::new();
-    for program in &programs {
+    let mut compared = 0;
+    for (program, flags) in programs.iter().flat_map(|p| FLAGS.map(|f| (p, f))) {
         let stem = program.file_stem().unwrap().to_str().unwrap();
-        let theirs = std::fs::read_to_string(here.join("listings").join(format!("{stem}.asm"))).unwrap();
-        let ours = disassemble(&std::fs::read(program).unwrap()).unwrap();
+        let name = if flags == 0 {
+            format!("{stem}.asm")
+        } else {
+            format!("{stem}.flag{flags:02x}.asm")
+        };
+        let theirs = std::fs::read_to_string(here.join("listings").join(name)).unwrap();
+        let ours = disassemble_with(
+            &std::fs::read(program).unwrap(),
+            &Options::from_flags(flags).unwrap(),
+        )
+        .unwrap();
+        compared += 1;
         if ours != theirs {
             let line = ours
                 .lines()
@@ -25,7 +39,7 @@ fn listings_are_microsofts() {
                 .position(|(a, b)| a != b)
                 .unwrap_or(0);
             differing.push(format!(
-                "{stem} line {}:\n  dx: {:?}\n  ms: {:?}",
+                "{stem} flags 0x{flags:02x} line {}:\n  dx: {:?}\n  ms: {:?}",
                 line + 1,
                 ours.lines().nth(line).unwrap_or(""),
                 theirs.lines().nth(line).unwrap_or("")
@@ -34,11 +48,10 @@ fn listings_are_microsofts() {
     }
     assert!(
         differing.is_empty(),
-        "{} of {} listings differ:\n{}",
+        "{} of {compared} listings differ:\n{}",
         differing.len(),
-        programs.len(),
         differing.join("\n")
     );
-    // vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs
-    assert_eq!(programs.len(), 25);
+    // 26 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs, each with seven listings
+    assert_eq!(compared, 182);
 }
