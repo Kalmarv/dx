@@ -577,6 +577,7 @@ impl Decoded {
     }
 }
 
+#[derive(Clone)]
 struct Cursor<'a> {
     words: &'a [u32],
     at: usize,
@@ -860,7 +861,8 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
             while c.at < c.words.len() && format.is_none_or(|f| operands.len() < f.operands()) {
                 operands.push(c.operand(0)?);
             }
-            // fxc pads some instructions (`samplepos`, `sample_cl_s`) with zero words after their operands
+            // fxc pads some instructions (`samplepos`, `sample_cl_s`) with zero words after their operands; words that
+            // read as further operands are an instruction with another operand count than its format's
             if let Some(nonzero) = c
                 .words
                 .get(c.at..)
@@ -868,6 +870,24 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                 .iter()
                 .position(|&w| w != 0)
             {
+                let mut extra = c.clone();
+                let mut count = operands.len();
+                while extra.at < extra.words.len() && extra.operand(0).is_ok() {
+                    count = count.saturating_add(1);
+                }
+                if let Some(format) = format
+                    && extra.at == extra.words.len()
+                {
+                    return Err(error(
+                        at,
+                        format!(
+                            "{} has {count} operands, its format is {} destinations and {} sources",
+                            opcode_name(opcode),
+                            format.destinations.len(),
+                            format.sources.len()
+                        ),
+                    ));
+                }
                 return Err(error(
                     c.position().saturating_add(nonzero),
                     format!(
