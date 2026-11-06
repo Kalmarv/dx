@@ -1,0 +1,113 @@
+    vs_2_x
+      0x00000280:     def c72, 0x40400000, 0x00000000, 0x3f800000, 0x40000000
+      0x00000298:     def c73, 0x3e22f983, 0x3f000000, 0x40c90fdb, 0xc0490fdb
+      0x000002B0:     def c74, 0x3fb8aa3b, 0x3f800000, 0x00000000, 0x3f317218
+      0x000002C8:     def c75, 0x3c23d70a, 0x3e800000, 0x00000000, 0x00000000
+      0x000002E0:     def c76, 0xb5d00d01, 0xb7b60b61, 0x3b2aaaab, 0x39888889
+      0x000002F8:     def c77, 0xbcaaaaab, 0xbe000000, 0x3f800000, 0x3f000000
+      0x00000310:     dcl_position v0
+      0x0000031C:     dcl_normal v1
+      0x00000328:     dcl_texcoord v2
+      0x00000334:     dcl_blendweight v3
+      0x00000340:     dcl_blendindices v4
+   0  0x0000034C:     mul r0.xy, v4, c72.x
+   1  0x0000035C:     mova a0.xy, r0.yxzw
+   2  0x00000368:     mul r0, v0.y, c1[a0.x]
+   3  0x0000037C:     mad r0, v0.x, c0[a0.x], r0
+   4  0x00000394:     mad r0, v0.z, c2[a0.x], r0
+   5  0x000003AC:     mad r0, v0.w, c72.yyyz, r0
+   6  0x000003C0:     mul r0, r0, v3.y
+   7  0x000003D0:     mul r1, v0.y, c1[a0.y]
+   8  0x000003E4:     mad r1, v0.x, c0[a0.y], r1
+   9  0x000003FC:     mad r1, v0.z, c2[a0.y], r1
+  10  0x00000414:     mad r1, v0.w, c72.yyyz, r1
+  11  0x00000428:     mad r0, r1, v3.x, r0
+  12  0x0000043C:     dp4 oPos.x, r0, c59
+  13  0x0000044C:     dp4 oPos.y, r0, c60
+  14  0x0000045C:     dp4 oPos.z, r0, c61
+  15  0x0000046C:     dp4 oPos.w, r0, c62
+  16  0x0000047C:     dp3 r1.x, v1, c67
+  17  0x0000048C:     dp3 r1.y, v1, c68
+  18  0x0000049C:     dp3 r1.z, v1, c69
+  19  0x000004AC:     nrm r2.xyz, r1
+  22  0x000004B8:     dp3 r1.x, r2, -c48
+  23  0x000004C8:     max r1.x, r1.x, c72.y
+  24  0x000004D8:     min r1.x, r1.x, c72.z
+  25  0x000004E8:     mul r1.x, r1.x, r1.x
+  26  0x000004F8:     mul r1.x, r1.x, r1.x
+  27  0x00000508:     mul r1.x, r1.x, r1.x
+  28  0x00000518:     mul r1, r1.x, c49
+  29  0x00000528:     dp3 r2.w, r2, -c50
+  30  0x00000538:     max r2.w, r2.w, c72.y
+  31  0x00000548:     min r2.w, r2.w, c72.z
+  32  0x00000558:     mul r2.w, r2.w, r2.w
+  33  0x00000568:     mul r2.w, r2.w, r2.w
+  34  0x00000578:     mul r2.w, r2.w, r2.w
+  35  0x00000588:     mul r3, r2.w, c51
+  36  0x00000598:     mov r4.y, c72.y
+  37  0x000005A4:     slt r2.w, r4.y, c70.x
+  38  0x000005B4:     slt r4.x, r2.w, c70.x
+  39  0x000005C4:     mul r3, r3, r4.x
+  40  0x000005D4:     mad r1, r2.w, r1, r3
+  41  0x000005E8:     lrp r3.x, r4.x, c72.w, r2.w
+  42  0x000005FC:     slt r2.w, r3.x, c70.x
+  43  0x0000060C:     mul r2.w, r2.w, r4.x
+  44  0x0000061C:     dp3 r3.x, r2, -c52
+  45  0x0000062C:     max r3.x, r3.x, c72.y
+  46  0x0000063C:     min r3.x, r3.x, c72.z
+  47  0x0000064C:     mul r3.x, r3.x, r3.x
+  48  0x0000065C:     mul r3.x, r3.x, r3.x
+  49  0x0000066C:     mul r3.x, r3.x, r3.x
+  50  0x0000067C:     mul r3, r3.x, c53
+  51  0x0000068C:     mad r1, r2.w, r3, r1
+  52  0x000006A0:     mad r3, r1.xyzx, c74.yyyz, c74.zzzw
+  53  0x000006B4:     mul r1.xyz, r0.y, c64
+  54  0x000006C4:     mad r1.xyz, r0.x, c63, r1
+  55  0x000006D8:     mad r0.xyz, r0.z, c65, r1
+  56  0x000006EC:     mad r0.xyz, r0.w, c66, r0
+  57  0x00000700:     abs r1.xy, r0.yzzw
+  58  0x0000070C:     add r1.xy, r1, c72.z
+  59  0x0000071C:     log r0.w, r1.x
+  60  0x00000728:     rsq r4.w, r1.y
+  61  0x00000734:     mul r1.w, r0.w, r1.w
+  62  0x00000744:     mul r0.w, r0.x, c74.x
+  63  0x00000754:     exp r1.z, r0.w
+  64  0x00000760:     mov r5.xy, c73
+  65  0x0000076C:     mad r0.w, c90.x, r5.x, r5.y
+  66  0x00000780:     frc r0.w, r0.w
+  67  0x0000078C:     mad r0.w, r0.w, c73.z, c73.w
+  68  0x000007A0:     sincos r5.xy, r0.w, c76, c77
+  76  0x000007B4:     mov r1.xy, r5.yxzw
+  77  0x000007C0:     lrp r6.y, r0.x, r5.x, r5.y
+  78  0x000007D4:     mul oD0, r1, r3
+  79  0x000007E4:     dp3 r0.w, r0, r0
+  80  0x000007F4:     rsq r0.w, r0.w
+  81  0x00000800:     rcp r0.w, r0.w
+  82  0x0000080C:     mul r0.w, r0.w, c71.x
+  83  0x0000081C:     mul oFog, r0.w, c75.x
+  84  0x0000082C:     slt r0.w, -r0.z, r0.z
+  85  0x0000083C:     slt r1.x, r0.z, -r0.z
+  86  0x0000084C:     add r6.x, r0.w, -r1.x
+  87  0x0000085C:     frc r0.w, c90.x
+  88  0x00000868:     mad r1.xy, v2, r0.w, r6
+  89  0x0000087C:     mul r1.zw, r1.xyxy, c57.xyxy
+  90  0x0000088C:     mul r1.xy, r1, c58
+  91  0x0000089C:     add oT0.xy, r1.wyzw, r1.zxzw
+  92  0x000008AC:     mul r1.xyz, r2.yzxw, r0.zxyw
+  93  0x000008BC:     mad r4.xyz, r0.yzxw, r2.zxyw, -r1
+  94  0x000008D0:     dp3 r0.x, c55, r0
+  95  0x000008E0:     mul r0, r0.x, c56
+  96  0x000008F0:     mad r0, r4, c54, r0
+  97  0x00000904:     mov oT1.xyz, r2
+  98  0x00000910:     min r1, r0.wzyx, c72.z
+  99  0x00000920:     max r1, r0, r1
+ 100  0x00000930:     sge r2, r0, c73.y
+ 101  0x00000940:     slt r0, c73.y, r0
+ 102  0x00000950:     mad r0, r1, r2, r0
+ 103  0x00000964:     rcp r1.x, r0.x
+ 104  0x00000970:     add r1.x, -r0.y, r1.x
+ 105  0x00000980:     slt r1.y, c75.y, r0.x
+ 106  0x00000990:     mad oT2.y, r1.y, r1.x, r0.y
+ 107  0x000009A4:     mov oT2.xzw, r0
+
+// approximately 108 instruction slots used

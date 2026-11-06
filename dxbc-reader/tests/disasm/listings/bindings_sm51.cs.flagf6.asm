@@ -1,0 +1,48 @@
+      0x00000000: cs_5_1
+      0x00000008: dcl_globalFlags refactoringAllowed
+      0x0000000C: dcl_constantbuffer CB0[5:5][5], immediateIndexed, space=0
+      0x00000028: dcl_constantbuffer CB1[0:1][2], dynamicIndexed, space=4
+      0x00000044: dcl_sampler S0[0:0], mode_default, space=1
+      0x0000005C: dcl_sampler S1[1:1], mode_comparison, space=1
+      0x00000074: dcl_resource_texture2d (float,float,float,float) T0[0:*], space=1
+      0x00000090: dcl_resource_texture2d (float,float,float,float) T1[2:2], space=2
+      0x000000AC: dcl_resource_raw T2[3:3], space=2
+      0x000000C4: dcl_resource_structured T3[4:4], 32, space=2
+      0x000000E0: dcl_resource_buffer (uint,uint,uint,uint) T4[5:5], space=2
+      0x000000FC: dcl_uav_typed_texture2d (float,float,float,float) U0[0:0], space=3
+      0x00000118: dcl_uav_raw U1[1:1], space=3
+      0x00000130: dcl_uav_structured U2[2:4], 32, space=3
+      0x0000014C: dcl_input vThreadIDInGroupFlattened
+      0x00000154: dcl_input vThreadID.xy
+      0x0000015C: dcl_temps 4
+      0x00000164: dcl_tgsm_structured g0, 16, 64
+      0x00000178: dcl_thread_group 8, 8, 1
+   0  0x00000188: ld r0.x, vThreadID.xxxx, T4[5].xyzw
+   1  0x000001A4: utof r0.yz, vThreadID.xxyx
+   2  0x000001B4: and r0.w, r0.x, l(0x00000001)
+   3  0x000001D0: mul r0.yz, r0.yyzy, CB1[r0.w + 0][0].xxyx
+   4  0x000001F8: sample_l r1.xyzw, r0.yzyy, T0[r0.x + 0].xyzw { nonuniform }, S0[0], l(0x00000000)
+   5  0x00000234: sample_c_lz r0.x, r0.yzyy, T1[2].xxxx, S1[1], CB0[5][4].x
+   6  0x00000270: udiv null, r0.y, vThreadIDInGroupFlattened.x, CB1[0][1].x
+   7  0x00000294: ld_structured r2.xyzw, r0.y, l(0x00000000), T3[4].xyzw
+   8  0x000002BC: ld_structured r3.xyzw, r0.y, l(0x00000010), T3[4].xyzw
+   9  0x000002E4: mul r0.xyzw, r0.xxxx, r1.xyzw
+  10  0x00000300: mul r1.xyzw, r3.yyyy, CB0[5][1].xyzw
+  11  0x00000324: mad r1.xyzw, CB0[5][0].xyzw, r3.xxxx, r1.xyzw
+  12  0x00000350: mad r1.xyzw, CB0[5][2].xyzw, r3.zzzz, r1.xyzw
+  13  0x0000037C: add r1.xyzw, r1.xyzw, CB0[5][3].xyzw
+  14  0x000003A0: mad r0.xyzw, r0.xyzw, r2.xyzw, r1.xyzw
+  15  0x000003C4: store_structured g0.xyzw, vThreadIDInGroupFlattened.x, l(0x00000000), r0.xyzw
+  16  0x000003E4: sync_g_t
+  17  0x000003E8: iadd r0.x, vThreadIDInGroupFlattened.x, l(0x00000001)
+  18  0x00000400: and r0.x, r0.x, l(0x0000003f)
+  19  0x0000041C: ld_structured r0.xyzw, r0.x, l(0x00000000), g0.xyzw
+  20  0x00000440: ishl r1.x, vThreadIDInGroupFlattened.x, l(0x00000002)
+  21  0x00000458: ld_raw r1.x, r1.x, T2[3].xxxx
+  22  0x00000478: add r0.xyzw, r0.xyzw, r1.xxxx
+  23  0x00000494: store_uav_typed U0[0].xyzw, vThreadID.xyyy, r0.xyzw
+  24  0x000004B0: imm_atomic_iadd r0.x, U1[1], l(0x00000000), l(0x00000001)
+  25  0x000004D8: udiv null, r0.x, r0.x, l(0x00000003)
+  26  0x000004F8: store_structured U2[r0.x + 2].xyzw, vThreadIDInGroupFlattened.x, l(0x00000000), r2.xyzw
+  27  0x00000524: store_structured U2[r0.x + 2].xyzw, vThreadIDInGroupFlattened.x, l(0x00000010), r3.xyzw
+  28  0x00000550: ret 

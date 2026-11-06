@@ -1,7 +1,8 @@
 #![allow(clippy::unwrap_used)]
 //! The listings of `disassemble_with` against Microsoft's own, byte for byte: `tests/disasm/listings` holds
 //! `D3DDisassemble`'s listing of every container in `tests/disasm` (built from the HLSL there by `generate.py`) and
-//! in `tests/fixtures`, with no flags (`NAME.asm`) and with each flag that changes the text (`NAME.flagNN.asm`).
+//! in `tests/fixtures`, with no flags (`NAME.asm`) and with the flags that change the text alone, in pairs and all
+//! together (`NAME.flagNN.asm`).
 use dxbc_reader::{Options, disassemble_with};
 use std::path::{Path, PathBuf};
 
@@ -12,9 +13,18 @@ const GAPS: &[(&str, &str)] = &[(
     "the source and variable locations of an SPDB part (the PDB fxc /Zi embeds)",
 )];
 
-/// The flags words the listings were made with: no flags, and every flag Microsoft's disassembler accepts but the
-/// HTML one.
-const FLAGS: [u32; 7] = [0, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
+/// The flags words the listings were made with (`generate.py`'s `FLAGS`): no flags, and the flags that change the text
+/// alone, in pairs and all together.
+fn flag_words() -> Vec<u32> {
+    const TEXT: [u32; 6] = [0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
+    let mut words = vec![0, TEXT.iter().sum()];
+    for (i, a) in TEXT.iter().enumerate() {
+        words.push(*a);
+        words.extend(TEXT[i + 1..].iter().map(|b| a | b));
+    }
+    words.sort_unstable();
+    words
+}
 
 fn containers() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
@@ -28,7 +38,7 @@ fn containers() -> Vec<PathBuf> {
     found
 }
 
-fn listing(container: &Path, flags: u32) -> Option<String> {
+fn listing(container: &Path, flags: u32) -> String {
     let stem = container.file_stem().unwrap().to_str().unwrap();
     let name = if flags == 0 {
         format!("{stem}.asm")
@@ -38,7 +48,7 @@ fn listing(container: &Path, flags: u32) -> Option<String> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/disasm/listings")
         .join(name);
-    std::fs::read_to_string(path).ok()
+    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
 #[test]
@@ -49,10 +59,8 @@ fn listings_are_microsofts() {
         let stem = container.file_stem().unwrap().to_str().unwrap().to_owned();
         let bytes = std::fs::read(&container).unwrap();
         let gap = GAPS.iter().find(|(name, _)| *name == stem);
-        for flags in FLAGS {
-            let Some(theirs) = listing(&container, flags) else {
-                continue;
-            };
+        for flags in flag_words() {
+            let theirs = listing(&container, flags);
             let ours = disassemble_with(&bytes, &Options::from_flags(flags).unwrap()).unwrap();
             if gap.is_some() {
                 if flags == 0 {
@@ -82,8 +90,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 79 programs outside the gaps, each with seven listings
-    assert_eq!(compared, 553);
+    // 79 programs outside the gaps, each with 23 listings
+    assert_eq!(compared, 1817);
 }
 
 #[test]

@@ -1,11 +1,23 @@
 #![allow(clippy::unwrap_used)]
 //! The listings of `disassemble_with` against Microsoft's own, byte for byte: `tests/disasm/listings` holds
-//! `D3DDisassemble`'s listing of every program in `tests/disasm` (built from the HLSL there by `generate.py`), with
-//! no flags (`NAME.asm`) and with each flag Microsoft's disassembler accepts but the HTML one (`NAME.flagNN.asm`).
+//! `D3DDisassemble`'s listing of every program in `tests/disasm` (built from the HLSL there, or the tokens of a Shader
+//! Model 1 program, by `generate.py`), with no flags (`NAME.asm`) and with the flags that change the text alone, in
+//! pairs and all together (`NAME.flagNN.asm`).
 use d3d9_reader::{Options, disassemble_with};
 use std::path::Path;
 
-const FLAGS: [u32; 7] = [0, 0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
+/// The flags words the listings were made with (`generate.py`'s `FLAGS`): no flags, and the flags that change the text
+/// alone, in pairs and all together.
+fn flag_words() -> Vec<u32> {
+    const TEXT: [u32; 6] = [0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
+    let mut words = vec![0, TEXT.iter().sum()];
+    for (i, a) in TEXT.iter().enumerate() {
+        words.push(*a);
+        words.extend(TEXT[i + 1..].iter().map(|b| a | b));
+    }
+    words.sort_unstable();
+    words
+}
 
 #[test]
 fn listings_are_microsofts() {
@@ -18,7 +30,10 @@ fn listings_are_microsofts() {
     programs.sort();
     let mut differing = Vec::new();
     let mut compared = 0;
-    for (program, flags) in programs.iter().flat_map(|p| FLAGS.map(|f| (p, f))) {
+    for (program, flags) in programs
+        .iter()
+        .flat_map(|p| flag_words().into_iter().map(move |f| (p, f)))
+    {
         let stem = program.file_stem().unwrap().to_str().unwrap();
         let name = if flags == 0 {
             format!("{stem}.asm")
@@ -52,6 +67,7 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 26 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs, each with seven listings
-    assert_eq!(compared, 182);
+    // 26 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs and 8 vs_1_1 and ps_1_1 to ps_1_4 ones,
+    // each with 23 listings
+    assert_eq!(compared, 782);
 }

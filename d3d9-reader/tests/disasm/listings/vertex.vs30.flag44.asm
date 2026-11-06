@@ -1,0 +1,110 @@
+    vs_3_0
+          def c72, 3, 0, 1, 2
+          def c73, 0.159154937, 0.5, 6.28318548, -3.14159274
+          def c74, 1.44269502, 1, 0, 0.693147182
+          def c75, 0.00999999978, 0.25, 0, 0
+          dcl_position v0
+          dcl_normal v1
+          dcl_texcoord v2
+          dcl_blendweight v3
+          dcl_blendindices v4
+          dcl_position o0
+          dcl_color o1
+          dcl_texcoord o2.xy
+          dcl_texcoord1 o3.xyz
+          dcl_fog o4.x
+          dcl_texcoord2 o5
+   0:     mul r0.xy, c72.x, v4
+   1:     mova a0.xy, r0.yxzw
+   2:     mul r0, v0.y, c1[a0.x]
+   3:     mad r0, v0.x, c0[a0.x], r0
+   4:     mad r0, v0.z, c2[a0.x], r0
+   5:     mad r0, v0.w, c72.yyyz, r0
+   6:     mul r0, r0, v3.y
+   7:     mul r1, v0.y, c1[a0.y]
+   8:     mad r1, v0.x, c0[a0.y], r1
+   9:     mad r1, v0.z, c2[a0.y], r1
+  10:     mad r1, v0.w, c72.yyyz, r1
+  11:     mad r0, r1, v3.x, r0
+  12:     dp4 o0.x, r0, c59
+  13:     dp4 o0.y, r0, c60
+  14:     dp4 o0.z, r0, c61
+  15:     dp4 o0.w, r0, c62
+  16:     dp3 r1.x, v1, c67
+  17:     dp3 r1.y, v1, c68
+  18:     dp3 r1.z, v1, c69
+  19:     nrm r2.xyz, r1
+  22:     dp3_sat r1.x, r2, -c48
+  23:     mul r1.x, r1.x, r1.x
+  24:     mul r1.x, r1.x, r1.x
+  25:     mul r1.x, r1.x, r1.x
+  26:     mul r1, r1.x, c49
+  27:     dp3_sat r2.w, r2, -c50
+  28:     mul r2.w, r2.w, r2.w
+  29:     mul r2.w, r2.w, r2.w
+  30:     mul r2.w, r2.w, r2.w
+  31:     mul r3, r2.w, c51
+  32:     mov r4.y, c72.y
+  33:     slt r2.w, r4.y, c70.x
+  34:     slt r4.x, r2.w, c70.x
+  35:     mul r3, r3, r4.x
+  36:     mad r1, r2.w, r1, r3
+  37:     lrp r3.x, r4.x, c72.w, r2.w
+  38:     slt r2.w, r3.x, c70.x
+  39:     mul r2.w, r2.w, r4.x
+  40:     dp3_sat r3.x, r2, -c52
+  41:     mul r3.x, r3.x, r3.x
+  42:     mul r3.x, r3.x, r3.x
+  43:     mul r3.x, r3.x, r3.x
+  44:     mul r3, r3.x, c53
+  45:     mad r1, r2.w, r3, r1
+  46:     mad r3, r1.xyzx, c74.yyyz, c74.zzzw
+  47:     mul r1.xyz, r0.y, c64
+  48:     mad r1.xyz, r0.x, c63, r1
+  49:     mad r0.xyz, r0.z, c65, r1
+  50:     mad r0.xyz, r0.w, c66, r0
+  51:     add r1.xy, r0_abs.yzzw, c72.z
+  52:     log r0.w, r1.x
+  53:     rsq r4.w, r1.y
+  54:     mul r1.w, r0.w, r1.w
+  55:     mul r0.w, r0.x, c74.x
+  56:     exp r1.z, r0.w
+  57:     mov r5.xy, c73
+  58:     mad r0.w, c90.x, r5.x, r5.y
+  59:     frc r0.w, r0.w
+  60:     mad r0.w, r0.w, c73.z, c73.w
+  61:     sincos r5.xy, r0.w
+  69:     mov r1.xy, r5.yxzw
+  70:     lrp r6.y, r0.x, r5.x, r5.y
+  71:     mul o1, r1, r3
+  72:     dp3 r0.w, r0, r0
+  73:     rsq r0.w, r0.w
+  74:     rcp r0.w, r0.w
+  75:     mul r0.w, r0.w, c71.x
+  76:     mul o4.x, r0.w, c75.x
+  77:     slt r0.w, -r0.z, r0.z
+  78:     slt r1.x, r0.z, -r0.z
+  79:     add r6.x, r0.w, -r1.x
+  80:     frc r0.w, c90.x
+  81:     mad r1.xy, v2, r0.w, r6
+  82:     mul r1.zw, r1.xyxy, c57.xyxy
+  83:     mul r1.xy, r1, c58
+  84:     add o2.xy, r1.wyzw, r1.zxzw
+  85:     mul r1.xyz, r2.yzxw, r0.zxyw
+  86:     mad r4.xyz, r0.yzxw, r2.zxyw, -r1
+  87:     dp3 r0.x, c55, r0
+  88:     mul r0, r0.x, c56
+  89:     mad r0, r4, c54, r0
+  90:     mov o3.xyz, r2
+  91:     min r1, r0.wzyx, c72.z
+  92:     max r1, r0, r1
+  93:     sge r2, r0, c73.y
+  94:     slt r0, c73.y, r0
+  95:     mad r0, r1, r2, r0
+  96:     rcp r1.x, r0.x
+  97:     add r1.x, -r0.y, r1.x
+  98:     slt r1.y, c75.y, r0.x
+  99:     mad o5.y, r1.y, r1.x, r0.y
+ 100:     mov o5.xzw, r0
+
+// approximately 101 instruction slots used

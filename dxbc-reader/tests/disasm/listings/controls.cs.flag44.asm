@@ -1,0 +1,29 @@
+      cs_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_resource_texture2d (float,float,float,float) t0
+      dcl_uav_structured u0, 4
+      dcl_input vThreadIDInGroupFlattened
+      dcl_temps 1
+      dcl_tgsm_structured g0, 4, 64
+      dcl_thread_group 64, 1, 1
+   0: ld_structured_indexable [precise(x)](structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.x, vThreadIDInGroupFlattened.x, l(0), u0.xxxx
+   1: mul [precise(x)] r0.x, r0.x, l(3.000000)
+   2: iadd [precise(y)] r0.y, vThreadIDInGroupFlattened.x, l(1)
+   3: ld_structured_indexable [precise(y)](structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r0.y, l(0), u0.xxxx
+   4: add [precise(x)] r0.x, r0.y, r0.x
+   5: resinfo_indexable(texture2d)(float,float,float,float)_uint r0.yz, l(0), t0.zxyw
+   6: utof r0.yz, r0.yyzy
+   7: add r0.x, r0.y, r0.x
+   8: resinfo_indexable(texture2d)(float,float,float,float) r0.yw, l(0), t0.zxwy
+   9: add r0.x, r0.y, r0.x
+  10: store_structured g0.x, vThreadIDInGroupFlattened.x, l(0), r0.x
+  11: sync_uglobal
+  12: sync_uglobal_g
+  13: sync_uglobal_g_t
+  14: sync_g
+  15: iadd r0.x, -vThreadIDInGroupFlattened.x, l(63)
+  16: ld_structured r0.x, r0.x, l(0), g0.xxxx
+  17: add r0.x, r0.z, r0.x
+  18: add r0.x, r0.w, r0.x
+  19: store_structured u0.x, vThreadIDInGroupFlattened.x, l(0), r0.x
+  20: ret 

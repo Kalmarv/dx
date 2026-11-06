@@ -1,0 +1,10 @@
+    ps_3_0
+          def c0, 0.693147182, 0, 0, 0
+          dcl_texcoord v0
+   0:     log r0.x, v0.x
+   1:     log r0.y, v0.y
+   2:     log r0.z, v0.z
+   3:     log r0.w, v0.w
+   4:     mul oC0, r0, c0.x
+
+// approximately 5 instruction slots used

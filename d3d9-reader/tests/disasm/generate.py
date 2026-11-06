@@ -2,8 +2,9 @@
 Python: on Windows, or under Wine).
 
 Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.bin` lines. Every build's program is written here
-and its listings to `listings/`: `<name>.asm` with no flags and `<name>.flag<hex>.asm` with each D3D_DISASM flag but
-the HTML one; `../disasm.rs` compares the disassembler with them.
+and its listings to `listings/`: `<name>.asm` with no flags and `<name>.flag<hex>.asm` with each other flags word of
+FLAGS; `../disasm.rs` compares the disassembler with them. fxc no longer compiles Shader Model 1, so the programs of
+SM1 are written from the tokens in HAND_BUILT.
 
     python -I generate.py --fxc PATH --dll PATH
 
@@ -11,9 +12,47 @@ Give the fxc and d3dcompiler_47 builds the listings were made with (10.0.26100.4
 (Z:\\...), in a pseudo-terminal, since Windows Python needs a console there
 (`script -qec "wine python.exe generate.py ..." /dev/null`).
 """
-import argparse, ctypes, glob, hashlib, os, re, shlex, subprocess, sys
+import argparse, ctypes, glob, hashlib, itertools, os, re, shlex, struct, subprocess, sys
 
-FLAGS = [0, 0x2, 0x4, 0x10, 0x20, 0x40, 0x80]
+# No flags, and the D3D_DISASM flags that change the text alone, in pairs and all together (0x01, an HTML listing,
+# and 0x08, which the disassembler refuses, left out).
+TEXT_FLAGS = [0x2, 0x4, 0x10, 0x20, 0x40, 0x80]
+FLAGS = sorted({0, *TEXT_FLAGS, *(a | b for a, b in itertools.combinations(TEXT_FLAGS, 2)), sum(TEXT_FLAGS)})
+
+
+# Shader Model 1 programs, as their tokens (the assembly they are in the comments).
+HAND_BUILT = {
+    # tex t0; mov r0, t0; mov r0.xyz, c0; + mov r0.w, v0
+    "sm1.coissue.ps11": [0xFFFF0101, 0x00000042, 0xB00F0000, 0x00000001, 0x800F0000, 0xB0E40000, 0x00000001,
+                         0x80070000, 0xA0E40000, 0x40000001, 0x80080000, 0x90E40000, 0x0000FFFF],
+    # tex t0; mov r0, t0; + mov r0.w, v0.w
+    "sm1.coissue.ps12": [0xFFFF0102, 0x00000042, 0xB00F0000, 0x00000001, 0x800F0000, 0xB0E40000, 0x40000001,
+                         0x80080000, 0x90FF0000, 0x0000FFFF],
+    # tex t0; mov r0, t0
+    "sm1.plain.ps13": [0xFFFF0103, 0x00000042, 0xB00F0000, 0x00000001, 0x800F0000, 0xB0E40000, 0x0000FFFF],
+    # texld r0, t0; phase; mul r0, r0, v0; mov r0.xyz, c0; + mov r0.w, c0
+    "sm1.coissue.ps14": [0xFFFF0104, 0x00000042, 0x800F0000, 0xB0E40000, 0x0000FFFD, 0x00000005, 0x800F0000,
+                         0x80E40000, 0x90E40000, 0x00000001, 0x80070000, 0xA0E40000, 0x40000001, 0x80080000,
+                         0xA0E40000, 0x0000FFFF],
+    # def c0, 1, 0.5, 0, 1; tex t0; tex t1; mul_x2 r0, t0_bx2, v0; add_sat r0, r0, 1-t1; cnd r0, r0.w, c0, v0
+    "sm1.modifiers.ps11": [0xFFFF0101, 0x00000051, 0xA00F0000, 0x3F800000, 0x3F000000, 0x00000000, 0x3F800000,
+                           0x00000042, 0xB00F0000, 0x00000042, 0xB00F0001, 0x00000005, 0x810F0000, 0xB4E40000,
+                           0x90E40000, 0x00000002, 0x801F0000, 0x80E40000, 0xB6E40001, 0x00000050, 0x800F0000,
+                           0x80FF0000, 0xA0E40000, 0x90E40000, 0x0000FFFF],
+    # dcl_position v0; mov oPos, v0
+    "sm1.plain.vs11": [0xFFFE0101, 0x0000001F, 0x80000000, 0x900F0000, 0x00000001, 0xC00F0000, 0x90E40000,
+                       0x0000FFFF],
+    # dcl_position v0; m4x4 oPos, v0, c0; mov a0.x, v0.x; mov oD0, c4[a0.x]
+    "sm1.relative.vs11": [0xFFFE0101, 0x0000001F, 0x80000000, 0x900F0000, 0x00000014, 0xC00F0000, 0x90E40000,
+                          0xA0E40000, 0x00000001, 0xB0010000, 0x90000000, 0x00000001, 0xD00F0000, 0xA0E42004,
+                          0x0000FFFF],
+    # tex t0; tex t1; mul r0.xyz, t0, v0; + mul_x2 r0.w, t1, v0; add r0.xyz, r0, t1; + add_sat r0.w, r0, c0;
+    # mov r1, r0
+    "sm1.pairs.ps11": [0xFFFF0101, 0x00000042, 0xB00F0000, 0x00000042, 0xB00F0001, 0x00000005, 0x80070000,
+                       0xB0E40000, 0x90E40000, 0x40000005, 0x81080000, 0xB0E40001, 0x90E40000, 0x00000002,
+                       0x80070000, 0x80E40000, 0xB0E40001, 0x40000002, 0x80180000, 0x80E40000, 0xA0E40000,
+                       0x00000001, 0x800F0001, 0x80E40000, 0x0000FFFF],
+}
 
 
 def disassembler(path):
@@ -66,6 +105,10 @@ def main():
                 print(f"FAIL {os.path.basename(out)}: {r.stderr.strip() or r.stdout.strip()}")
                 continue
             built.append(out)
+    for name, words in HAND_BUILT.items():
+        out = os.path.join(here, name + ".bin")
+        open(out, "wb").write(struct.pack(f"<{len(words)}I", *words))
+        built.append(out)
     for path in built:
         data = open(path, "rb").read()
         stem = os.path.join(listings, os.path.basename(path)[: -len(".bin")])

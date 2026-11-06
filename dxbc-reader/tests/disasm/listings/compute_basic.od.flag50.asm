@@ -1,0 +1,61 @@
+cs_5_0
+dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_constantbuffer CB0[1], immediateIndexed
+dcl_uav_raw u0
+dcl_uav_structured u1, 4
+dcl_uav_typed_buffer (float,float,float,float) u2
+dcl_input vThreadIDInGroupFlattened
+dcl_input vThreadGroupID.xy
+dcl_input vThreadIDInGroup.xyz
+dcl_input vThreadID.xyz
+dcl_temps 2
+dcl_tgsm_structured g0, 4, 64
+dcl_tgsm_raw g1, 4
+dcl_thread_group 8, 4, 2
+if_z vThreadIDInGroupFlattened.x
+  mov r0.x, l(0)
+  store_raw g1.x, l(0), r0.x
+endif 
+sync_g_t
+mov r0.x, l(100)
+imul null, r0.x, r0.x, vThreadID.x
+mov r0.y, l(10)
+imul null, r0.y, r0.y, vThreadID.y
+iadd r0.x, r0.y, r0.x
+iadd r0.x, r0.x, vThreadID.z
+store_structured g0.x, vThreadIDInGroupFlattened.x, l(0), r0.x
+atomic_iadd g1, l(0), vThreadIDInGroupFlattened.x
+sync_g_t
+mov r0.x, l(0)
+mov r0.y, l(0)
+atomic_iadd u1, r0.xyxx, l(1)
+mov r0.x, l(2)
+imul null, r0.x, r0.x, vThreadGroupID.y
+iadd r0.x, r0.x, vThreadGroupID.x
+mov r0.y, l(1)
+iadd r0.y, r0.y, vThreadIDInGroupFlattened.x
+mov r0.z, l(64)
+imul null, r0.z, r0.x, r0.z
+iadd r0.y, r0.z, r0.y
+mov r0.z, l(63)
+ineg r0.w, vThreadIDInGroupFlattened.x
+iadd r0.z, r0.w, r0.z
+ld_structured r0.z, r0.z, l(0), g0.xxxx
+ld_raw r0.w, l(0), g1.xxxx
+iadd r0.z, r0.w, r0.z
+store_structured u1.x, r0.y, l(0), r0.z
+mov r0.y, l(4)
+mov r0.z, l(64)
+imul null, r0.z, r0.x, r0.z
+iadd r0.z, r0.z, vThreadIDInGroupFlattened.x
+imul null, r0.y, r0.z, r0.y
+ld_structured r0.z, vThreadIDInGroupFlattened.x, l(0), g0.xxxx
+xor r0.z, r0.z, cb0[0].x
+store_raw u0.x, r0.y, r0.z
+mov r0.y, l(64)
+imul null, r0.x, r0.x, r0.y
+iadd r0.x, r0.x, vThreadIDInGroupFlattened.x
+utof r1.xyz, vThreadIDInGroup.xyzx
+utof r1.w, vThreadIDInGroupFlattened.x
+store_uav_typed u2.xyzw, r0.xxxx, r1.xyzw
+ret 

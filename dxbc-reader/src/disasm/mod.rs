@@ -17,10 +17,10 @@ pub struct Options {
     /// The comment block before the program and the instruction count after it; off, only the program's lines
     /// (`D3D_DISASM_INSTRUCTION_ONLY`, 0x40).
     pub header: bool,
-    /// Each instruction after its number, `  12: `, other lines after as many spaces
+    /// Each instruction after its number, `  12: `, other lines after as many spaces; before an offset, `  12  `
     /// (`D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING`, 0x04).
     pub numbering: bool,
-    /// Each line after the byte offset of its token in the program, `0x0000001C: `
+    /// Each line after the byte offset of its token in the program, `0x0000001C: `, after the number
     /// (`D3D_DISASM_ENABLE_INSTRUCTION_OFFSET`, 0x20).
     pub offsets: bool,
     /// Every 32-bit value as eight hex digits, `l(0x3f800000)` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80).

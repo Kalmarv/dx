@@ -1,0 +1,36 @@
+    ps_3_0
+0x000000A8:     def c8, -4, -5, -6, -7
+0x000000C0:     def c9, 0, 1, 2, 3
+0x000000D8:     dcl_texcoord v0
+0x000000E4:     mov r0, v0
+0x000000F0:     mov r1.x, c9.x
+0x000000FC:     rep i0
+0x00000104:       add r2, r1.x, -c9
+0x00000114:       add r3, r1.x, c8
+0x00000124:       mov r4.x, c9.x
+0x00000130:       cmp r1.y, -r2_abs.x, c0.x, r4.x
+0x00000144:       cmp r1.y, -r2_abs.y, c1.x, r1.y
+0x00000158:       cmp r1.y, -r2_abs.z, c2.x, r1.y
+0x0000016C:       cmp r1.y, -r2_abs.w, c3.x, r1.y
+0x00000180:       cmp r1.y, -r3_abs.x, c4.x, r1.y
+0x00000194:       cmp r1.y, -r3_abs.y, c5.x, r1.y
+0x000001A8:       cmp r1.y, -r3_abs.z, c6.x, r1.y
+0x000001BC:       cmp r1.y, -r3_abs.w, c7.x, r1.y
+0x000001D0:       if_lt r1.y, r0.x
+0x000001DC:         break_ne c9.y, -c9.y
+0x000001E8:       endif
+0x000001EC:       cmp r4, -r2_abs.x, c0, r4.x
+0x00000200:       cmp r4, -r2_abs.y, c1, r4
+0x00000214:       cmp r4, -r2_abs.z, c2, r4
+0x00000228:       cmp r2, -r2_abs.w, c3, r4
+0x0000023C:       cmp r2, -r3_abs.x, c4, r2
+0x00000250:       cmp r2, -r3_abs.y, c5, r2
+0x00000264:       cmp r2, -r3_abs.z, c6, r2
+0x00000278:       cmp r2, -r3_abs.w, c7, r2
+0x0000028C:       add r0, r2, r0
+0x0000029C:       add r1.x, r1.x, c9.y
+0x000002AC:     endrep
+0x000002B0:     mov oC0.yzw, r0
+0x000002BC:     mov oC0.x, r0.x
+
+// approximately 37 instruction slots used

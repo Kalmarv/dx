@@ -1,0 +1,17 @@
+    ps_2_0
+          def c1, -0.5, 1, 0, 0
+          dcl t0.xy
+          dcl v0
+          dcl_2d s0
+          dcl_cube s1
+   0:     texld r0, t0, s0
+   0:     mad r1, r0.w, v0.w, c1.x
+   1:     mul r0, r0, v0
+   2:     mov r2.xy, t0
+   3:     mov r2.z, c1.y
+   4:     texkill r1
+   5:     texld r1, r2, s1
+   5:     mad r0, r0, c0, r1
+   6:     mov oC0, r0
+
+// approximately 9 instruction slots used (2 texture, 7 arithmetic)

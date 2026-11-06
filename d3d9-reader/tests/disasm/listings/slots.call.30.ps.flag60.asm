@@ -1,0 +1,9 @@
+    ps_3_0
+0x00000080:     def c3, 0.5, 0, 0, 0
+0x00000098:     dcl_texcoord v0
+0x000000A4:     mov r0, c1
+0x000000B0:     mad r0, v0, r0, c2
+0x000000C4:     add r1.x, c3.x, -v0.x
+0x000000D4:     cmp oC0, r1.x, v0, r0
+
+// approximately 4 instruction slots used

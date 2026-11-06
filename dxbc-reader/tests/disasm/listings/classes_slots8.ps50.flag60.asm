@@ -1,0 +1,314 @@
+0x00000000: ps_5_0
+0x00000008: dcl_globalFlags refactoringAllowed
+0x0000000C: dcl_function_body fb0
+0x00000014: dcl_function_body fb1
+0x0000001C: dcl_function_body fb2
+0x00000024: dcl_function_body fb3
+0x0000002C: dcl_function_body fb4
+0x00000034: dcl_function_body fb5
+0x0000003C: dcl_function_body fb6
+0x00000044: dcl_function_body fb7
+0x0000004C: dcl_function_body fb8
+0x00000054: dcl_function_body fb9
+0x0000005C: dcl_function_body fb10
+0x00000064: dcl_function_body fb11
+0x0000006C: dcl_function_body fb12
+0x00000074: dcl_function_body fb13
+0x0000007C: dcl_function_body fb14
+0x00000084: dcl_function_body fb15
+0x0000008C: dcl_function_body fb16
+0x00000094: dcl_function_body fb17
+0x0000009C: dcl_function_body fb18
+0x000000A4: dcl_function_body fb19
+0x000000AC: dcl_function_body fb20
+0x000000B4: dcl_function_body fb21
+0x000000BC: dcl_function_body fb22
+0x000000C4: dcl_function_body fb23
+0x000000CC: dcl_function_body fb24
+0x000000D4: dcl_function_body fb25
+0x000000DC: dcl_function_body fb26
+0x000000E4: dcl_function_body fb27
+0x000000EC: dcl_function_body fb28
+0x000000F4: dcl_function_body fb29
+0x000000FC: dcl_function_body fb30
+0x00000104: dcl_function_body fb31
+0x0000010C: dcl_function_body fb32
+0x00000114: dcl_function_body fb33
+0x0000011C: dcl_function_body fb34
+0x00000124: dcl_function_body fb35
+0x0000012C: dcl_function_body fb36
+0x00000134: dcl_function_body fb37
+0x0000013C: dcl_function_body fb38
+0x00000144: dcl_function_body fb39
+0x0000014C: dcl_function_body fb40
+0x00000154: dcl_function_body fb41
+0x0000015C: dcl_function_body fb42
+0x00000164: dcl_function_body fb43
+0x0000016C: dcl_function_body fb44
+0x00000174: dcl_function_body fb45
+0x0000017C: dcl_function_body fb46
+0x00000184: dcl_function_body fb47
+0x0000018C: dcl_function_body fb48
+0x00000194: dcl_function_body fb49
+0x0000019C: dcl_function_body fb50
+0x000001A4: dcl_function_body fb51
+0x000001AC: dcl_function_body fb52
+0x000001B4: dcl_function_body fb53
+0x000001BC: dcl_function_body fb54
+0x000001C4: dcl_function_body fb55
+0x000001CC: dcl_function_body fb56
+0x000001D4: dcl_function_body fb57
+0x000001DC: dcl_function_body fb58
+0x000001E4: dcl_function_body fb59
+0x000001EC: dcl_function_body fb60
+0x000001F4: dcl_function_body fb61
+0x000001FC: dcl_function_body fb62
+0x00000204: dcl_function_body fb63
+0x0000020C: dcl_function_table ft0 = {fb0, fb8, fb16}
+0x00000224: dcl_function_table ft1 = {fb1, fb9, fb17}
+0x0000023C: dcl_function_table ft2 = {fb2, fb10, fb18}
+0x00000254: dcl_function_table ft3 = {fb3, fb11, fb19}
+0x0000026C: dcl_function_table ft4 = {fb4, fb12, fb20}
+0x00000284: dcl_function_table ft5 = {fb5, fb13, fb21}
+0x0000029C: dcl_function_table ft6 = {fb6, fb14, fb22}
+0x000002B4: dcl_function_table ft7 = {fb7, fb15, fb23}
+0x000002CC: dcl_function_table ft8 = {fb24, fb32}
+0x000002E0: dcl_function_table ft9 = {fb25, fb33}
+0x000002F4: dcl_function_table ft10 = {fb26, fb34}
+0x00000308: dcl_function_table ft11 = {fb27, fb35}
+0x0000031C: dcl_function_table ft12 = {fb28, fb36}
+0x00000330: dcl_function_table ft13 = {fb29, fb37}
+0x00000344: dcl_function_table ft14 = {fb30, fb38}
+0x00000358: dcl_function_table ft15 = {fb31, fb39}
+0x0000036C: dcl_function_table ft16 = {fb40}
+0x0000037C: dcl_function_table ft17 = {fb41}
+0x0000038C: dcl_function_table ft18 = {fb42}
+0x0000039C: dcl_function_table ft19 = {fb43}
+0x000003AC: dcl_function_table ft20 = {fb44}
+0x000003BC: dcl_function_table ft21 = {fb45}
+0x000003CC: dcl_function_table ft22 = {fb46}
+0x000003DC: dcl_function_table ft23 = {fb47}
+0x000003EC: dcl_function_table ft24 = {fb48, fb56}
+0x00000400: dcl_function_table ft25 = {fb49, fb57}
+0x00000414: dcl_function_table ft26 = {fb50, fb58}
+0x00000428: dcl_function_table ft27 = {fb51, fb59}
+0x0000043C: dcl_function_table ft28 = {fb52, fb60}
+0x00000450: dcl_function_table ft29 = {fb53, fb61}
+0x00000464: dcl_function_table ft30 = {fb54, fb62}
+0x00000478: dcl_function_table ft31 = {fb55, fb63}
+0x0000048C: dcl_interface fp0[3][3] = {ft0, ft1, ft2, ft3, ft4, ft5, ft6, ft7}
+0x000004BC: dcl_interface fp3[2][2] = {ft8, ft9, ft10, ft11, ft12, ft13, ft14, ft15}
+0x000004EC: dcl_interface fp5[1][1] = {ft16, ft17, ft18, ft19, ft20, ft21, ft22, ft23}
+0x0000051C: dcl_interface fp6[2][2] = {ft24, ft25, ft26, ft27, ft28, ft29, ft30, ft31}
+0x0000054C: dcl_input_ps linear v0.xyz
+0x00000558: dcl_output o0.xyzw
+0x00000564: dcl_temps 2
+0x0000056C: fcall fp0[0][0]
+0x00000580: fcall fp0[1][1]
+0x00000594: add r0.xyz, r0.xyzx, r1.xyzx
+0x000005B0: fcall fp0[2][2]
+0x000005C4: add r0.xyz, r0.xyzx, r1.xyzx
+0x000005E0: fcall fp3[0][0]
+0x000005F4: add r0.xyz, r0.xyzx, r1.xyzx
+0x00000610: fcall fp3[1][1]
+0x00000624: add r0.xyz, r0.xyzx, r1.xyzx
+0x00000640: fcall fp5[0][0]
+0x00000654: add r0.xyz, r0.xyzx, r1.xyzx
+0x00000670: fcall fp6[0][0]
+0x00000684: add r0.xyz, r0.xyzx, r1.xyzx
+0x000006A0: fcall fp6[1][1]
+0x000006B4: add o0.xyz, r0.xyzx, r1.xyzx
+0x000006D0: mov o0.w, l(1.000000)
+0x000006E4: ret 
+0x000006E8: label fb0
+0x000006F4: mul r0.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x0000071C: ret 
+0x00000720: label fb1
+0x0000072C: mul r0.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00000754: ret 
+0x00000758: label fb2
+0x00000764: mul r0.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x0000078C: ret 
+0x00000790: label fb3
+0x0000079C: mul r0.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x000007C4: ret 
+0x000007C8: label fb4
+0x000007D4: mul r0.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x000007FC: ret 
+0x00000800: label fb5
+0x0000080C: mul r0.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00000834: ret 
+0x00000838: label fb6
+0x00000844: add r0.xyz, v0.xyzx, v0.xyzx
+0x00000860: ret 
+0x00000864: label fb7
+0x00000870: mov r0.xyz, v0.xyzx
+0x00000884: ret 
+0x00000888: label fb8
+0x00000894: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x000008BC: ret 
+0x000008C0: label fb9
+0x000008CC: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x000008F4: ret 
+0x000008F8: label fb10
+0x00000904: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x0000092C: ret 
+0x00000930: label fb11
+0x0000093C: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00000964: ret 
+0x00000968: label fb12
+0x00000974: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x0000099C: ret 
+0x000009A0: label fb13
+0x000009AC: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x000009D4: ret 
+0x000009D8: label fb14
+0x000009E4: add r1.xyz, v0.xyzx, v0.xyzx
+0x00000A00: ret 
+0x00000A04: label fb15
+0x00000A10: mov r1.xyz, v0.xyzx
+0x00000A24: ret 
+0x00000A28: label fb16
+0x00000A34: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x00000A5C: ret 
+0x00000A60: label fb17
+0x00000A6C: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00000A94: ret 
+0x00000A98: label fb18
+0x00000AA4: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x00000ACC: ret 
+0x00000AD0: label fb19
+0x00000ADC: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00000B04: ret 
+0x00000B08: label fb20
+0x00000B14: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x00000B3C: ret 
+0x00000B40: label fb21
+0x00000B4C: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00000B74: ret 
+0x00000B78: label fb22
+0x00000B84: add r1.xyz, v0.xyzx, v0.xyzx
+0x00000BA0: ret 
+0x00000BA4: label fb23
+0x00000BB0: mov r1.xyz, v0.xyzx
+0x00000BC4: ret 
+0x00000BC8: label fb24
+0x00000BD4: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x00000BFC: ret 
+0x00000C00: label fb25
+0x00000C0C: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00000C34: ret 
+0x00000C38: label fb26
+0x00000C44: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x00000C6C: ret 
+0x00000C70: label fb27
+0x00000C7C: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00000CA4: ret 
+0x00000CA8: label fb28
+0x00000CB4: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x00000CDC: ret 
+0x00000CE0: label fb29
+0x00000CEC: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00000D14: ret 
+0x00000D18: label fb30
+0x00000D24: add r1.xyz, v0.xyzx, v0.xyzx
+0x00000D40: ret 
+0x00000D44: label fb31
+0x00000D50: mov r1.xyz, v0.xyzx
+0x00000D64: ret 
+0x00000D68: label fb32
+0x00000D74: mul r1.xyz, v0.yzxy, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x00000D9C: ret 
+0x00000DA0: label fb33
+0x00000DAC: mul r1.xyz, v0.yzxy, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00000DD4: ret 
+0x00000DD8: label fb34
+0x00000DE4: mul r1.xyz, v0.yzxy, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x00000E0C: ret 
+0x00000E10: label fb35
+0x00000E1C: mul r1.xyz, v0.yzxy, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00000E44: ret 
+0x00000E48: label fb36
+0x00000E54: mul r1.xyz, v0.yzxy, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x00000E7C: ret 
+0x00000E80: label fb37
+0x00000E8C: mul r1.xyz, v0.yzxy, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00000EB4: ret 
+0x00000EB8: label fb38
+0x00000EC4: add r1.xyz, v0.yzxy, v0.yzxy
+0x00000EE0: ret 
+0x00000EE4: label fb39
+0x00000EF0: mov r1.xyz, v0.yzxy
+0x00000F04: ret 
+0x00000F08: label fb40
+0x00000F14: mul r1.xyz, v0.zxyz, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x00000F3C: ret 
+0x00000F40: label fb41
+0x00000F4C: mul r1.xyz, v0.zxyz, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00000F74: ret 
+0x00000F78: label fb42
+0x00000F84: mul r1.xyz, v0.zxyz, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x00000FAC: ret 
+0x00000FB0: label fb43
+0x00000FBC: mul r1.xyz, v0.zxyz, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00000FE4: ret 
+0x00000FE8: label fb44
+0x00000FF4: mul r1.xyz, v0.zxyz, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x0000101C: ret 
+0x00001020: label fb45
+0x0000102C: mul r1.xyz, v0.zxyz, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00001054: ret 
+0x00001058: label fb46
+0x00001064: add r1.xyz, v0.zxyz, v0.zxyz
+0x00001080: ret 
+0x00001084: label fb47
+0x00001090: mov r1.xyz, v0.zxyz
+0x000010A4: ret 
+0x000010A8: label fb48
+0x000010B4: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x000010DC: ret 
+0x000010E0: label fb49
+0x000010EC: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x00001114: ret 
+0x00001118: label fb50
+0x00001124: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x0000114C: ret 
+0x00001150: label fb51
+0x0000115C: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00001184: ret 
+0x00001188: label fb52
+0x00001194: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x000011BC: ret 
+0x000011C0: label fb53
+0x000011CC: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x000011F4: ret 
+0x000011F8: label fb54
+0x00001204: add r1.xyz, v0.xyzx, v0.xyzx
+0x00001220: ret 
+0x00001224: label fb55
+0x00001230: mov r1.xyz, v0.xyzx
+0x00001244: ret 
+0x00001248: label fb56
+0x00001254: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+0x0000127C: ret 
+0x00001280: label fb57
+0x0000128C: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+0x000012B4: ret 
+0x000012B8: label fb58
+0x000012C4: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+0x000012EC: ret 
+0x000012F0: label fb59
+0x000012FC: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+0x00001324: ret 
+0x00001328: label fb60
+0x00001334: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+0x0000135C: ret 
+0x00001360: label fb61
+0x0000136C: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+0x00001394: ret 
+0x00001398: label fb62
+0x000013A4: add r1.xyz, v0.xyzx, v0.xyzx
+0x000013C0: ret 
+0x000013C4: label fb63
+0x000013D0: mov r1.xyz, v0.xyzx
+0x000013E4: ret 

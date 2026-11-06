@@ -1,0 +1,23 @@
+    ps_3_0
+      0x000000A8:     def c8, 0xc0800000, 0xc0a00000, 0xc0c00000, 0xc0e00000
+      0x000000C0:     def c9, 0x00000000, 0x3f800000, 0x40000000, 0x40400000
+   0  0x000000D8:     mov r0, c9.x
+   1  0x000000E4:     mov r1.x, c9.x
+   2  0x000000F0:     rep i0
+   5  0x000000F8:       add r2, r1.x, -c9
+   6  0x00000108:       add r3, r1.x, c8
+   7  0x00000118:       mov r4.x, c9.x
+   8  0x00000124:       cmp r4, -r2_abs.x, c0, r4.x
+   9  0x00000138:       cmp r4, -r2_abs.y, c1, r4
+  10  0x0000014C:       cmp r4, -r2_abs.z, c2, r4
+  11  0x00000160:       cmp r2, -r2_abs.w, c3, r4
+  12  0x00000174:       cmp r2, -r3_abs.x, c4, r2
+  13  0x00000188:       cmp r2, -r3_abs.y, c5, r2
+  14  0x0000019C:       cmp r2, -r3_abs.z, c6, r2
+  15  0x000001B0:       cmp r2, -r3_abs.w, c7, r2
+  16  0x000001C4:       add r0, r0, r2
+  17  0x000001D4:       add r1.x, r1.x, c9.y
+  18  0x000001E4:     endrep
+  20  0x000001E8:     mov oC0, r0
+
+// approximately 21 instruction slots used

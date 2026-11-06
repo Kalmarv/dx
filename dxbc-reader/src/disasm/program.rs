@@ -912,18 +912,20 @@ pub(super) fn write(out: &mut String, program: &Decoded, options: &Options) {
         hex: options.hex_literals,
     };
     let mut number: u32 = 0;
-    // the prefix of a line at `word` of the token stream, numbered or not
+    // the prefix of a line at `word` of the token stream, numbered or not: the number (`%4u: `, or `%4u  ` before an
+    // offset), then the offset
     let mut prefix = |out: &mut String, word: usize, numbered: bool| {
-        if options.offsets {
-            let _ = write!(out, "0x{:08X}: ", word.saturating_mul(4));
-        }
         if options.numbering {
             if numbered {
-                let _ = write!(out, "{number:>4}: ");
+                let colon = if options.offsets { ' ' } else { ':' };
+                let _ = write!(out, "{number:>4}{colon} ");
                 number = number.saturating_add(1);
             } else {
                 out.push_str("      ");
             }
+        }
+        if options.offsets {
+            let _ = write!(out, "0x{:08X}: ", word.saturating_mul(4));
         }
     };
     prefix(out, 0, false);

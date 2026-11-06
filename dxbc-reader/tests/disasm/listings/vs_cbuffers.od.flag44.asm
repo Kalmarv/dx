@@ -1,0 +1,127 @@
+      vs_5_0
+      dcl_globalFlags refactoringAllowed | enableDoublePrecisionFloatOps | skipOptimization | enableMinimumPrecision
+      dcl_immediateConstantBuffer { { -1, 0, 0, 0},
+                              { 0, -1, 0, 0},
+                              { 0, 0, -1, 0},
+                              { 0, 0, 0, -1} }
+      dcl_constantbuffer CB0[23], dynamicIndexed
+      dcl_constantbuffer CB3[129], dynamicIndexed
+      dcl_resource_texture2d (float,float,float,float) t0
+      dcl_resource_buffer (uint,uint,uint,uint) t1
+      dcl_resource_buffer (mixed,mixed,mixed,mixed) t2
+      dcl_input v0.xyz
+      dcl_input v1.xyz
+      dcl_input v2.xy
+      dcl_input v3.xyz
+      dcl_input_sgv v4.x, vertex_id
+      dcl_input_sgv v5.x, instance_id
+      dcl_output_siv o0.xyzw, position
+      dcl_output o1.xyz
+      dcl_output o2.xy
+      dcl_output o3.xyzw
+      dcl_output_siv o4.x, clip_distance
+      dcl_output o5.x
+      dcl_temps 7
+   0: mov r0.xyz, v0.xyzx
+   1: mov r0.w, l(0)
+   2: mov r1.xyz, r0.xyzx
+   3: mov r1.w, r0.w
+   4: loop 
+   5:   mov r2.x, l(2)
+   6:   ult r2.x, r1.w, r2.x
+   7:   breakc_z r2.x
+   8:   and r2.xyz, v3.xyzx, icb[r1.w + 0].xyzx
+   9:   mov r2.w, l(0)
+  10:   or r2.xy, r2.ywyy, r2.xzxx
+  11:   or r2.x, r2.y, r2.x
+  12:   imul null, r2.x, r2.x, l(4)
+  13:   mov r3.xyzw, cb3[r2.x + 0].xyzw
+  14:   mov r4.xyzw, cb3[r2.x + 1].xyzw
+  15:   mov r5.xyzw, cb3[r2.x + 2].xyzw
+  16:   mov r2.x, cb3[r2.x + 3].x
+  17:   itof r6.w, l(1)
+  18:   mov r6.xyz, v0.xyzx
+  19:   dp4 r3.x, r3.xyzw, r6.xyzw
+  20:   dp4 r3.y, r4.xyzw, r6.xyzw
+  21:   dp4 r3.z, r5.xyzw, r6.xyzw
+  22:   mul r2.xyz, r2.xxxx, r3.xyzx
+  23:   add r1.xyz, r1.xyzx, r2.xyzx
+  24:   iadd r1.w, r1.w, l(1)
+  25: endloop 
+  26: mov r0.x, l(15)
+  27: and r0.x, r0.x, v4.x
+  28: mov r1.w, l(4)
+  29: ushr r0.y, v4.x, r1.w
+  30: mov r0.zw, l(0,0,0,0)
+  31: ld_indexable(texture2d)(float,float,float,float) r0.x, r0.xyzw, t0.xyzw
+  32: add r0.x, r0.x, r1.y
+  33: itof r0.y, l(1)
+  34: mul r2.xyzw, r1.xxxx, cb0[4].xyzw
+  35: mul r3.xyzw, r0.xxxx, cb0[5].xyzw
+  36: add r2.xyzw, r2.xyzw, r3.xyzw
+  37: mul r1.xyzw, r1.zzzz, cb0[6].xyzw
+  38: add r1.xyzw, r1.xyzw, r2.xyzw
+  39: mul r0.xyzw, r0.yyyy, cb0[7].xyzw
+  40: add r0.xyzw, r0.xyzw, r1.xyzw
+  41: dp4 r1.x, r0.xyzw, cb0[0].xyzw
+  42: dp4 r1.y, r0.xyzw, cb0[1].xyzw
+  43: dp4 r1.z, r0.xyzw, cb0[2].xyzw
+  44: dp4 r1.w, r0.xyzw, cb0[3].xyzw
+  45: mul r2.xyz, cb0[8].wwww, cb0[8].xyzx
+  46: add r2.xyz, r2.xyzx, v1.xyzx
+  47: dp3 r0.w, r2.xyzx, r2.xyzx
+  48: rsq r0.w, r0.w
+  49: mul r2.xyz, r0.wwww, r2.xyzx
+  50: add r3.xy, v2.xyxx, cb0[9].xyxx
+  51: itof r4.xyzw, l(0, 0, 0, 0)
+  52: mov r0.w, l(1)
+  53: and r0.w, r0.w, cb0[9].z
+  54: dp3 r2.w, v1.xyzx, cb0[11].xyzx
+  55: max r2.w, r2.w, l(0.000000)
+  56: min r2.w, r2.w, l(1.000000)
+  57: mul r5.xyzw, r2.wwww, cb0[r0.w + 12].xyzw
+  58: add r4.xyzw, r4.xyzw, r5.xyzw
+  59: mov r0.w, l(1)
+  60: and r0.w, r0.w, cb0[9].z
+  61: dp3 r2.w, v1.xyzx, cb0[14].xyzx
+  62: max r2.w, r2.w, l(0.000000)
+  63: min r2.w, r2.w, l(1.000000)
+  64: mul r5.xyzw, r2.wwww, cb0[r0.w + 15].xyzw
+  65: add r4.xyzw, r4.xyzw, r5.xyzw
+  66: mov r0.w, l(1)
+  67: and r0.w, r0.w, cb0[9].z
+  68: dp3 r2.w, v1.xyzx, cb0[17].xyzx
+  69: max r2.w, r2.w, l(0.000000)
+  70: min r2.w, r2.w, l(1.000000)
+  71: mul r5.xyzw, r2.wwww, cb0[r0.w + 18].xyzw
+  72: add r4.xyzw, r4.xyzw, r5.xyzw
+  73: mov r0.w, l(1)
+  74: and r0.w, r0.w, cb0[9].z
+  75: dp3 r2.w, v1.xyzx, cb0[20].xyzx
+  76: max r2.w, r2.w, l(0.000000)
+  77: min r2.w, r2.w, l(1.000000)
+  78: mul r5.xyzw, r2.wwww, cb0[r0.w + 21].xyzw
+  79: add r4.xyzw, r4.xyzw, r5.xyzw
+  80: ine r0.w, l(0, 0, 0, 0), cb0[10].x
+  81: mov r2.w, l(7)
+  82: and r2.w, r2.w, v5.x
+  83: itof r5.xyzw, l(1, 1, 1, 1)
+  84: iadd r2.w, r2.w, l(0)
+  85: ld_indexable(buffer)(mixed,mixed,mixed,mixed) r6.xyzw, r2.wwww, t2.xyzw
+  86: movc r5.xyzw, r0.wwww, r6.xyzw, r5.xyzw
+  87: mul r4.xyzw, r4.xyzw, r5.xyzw
+  88: dtof r0.w, cb3[127].zwzw
+  89: mov r2.w, cb3[128].x {min16f as def32}
+  90: mul r0.w, r0.w, r2.w
+  91: mul r4.xyzw, r0.wwww, r4.xyzw
+  92: ld_indexable(buffer)(uint,uint,uint,uint) r5.xyz, v5.xxxx, t1.xyzw
+  93: utof r5.xyz, r5.xyzx
+  94: dp3 r0.x, r0.xyzx, r5.xyzx
+  95: xor r0.y, v4.x, v5.x
+  96: mov o0.xyzw, r1.xyzw
+  97: mov o3.xyzw, r4.xyzw
+  98: mov o1.xyz, r2.xyzx
+  99: mov o2.xy, r3.xyxx
+ 100: mov o4.x, r0.x
+ 101: mov o5.x, r0.y
+ 102: ret 

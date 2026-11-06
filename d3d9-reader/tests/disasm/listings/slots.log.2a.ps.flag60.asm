@@ -1,0 +1,11 @@
+    ps_2_x
+0x00000058:     def c0, 0.693147182, 0, 0, 0
+0x00000070:     dcl t0
+0x0000007C:     log r0.x, t0.x
+0x00000088:     log r0.y, t0.y
+0x00000094:     log r0.z, t0.z
+0x000000A0:     log r0.w, t0.w
+0x000000AC:     mul r0, r0, c0.x
+0x000000BC:     mov oC0, r0
+
+// approximately 6 instruction slots used

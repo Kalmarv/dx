@@ -11,11 +11,11 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Options {
-    /// The constant table's comments (cleared by `D3D_DISASM_DISABLE_DEFAULT_VALUE_PRINTS`, 0x40; the slot count is
-    /// written either way).
+    /// The constant table's comments (cleared by `D3D_DISASM_INSTRUCTION_ONLY`, 0x40; the slot count is written
+    /// either way).
     pub header: bool,
-    /// The arithmetic slots before each instruction, `%4u: ` (texture slots not counted), and six spaces before the
-    /// other lines but the version
+    /// The arithmetic slots before each instruction, `%4u: ` (texture slots not counted; `%4u  ` before an offset),
+    /// and six spaces before a co-issued instruction and the other lines but the version
     /// (`D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING`, 0x04).
     pub numbering: bool,
     /// Each line's byte offset from the version token, `0x%08X: `, before every line but the version
@@ -91,19 +91,25 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
     // the arithmetic slots before the next instruction, which the numbering writes (texture slots don't count)
     let mut slot: u32 = 0;
     for item in &program.items {
-        let prefix = if options.offsets {
-            format!("0x{:08X}: ", item.word().saturating_mul(4))
-        } else if options.numbering {
+        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction has none), then the offset
+        let mut prefix = String::new();
+        if options.numbering {
             match item {
-                Item::Instruction(i) => {
-                    let first = slot;
+                Item::Instruction(i) if !i.coissue => {
+                    let colon = if options.offsets { ' ' } else { ':' };
+                    let _ = write!(prefix, "{slot:>4}{colon} ");
                     slot = slot.saturating_add(slots(i, &program).1);
-                    format!("{first:>4}: ")
                 }
-                _ => "      ".to_owned(),
+                _ => prefix.push_str("      "),
             }
-        } else {
-            String::new()
+        }
+        if options.offsets {
+            let _ = write!(prefix, "0x{:08X}: ", item.word().saturating_mul(4));
+        }
+        // a co-issued instruction's `+` takes the place of the indent's last two spaces
+        let indent = match item {
+            Item::Instruction(i) if i.coissue => "  + ",
+            _ => "    ",
         };
         let line = match item {
             Item::Comment(_) => continue,
@@ -127,7 +133,7 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
                 line
             }
         };
-        let _ = writeln!(out, "{prefix}    {}", line.trim_end());
+        let _ = writeln!(out, "{prefix}{indent}{}", line.trim_end());
     }
     out.push('\n');
     footer(&mut out, &program);
@@ -401,8 +407,7 @@ fn instruction(i: &Instruction, program: &Program) -> String {
         .as_ref()
         .map_or(String::new(), |p| format!("({}) ", source(p, program)));
     format!(
-        "{}{predicate}{}{} {}",
-        if i.coissue { "+" } else { "" },
+        "{predicate}{}{} {}",
         mnemonic(i, program),
         suffixes(i.destination.as_ref()),
         args.join(", ")
@@ -510,9 +515,13 @@ fn general(value: f32) -> String {
 }
 
 /// The texture and arithmetic instruction slots an instruction takes, as Microsoft's listings count them: checked
-/// against every footer of a vs_3_0 and ps_3_0 corpus and against fixtures of one operation each. `loop`, `endloop`,
+/// against every footer of a vs_3_0 and ps_3_0 corpus and against fixtures of one operation each, and of co-issue. `loop`, `endloop`,
 /// `call`, `callnz`, `ret`, `break`, `breakp` and `setp` take what Microsoft's instruction reference states, unchecked.
 fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
+    // a co-issued instruction runs in the slot of the one before it
+    if i.coissue {
+        return (0, 0);
+    }
     let pixel = program.version.stage == Stage::Pixel;
     match i.opcode {
         Opcode::Tex => (1, 0),

@@ -1,0 +1,22 @@
+cs_5_0
+dcl_globalFlags refactoringAllowed
+dcl_uav_typed_texture2d (uint,uint,uint,uint) u0
+dcl_uav_typed_texture2d (uint,uint,uint,uint) u1
+dcl_input vThreadID.x
+dcl_temps 3
+dcl_thread_group 4, 1, 1
+iadd r0.xy, vThreadID.xxxx, l(0x00000001, 0x0000000a, 0x00000000, 0x00000000)
+imm_atomic_iadd r1.x, u0, l(0x00000000, 0x00000000, 0x00000000, 0x00000000), r0.x
+imm_atomic_exch r0.x, u0, l(0x00000001, 0x00000000, 0x00000000, 0x00000000), r0.y
+mov r2.x, vThreadID.x
+mov r2.yzw, l(0x00000000,0x00000000,0x00000000,0x00000000)
+store_uav_typed u1.xyzw, r2.xyzw, r1.xxxx
+mov r1.x, vThreadID.x
+mov r1.yzw, l(0x00000000,0x00000001,0x00000001,0x00000001)
+store_uav_typed u1.xyzw, r1.xyzw, r0.xxxx
+imul null, r0.x, vThreadID.x, l(0x00000003)
+imm_atomic_umax r0.x, u0, l(0x00000002, 0x00000000, 0x00000000, 0x00000000), r0.x
+mov r1.x, vThreadID.x
+mov r1.yzw, l(0x00000000,0x00000002,0x00000002,0x00000002)
+store_uav_typed u1.xyzw, r1.xyzw, r0.xxxx
+ret 

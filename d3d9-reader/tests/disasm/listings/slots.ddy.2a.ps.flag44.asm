@@ -1,0 +1,6 @@
+    ps_2_x
+          dcl t0
+   0:     dsy r0, t0
+   2:     mov oC0, r0
+
+// approximately 3 instruction slots used

@@ -1,0 +1,7 @@
+    ps_1_1
+   0:     tex t0
+   0:     mov r0, t0
+   1:     mov r0.xyz, c0
+        + mov r0.w, v0
+
+// approximately 3 instruction slots used (1 texture, 2 arithmetic)

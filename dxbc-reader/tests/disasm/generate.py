@@ -3,8 +3,8 @@ or under Wine).
 
 Each `.hlsl` states its builds as `// fxc: <arguments> /Fo <name>.dxbc` lines. Every build's container is written
 here; D3DDisassemble's listings of it, and of every container in `../fixtures`, go to `listings/`: `<name>.asm` with
-no flags and `<name>.flag<hex>.asm` with each D3D_DISASM flag but the HTML one (0x08, which the disassembler refuses,
-writes none). `../disasm.rs` compares the disassembler with them.
+no flags and `<name>.flag<hex>.asm` with each flags word of FLAGS (0x08, which the disassembler refuses, writes
+none). `../disasm.rs` compares the disassembler with them.
 
     python -I generate.py [--fxc PATH] [--dll PATH]
 
@@ -13,9 +13,12 @@ builds the listings were made with, as Wine paths (Z:\\...): fxc
 10.0.26100.4654 and its d3dcompiler_47.dll write the same bytes there as on Windows. Windows Python needs a console
 under Wine, so run it in a pseudo-terminal (`script -qec "wine python.exe generate.py ..." /dev/null`).
 """
-import argparse, ctypes, glob, hashlib, os, re, shlex, shutil, subprocess, sys
+import argparse, ctypes, glob, hashlib, itertools, os, re, shlex, shutil, subprocess, sys
 
-FLAGS = [0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80]
+# The D3D_DISASM flags that change the text, alone, in pairs and all together; 0x01 (an HTML listing) is left out
+# and 0x08, which the disassembler refuses, writes none.
+TEXT_FLAGS = [0x2, 0x4, 0x10, 0x20, 0x40, 0x80]
+FLAGS = sorted({0x8, *TEXT_FLAGS, *(a | b for a, b in itertools.combinations(TEXT_FLAGS, 2)), sum(TEXT_FLAGS)})
 
 # fxc /Zi stores the source's absolute path in the container (and the listing prints it), so every source is compiled
 # from a copy in this folder: the stored path is the same on every machine, under Wine too (the prefix's drive_c),

@@ -1,0 +1,62 @@
+    ps_3_0
+0x0000018C:     def c2, 0.5, 1, 0.125, 2.20000005
+0x000001A4:     def c3, 1, -1, 0, 2
+0x000001BC:     dcl_texcoord_pp v0
+0x000001C8:     dcl_texcoord1_pp v1.xyz
+0x000001D4:     dcl_color_pp_centroid v2
+0x000001E0:     dcl_texcoord2_pp v3
+0x000001EC:     dcl vFace
+0x000001F8:     dcl vPos.xy
+0x00000204:     dcl_2d s0
+0x00000210:     dcl_cube s1
+0x0000021C:     dcl_volume s2
+0x00000228:     dcl_2d s3
+0x00000234:     dcl_2d s4
+0x00000240:     texld_pp r0, v0, s0
+0x00000250:     texldp_pp r1, v3, s4
+0x00000260:     add_pp r0, r0, r1
+0x00000270:     mul_pp r1, c3.xxzx, v0.xyxw
+0x00000280:     texldb_pp r1, r1, s0
+0x00000290:     add_pp r0, r0, r1
+0x000002A0:     nrm_pp r1.xyz, v1
+0x000002AC:     mad_pp r1.xyz, r1.z, -c3.zzww, r1
+0x000002C0:     texld_pp r1, r1, s1
+0x000002D0:     texld_pp r2, v0, s2
+0x000002E0:     texld_pp r3, v0.z, s3
+0x000002F0:     mul_pp r2, r2, r3.x
+0x00000300:     mad_pp r0, r0, r1, r2
+0x00000314:     dsx_pp r1.xy, v0
+0x00000320:     dsy_pp r1.zw, v0.xyxy
+0x0000032C:     dp2add_sat_pp r2.x, r1, r1.zwzw, c3.z
+0x00000340:     texldd_pp r1, v0.zwzw, s0, r1, r1.zwzw
+0x00000358:     lrp_pp r3, r2.x, v2, r0
+0x0000036C:     mad_pp r0, v0.wzxw, c3.xxzz, c3.zzzw
+0x00000380:     texldl_pp r0, r0, s0
+0x00000390:     add_pp r0, r0, r1
+0x000003A0:     add_pp r0, r0, r3
+0x000003B0:     add_pp r1, r0.w, -c1.x
+0x000003C0:     texkill r1
+0x000003C8:     cmp_pp r1.x, vFace, c3.x, c3.y
+0x000003DC:     cmp_pp r1.x, -r1.x, c2.x, c2.y
+0x000003F0:     mul_pp r0.z, r0.z, r1.x
+0x00000400:     mul_pp r1.yz, c2.z, vPos.xxyw
+0x00000410:     frc_pp r1.yz, r1
+0x0000041C:     mad_pp r0.xy, r0, r1.x, r1.yzzw
+0x00000430:     exp_pp oC1.w, r0.w
+0x0000043C:     mul_pp r1, r0, c2.x
+0x0000044C:     mad_pp r1, r0, c0, r1
+0x00000460:     log_pp r2.z, r0_abs.z
+0x0000046C:     add_pp r0.z, -r1.y, c2.x
+0x0000047C:     rcp_pp r0.w, r1.y
+0x00000488:     cmp_pp oC0.z, r0.z, r1.z, r0.w
+0x0000049C:     mov_pp oC0.xyw, r1
+0x000004A8:     log_pp r2.x, r0_abs.x
+0x000004B4:     log_pp r2.y, r0_abs.y
+0x000004C0:     mul_pp r0.xyz, r2, c2.w
+0x000004D0:     exp_pp oC1.x, r0.x
+0x000004DC:     exp_pp oC1.y, r0.y
+0x000004E8:     exp_pp oC1.z, r0.z
+0x000004F4:     rcp_pp r0.x, v3.w
+0x00000500:     mul_pp oDepth, r0.x, v3.z
+
+// approximately 54 instruction slots used (9 texture, 45 arithmetic)

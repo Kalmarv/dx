@@ -1,0 +1,82 @@
+    ps_3_0
+      0x000001E4:     def c6, 0x3f000000, 0x3f800000, 0x3e000000, 0x400ccccd
+      0x000001FC:     def c7, 0x80000000, 0xbf800000, 0xc0000000, 0xc0400000
+      0x00000214:     def c8, 0x3f800000, 0xbf800000, 0x00000000, 0x40000000
+      0x0000022C:     dcl_texcoord v0
+      0x00000238:     dcl_texcoord1 v1.xyz
+      0x00000244:     dcl_color_centroid v2
+      0x00000250:     dcl_texcoord2 v3
+      0x0000025C:     dcl vFace
+      0x00000268:     dcl vPos.xy
+      0x00000274:     dcl_2d s0
+      0x00000280:     dcl_cube s1
+      0x0000028C:     dcl_volume s2
+      0x00000298:     dcl_2d s3
+      0x000002A4:     dcl_2d s4
+   0  0x000002B0:     cmp r0.x, vFace, c8.x, c8.y
+   1  0x000002C4:     texld r1, v0, s0
+   1  0x000002D4:     texldp r2, v3, s4
+   1  0x000002E4:     add r1, r1, r2
+   2  0x000002F4:     mul r2, c8.xxzx, v0.xyxw
+   3  0x00000304:     texldb r2, r2, s0
+   3  0x00000314:     add r1, r1, r2
+   4  0x00000324:     nrm r2.xyz, v1
+   7  0x00000330:     mad r0.yzw, r2.z, -c8.xzzw, r2.xxyz
+   8  0x00000344:     texld r2, r0.yzww, s1
+   8  0x00000354:     texld r3, v0, s2
+   8  0x00000364:     texld r4, v0.z, s3
+   8  0x00000374:     mul r3, r3, r4.x
+   9  0x00000384:     mad r1, r1, r2, r3
+  10  0x00000398:     dsx r0.yz, v0.xxyw
+  12  0x000003A4:     dsy r2.xy, v0
+  14  0x000003B0:     dp2add_sat r0.w, r0.yzzw, r2, c8.z
+  16  0x000003C4:     lrp r3, r0.w, v2, r1
+  17  0x000003D8:     texldd r1, v0.zwzw, s0, r0.yzzw, r2
+  19  0x000003F0:     mad r2, v0.wzxw, c8.xxzz, c8.zzzw
+  20  0x00000404:     texldl r2, r2, s0
+  20  0x00000414:     add r1, r1, r2
+  21  0x00000424:     add r1, r1, r3
+  22  0x00000434:     add r2, r1.w, -c5.x
+  23  0x00000444:     texkill r2
+  24  0x0000044C:     cmp r0.x, -r0.x, c6.x, c6.y
+  25  0x00000460:     mul r1.z, r0.x, r1.z
+  26  0x00000470:     mul r0.yz, c6.z, vPos.xxyw
+  27  0x00000480:     frc r0.yz, r0
+  28  0x0000048C:     mad r1.xy, r1, r0.x, r0.yzzw
+  29  0x000004A0:     mul_pp r0, r1, c6.x
+  30  0x000004B0:     mad r0, r1, c4, r0
+  31  0x000004C4:     mov r2.zw, c8.z
+  32  0x000004D0:     mov r3, r0
+  33  0x000004DC:     mov r4.x, c8.z
+  34  0x000004E8:     rep i0
+  37  0x000004F0:       add r5, r4.x, c7
+  38  0x00000500:       mov r4.z, c8.z
+  39  0x0000050C:       cmp r4.y, -r5_abs.x, c0.x, r4.z
+  40  0x00000520:       cmp r4.y, -r5_abs.y, c1.x, r4.y
+  41  0x00000534:       cmp r4.y, -r5_abs.z, c2.x, r4.y
+  42  0x00000548:       cmp r4.y, -r5_abs.w, c3.x, r4.y
+  43  0x0000055C:       if_lt r4.y, r3.x
+  46  0x00000568:         break_ne c8.x, -c8.x
+  49  0x00000574:       endif
+  50  0x00000578:       cmp r6, -r5_abs.x, c0, r4.z
+  51  0x0000058C:       cmp r6, -r5_abs.y, c1, r6
+  52  0x000005A0:       cmp r6, -r5_abs.z, c2, r6
+  53  0x000005B4:       cmp r5, -r5_abs.w, c3, r6
+  54  0x000005C8:       mul r2.xy, r4.x, v0
+  55  0x000005D8:       texldl r6, r2, s0
+  55  0x000005E8:       mad r3, r5, r6, r3
+  56  0x000005FC:       add r4.x, r4.x, c8.x
+  57  0x0000060C:     endrep
+  59  0x00000610:     mov oC0, r3
+  60  0x0000061C:     log r0.x, r1_abs.x
+  61  0x00000628:     log r0.y, r1_abs.y
+  62  0x00000634:     log r0.z, r1_abs.z
+  63  0x00000640:     mul r0.xyz, r0, c6.w
+  64  0x00000650:     exp oC1.x, r0.x
+  65  0x0000065C:     exp oC1.y, r0.y
+  66  0x00000668:     exp oC1.z, r0.z
+  67  0x00000674:     exp oC1.w, r1.w
+  68  0x00000680:     rcp r0.x, v3.w
+  69  0x0000068C:     mul oDepth, r0.x, v3.z
+
+// approximately 81 instruction slots used (11 texture, 70 arithmetic)

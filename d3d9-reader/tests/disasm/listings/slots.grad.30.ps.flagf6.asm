@@ -1,0 +1,6 @@
+    ps_3_0
+      0x00000080:     dcl_texcoord v0
+      0x0000008C:     dcl_2d s0
+   0  0x00000098:     texldd oC0, v0, s0, v0.zwzw, v0.wzzw
+
+// approximately 3 instruction slots used (1 texture, 2 arithmetic)

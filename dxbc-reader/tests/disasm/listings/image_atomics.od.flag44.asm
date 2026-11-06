@@ -1,0 +1,31 @@
+      cs_5_0
+      dcl_globalFlags refactoringAllowed | skipOptimization
+      dcl_uav_typed_texture2d (uint,uint,uint,uint) u0
+      dcl_uav_typed_texture2d (sint,sint,sint,sint) u1
+      dcl_input vThreadID.xy
+      dcl_temps 2
+      dcl_thread_group 8, 8, 1
+   0: mov r0.x, l(4)
+   1: udiv null, r0.x, vThreadID.x, r0.x
+   2: mov r0.z, l(4)
+   3: udiv null, r0.y, vThreadID.y, r0.z
+   4: mov r0.z, l(1)
+   5: iadd r0.z, r0.z, vThreadID.x
+   6: atomic_iadd u0, r0.xyxx, r0.z
+   7: mov r0.zw, l(0,0,0,4)
+   8: iadd r0.zw, r0.zzzw, r0.xxxy
+   9: mov r1.x, l(10)
+  10: imul null, r1.x, r1.x, vThreadID.x
+  11: iadd r1.x, r1.x, vThreadID.y
+  12: atomic_umax u0, r0.zwzz, r1.x
+  13: mov r0.zw, l(0,0,4,0)
+  14: iadd r0.zw, r0.zzzw, r0.xxxy
+  15: mov r1.x, l(10)
+  16: imul null, r1.x, r1.x, vThreadID.x
+  17: iadd r1.x, r1.x, vThreadID.y
+  18: atomic_umin u0, r0.zwzz, r1.x
+  19: mov r0.z, vThreadID.x
+  20: ineg r0.w, l(4)
+  21: iadd r0.z, r0.w, r0.z
+  22: atomic_imax u1, r0.xyxx, r0.z
+  23: ret 

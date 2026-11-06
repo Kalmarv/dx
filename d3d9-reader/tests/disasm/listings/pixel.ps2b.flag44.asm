@@ -1,0 +1,49 @@
+    ps_2_x
+          def c2, 0.5, 2.20000005, 0, 0
+          def c3, 0, -2, -0, -0
+          dcl t0
+          dcl t1.xyz
+          dcl t2
+          dcl_2d s0
+          dcl_cube s1
+          dcl_volume s2
+          dcl_2d s3
+          dcl_2d s4
+   0:     mov r0.xyw, t0
+   1:     mov r0.z, c3.x
+   2:     mov r1.xy, t0.z
+   3:     nrm r2.xyz, t1
+   6:     mad r2.xyz, r2.z, c3.wzyx, r2
+   7:     texld r3, t0, s0
+   7:     texldp r4, t2, s4
+   7:     texldb r0, r0, s0
+   7:     texld r1, r1, s3
+   7:     texld r5, t0, s2
+   7:     texld r2, r2, s1
+   7:     add r3, r3, r4
+   8:     add r0, r0, r3
+   9:     mul r1, r1.x, r5
+  10:     mad r0, r0, r2, r1
+  11:     add r1, r0.w, -c1.x
+  12:     texkill r1
+  13:     mul_pp r1, r0, c2.x
+  14:     mad r1, r0, c0, r1
+  15:     add r2.x, -r1.y, c2.x
+  16:     rcp r2.y, r1.y
+  17:     cmp r1.z, r2.x, r1.z, r2.y
+  18:     mov oC0, r1
+  19:     exp r1.w, r0.w
+  20:     abs r0.xyz, r0
+  21:     log r2.x, r0.x
+  22:     log r2.y, r0.y
+  23:     log r2.z, r0.z
+  24:     mul r0.xyz, r2, c2.y
+  25:     exp r1.x, r0.x
+  26:     exp r1.y, r0.y
+  27:     exp r1.z, r0.z
+  28:     mov oC1, r1
+  29:     rcp r0.x, t2.w
+  30:     mul r0.x, r0.x, t2.z
+  31:     mov oDepth, r0.x
+
+// approximately 38 instruction slots used (6 texture, 32 arithmetic)

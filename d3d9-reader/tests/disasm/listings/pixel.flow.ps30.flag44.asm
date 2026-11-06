@@ -1,0 +1,82 @@
+    ps_3_0
+          def c6, 0.5, 1, 0.125, 2.20000005
+          def c7, -0, -1, -2, -3
+          def c8, 1, -1, 0, 2
+          dcl_texcoord v0
+          dcl_texcoord1 v1.xyz
+          dcl_color_centroid v2
+          dcl_texcoord2 v3
+          dcl vFace
+          dcl vPos.xy
+          dcl_2d s0
+          dcl_cube s1
+          dcl_volume s2
+          dcl_2d s3
+          dcl_2d s4
+   0:     cmp r0.x, vFace, c8.x, c8.y
+   1:     texld r1, v0, s0
+   1:     texldp r2, v3, s4
+   1:     add r1, r1, r2
+   2:     mul r2, c8.xxzx, v0.xyxw
+   3:     texldb r2, r2, s0
+   3:     add r1, r1, r2
+   4:     nrm r2.xyz, v1
+   7:     mad r0.yzw, r2.z, -c8.xzzw, r2.xxyz
+   8:     texld r2, r0.yzww, s1
+   8:     texld r3, v0, s2
+   8:     texld r4, v0.z, s3
+   8:     mul r3, r3, r4.x
+   9:     mad r1, r1, r2, r3
+  10:     dsx r0.yz, v0.xxyw
+  12:     dsy r2.xy, v0
+  14:     dp2add_sat r0.w, r0.yzzw, r2, c8.z
+  16:     lrp r3, r0.w, v2, r1
+  17:     texldd r1, v0.zwzw, s0, r0.yzzw, r2
+  19:     mad r2, v0.wzxw, c8.xxzz, c8.zzzw
+  20:     texldl r2, r2, s0
+  20:     add r1, r1, r2
+  21:     add r1, r1, r3
+  22:     add r2, r1.w, -c5.x
+  23:     texkill r2
+  24:     cmp r0.x, -r0.x, c6.x, c6.y
+  25:     mul r1.z, r0.x, r1.z
+  26:     mul r0.yz, c6.z, vPos.xxyw
+  27:     frc r0.yz, r0
+  28:     mad r1.xy, r1, r0.x, r0.yzzw
+  29:     mul_pp r0, r1, c6.x
+  30:     mad r0, r1, c4, r0
+  31:     mov r2.zw, c8.z
+  32:     mov r3, r0
+  33:     mov r4.x, c8.z
+  34:     rep i0
+  37:       add r5, r4.x, c7
+  38:       mov r4.z, c8.z
+  39:       cmp r4.y, -r5_abs.x, c0.x, r4.z
+  40:       cmp r4.y, -r5_abs.y, c1.x, r4.y
+  41:       cmp r4.y, -r5_abs.z, c2.x, r4.y
+  42:       cmp r4.y, -r5_abs.w, c3.x, r4.y
+  43:       if_lt r4.y, r3.x
+  46:         break_ne c8.x, -c8.x
+  49:       endif
+  50:       cmp r6, -r5_abs.x, c0, r4.z
+  51:       cmp r6, -r5_abs.y, c1, r6
+  52:       cmp r6, -r5_abs.z, c2, r6
+  53:       cmp r5, -r5_abs.w, c3, r6
+  54:       mul r2.xy, r4.x, v0
+  55:       texldl r6, r2, s0
+  55:       mad r3, r5, r6, r3
+  56:       add r4.x, r4.x, c8.x
+  57:     endrep
+  59:     mov oC0, r3
+  60:     log r0.x, r1_abs.x
+  61:     log r0.y, r1_abs.y
+  62:     log r0.z, r1_abs.z
+  63:     mul r0.xyz, r0, c6.w
+  64:     exp oC1.x, r0.x
+  65:     exp oC1.y, r0.y
+  66:     exp oC1.z, r0.z
+  67:     exp oC1.w, r1.w
+  68:     rcp r0.x, v3.w
+  69:     mul oDepth, r0.x, v3.z
+
+// approximately 81 instruction slots used (11 texture, 70 arithmetic)

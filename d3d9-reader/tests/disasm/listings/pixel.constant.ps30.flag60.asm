@@ -1,0 +1,5 @@
+    ps_3_0
+0x00000058:     def c0, 0.25, 0.5, 1, 0
+0x00000070:     mov oC0, c0.xyzz
+
+// approximately 1 instruction slot used
