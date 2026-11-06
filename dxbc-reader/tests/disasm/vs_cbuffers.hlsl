@@ -5,6 +5,13 @@
 // fxc: /T vs_5_0 /E main /D SM5 /Fo vs_cbuffers.vs50.dxbc
 // fxc: /T vs_5_0 /E main /D SM5 /Qstrip_reflect /Fo vs_cbuffers.strip.dxbc
 // fxc: /T vs_5_0 /E main /D SM5 /Od /Fo vs_cbuffers.od.dxbc
+// fxc: /T vs_4_0 /E main /Zi /Fo vs_cbuffers.vs40.zi.dxbc
+// fxc: /T vs_4_0 /E main /Zi /Od /Fo vs_cbuffers.vs40.zod.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Zi /Fo vs_cbuffers.vs50.zi.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Zi /Od /Fo vs_cbuffers.vs50.zod.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Qstrip_reflect /Zi /Fo vs_cbuffers.strip.zi.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Qstrip_reflect /Zi /Od /Fo vs_cbuffers.strip.zod.dxbc
+// fxc: /T vs_5_0 /E main /D SM5 /Od /Zi /Fo vs_cbuffers.od.zi.dxbc
 struct Light { float3 dir; float range; float4 color[2]; };
 struct Bones { row_major float3x4 m; float weight; };
 cbuffer Frame : register(b0) {

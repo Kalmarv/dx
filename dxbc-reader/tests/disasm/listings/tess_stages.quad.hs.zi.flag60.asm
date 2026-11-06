@@ -1,0 +1,110 @@
+0x00000000: hs_5_0
+0x00000008: hs_decls 
+0x0000000C: dcl_input_control_point_count 16
+0x00000010: dcl_output_control_point_count 4
+0x00000014: dcl_tessellator_domain domain_quad
+0x00000018: dcl_tessellator_partitioning partitioning_fractional_even
+0x0000001C: dcl_tessellator_output_primitive output_triangle_ccw
+0x00000020: dcl_globalFlags refactoringAllowed
+0x00000024: dcl_constantbuffer CB0[1], immediateIndexed
+0x00000034: hs_control_point_phase 
+0x00000038: dcl_input vOutputControlPointID
+0x00000040: dcl_input vPrim
+0x00000048: dcl_input v[16][0].xyzw
+0x00000058: dcl_input v[16][1].xyz
+0x00000068: dcl_output o0.xyzw
+0x00000074: dcl_output o1.xyz
+0x00000080: dcl_temps 1
+//
+// Initial variable locations:
+//   vOutputControlPointID.x <- i; 
+//   vPrim.x <- id; 
+//   o1.x <- <hs_quad return value>.n.x; o1.y <- <hs_quad return value>.n.y; o1.z <- <hs_quad return value>.n.z; 
+//   o0.x <- <hs_quad return value>.p.x; o0.y <- <hs_quad return value>.p.y; o0.z <- <hs_quad return value>.p.z; o0.w <- <hs_quad return value>.p.w; 
+//   v[0][0].x <- patch[0].p.x; v[0][0].y <- patch[0].p.y; v[0][0].z <- patch[0].p.z; v[0][0].w <- patch[0].p.w; 
+//   v[0][1].x <- patch[0].n.x; v[0][1].y <- patch[0].n.y; v[0][1].z <- patch[0].n.z; 
+//   v[1][0].x <- patch[1].p.x; v[1][0].y <- patch[1].p.y; v[1][0].z <- patch[1].p.z; v[1][0].w <- patch[1].p.w; 
+//   v[1][1].x <- patch[1].n.x; v[1][1].y <- patch[1].n.y; v[1][1].z <- patch[1].n.z; 
+//   v[2][0].x <- patch[2].p.x; v[2][0].y <- patch[2].p.y; v[2][0].z <- patch[2].p.z; v[2][0].w <- patch[2].p.w; 
+//   v[2][1].x <- patch[2].n.x; v[2][1].y <- patch[2].n.y; v[2][1].z <- patch[2].n.z; 
+//   v[3][0].x <- patch[3].p.x; v[3][0].y <- patch[3].p.y; v[3][0].z <- patch[3].p.z; v[3][0].w <- patch[3].p.w; 
+//   v[3][1].x <- patch[3].n.x; v[3][1].y <- patch[3].n.y; v[3][1].z <- patch[3].n.z; 
+//   v[4][0].x <- patch[4].p.x; v[4][0].y <- patch[4].p.y; v[4][0].z <- patch[4].p.z; v[4][0].w <- patch[4].p.w; 
+//   v[4][1].x <- patch[4].n.x; v[4][1].y <- patch[4].n.y; v[4][1].z <- patch[4].n.z; 
+//   v[5][0].x <- patch[5].p.x; v[5][0].y <- patch[5].p.y; v[5][0].z <- patch[5].p.z; v[5][0].w <- patch[5].p.w; 
+//   v[5][1].x <- patch[5].n.x; v[5][1].y <- patch[5].n.y; v[5][1].z <- patch[5].n.z; 
+//   v[6][0].x <- patch[6].p.x; v[6][0].y <- patch[6].p.y; v[6][0].z <- patch[6].p.z; v[6][0].w <- patch[6].p.w; 
+//   v[6][1].x <- patch[6].n.x; v[6][1].y <- patch[6].n.y; v[6][1].z <- patch[6].n.z; 
+//   v[7][0].x <- patch[7].p.x; v[7][0].y <- patch[7].p.y; v[7][0].z <- patch[7].p.z; v[7][0].w <- patch[7].p.w; 
+//   v[7][1].x <- patch[7].n.x; v[7][1].y <- patch[7].n.y; v[7][1].z <- patch[7].n.z; 
+//   v[8][0].x <- patch[8].p.x; v[8][0].y <- patch[8].p.y; v[8][0].z <- patch[8].p.z; v[8][0].w <- patch[8].p.w; 
+//   v[8][1].x <- patch[8].n.x; v[8][1].y <- patch[8].n.y; v[8][1].z <- patch[8].n.z; 
+//   v[9][0].x <- patch[9].p.x; v[9][0].y <- patch[9].p.y; v[9][0].z <- patch[9].p.z; v[9][0].w <- patch[9].p.w; 
+//   v[9][1].x <- patch[9].n.x; v[9][1].y <- patch[9].n.y; v[9][1].z <- patch[9].n.z; 
+//   v[10][0].x <- patch[10].p.x; v[10][0].y <- patch[10].p.y; v[10][0].z <- patch[10].p.z; v[10][0].w <- patch[10].p.w; 
+//   v[10][1].x <- patch[10].n.x; v[10][1].y <- patch[10].n.y; v[10][1].z <- patch[10].n.z; 
+//   v[11][0].x <- patch[11].p.x; v[11][0].y <- patch[11].p.y; v[11][0].z <- patch[11].p.z; v[11][0].w <- patch[11].p.w; 
+//   v[11][1].x <- patch[11].n.x; v[11][1].y <- patch[11].n.y; v[11][1].z <- patch[11].n.z; 
+//   v[12][0].x <- patch[12].p.x; v[12][0].y <- patch[12].p.y; v[12][0].z <- patch[12].p.z; v[12][0].w <- patch[12].p.w; 
+//   v[12][1].x <- patch[12].n.x; v[12][1].y <- patch[12].n.y; v[12][1].z <- patch[12].n.z; 
+//   v[13][0].x <- patch[13].p.x; v[13][0].y <- patch[13].p.y; v[13][0].z <- patch[13].p.z; v[13][0].w <- patch[13].p.w; 
+//   v[13][1].x <- patch[13].n.x; v[13][1].y <- patch[13].n.y; v[13][1].z <- patch[13].n.z; 
+//   v[14][0].x <- patch[14].p.x; v[14][0].y <- patch[14].p.y; v[14][0].z <- patch[14].p.z; v[14][0].w <- patch[14].p.w; 
+//   v[14][1].x <- patch[14].n.x; v[14][1].y <- patch[14].n.y; v[14][1].z <- patch[14].n.z; 
+//   v[15][0].x <- patch[15].p.x; v[15][0].y <- patch[15].p.y; v[15][0].z <- patch[15].p.z; v[15][0].w <- patch[15].p.w; 
+//   v[15][1].x <- patch[15].n.x; v[15][1].y <- patch[15].n.y; v[15][1].z <- patch[15].n.z
+//
+#line 57 "C:\dx-fixtures\tess_stages.hlsl"
+0x00000088: ishl r0.x, vOutputControlPointID, l(2)
+0x000000A0: bfi r0.y, l(30), l(2), vOutputControlPointID, l(3)
+0x000000C8: utof r0.z, vPrim
+0x000000D8: mad o0.xyzw, v[r0.y + 0][0].xyzw, r0.zzzz, v[r0.x + 0][0].xyzw
+
+#line 59
+0x0000010C: mov r0.x, vOutputControlPointID
+0x0000011C: mov o1.xyz, v[r0.x + 0][1].xyzx
+0x00000138: ret 
+0x0000013C: hs_fork_phase 
+0x00000140: dcl_input vicp[16][0].w
+0x00000150: dcl_output_siv o0.x, finalQuadUeq0EdgeTessFactor
+
+#line 48
+0x00000160: add o0.x, cb0[0].x, vicp[0][0].w  // o0.x <- <quad_pc return value>.e[0]
+
+#line 51
+0x00000184: ret 
+0x00000188: hs_fork_phase 
+0x0000018C: dcl_input vicp[16][0].w
+0x0000019C: dcl_output_siv o1.x, finalQuadVeq0EdgeTessFactor
+
+#line 48
+0x000001AC: add o1.x, cb0[0].y, vicp[4][0].w  // o1.x <- <quad_pc return value>.e[1]
+
+#line 51
+0x000001D0: ret 
+0x000001D4: hs_fork_phase 
+0x000001D8: dcl_input vicp[16][0].w
+0x000001E8: dcl_output_siv o2.x, finalQuadUeq1EdgeTessFactor
+
+#line 48
+0x000001F8: add o2.x, cb0[0].z, vicp[8][0].w  // o2.x <- <quad_pc return value>.e[2]
+
+#line 51
+0x0000021C: ret 
+0x00000220: hs_fork_phase 
+0x00000224: dcl_input vicp[16][0].w
+0x00000234: dcl_output_siv o3.x, finalQuadVeq1EdgeTessFactor
+
+#line 48
+0x00000244: add o3.x, cb0[0].w, vicp[12][0].w  // o3.x <- <quad_pc return value>.e[3]
+
+#line 51
+0x00000268: ret 
+0x0000026C: hs_fork_phase 
+0x00000270: dcl_output_siv o4.x, finalQuadUInsideTessFactor
+0x00000280: mov o4.x, cb0[0].x  // o4.x <- <quad_pc return value>.i[0]
+0x00000298: ret 
+0x0000029C: hs_fork_phase 
+0x000002A0: dcl_output_siv o5.x, finalQuadVInsideTessFactor
+0x000002B0: mov o5.x, cb0[0].y  // o5.x <- <quad_pc return value>.i[1]
+0x000002C8: ret 

@@ -5,6 +5,16 @@
 // fxc: /T ps_5_0 /E main /D N=10 /Fo classes_slots10.ps50.dxbc
 // fxc: /T ps_5_0 /E main /D N=18 /Fo classes_slots18.ps50.dxbc
 // fxc: /T ps_5_0 /E main /D N=30 /Fo classes_slots30.ps50.dxbc
+// fxc: /T ps_5_0 /E main /D N=8 /Zi /Fo classes_slots8.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D N=8 /Zi /Od /Fo classes_slots8.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D N=9 /Zi /Fo classes_slots9.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D N=9 /Zi /Od /Fo classes_slots9.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D N=10 /Zi /Fo classes_slots10.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D N=10 /Zi /Od /Fo classes_slots10.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D N=18 /Zi /Fo classes_slots18.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D N=18 /Zi /Od /Fo classes_slots18.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D N=30 /Zi /Fo classes_slots30.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D N=30 /Zi /Od /Fo classes_slots30.ps50.zod.dxbc
 interface IA { float3 f(float3 n); };
 class C0 : IA { float3 f(float3 n) { return n * 1; } };
 class C1 : IA { float3 f(float3 n) { return n * 2; } };

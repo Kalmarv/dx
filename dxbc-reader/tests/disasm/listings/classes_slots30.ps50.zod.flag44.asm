@@ -1,0 +1,2088 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed | skipOptimization
+      dcl_function_body fb0
+      dcl_function_body fb1
+      dcl_function_body fb2
+      dcl_function_body fb3
+      dcl_function_body fb4
+      dcl_function_body fb5
+      dcl_function_body fb6
+      dcl_function_body fb7
+      dcl_function_body fb8
+      dcl_function_body fb9
+      dcl_function_body fb10
+      dcl_function_body fb11
+      dcl_function_body fb12
+      dcl_function_body fb13
+      dcl_function_body fb14
+      dcl_function_body fb15
+      dcl_function_body fb16
+      dcl_function_body fb17
+      dcl_function_body fb18
+      dcl_function_body fb19
+      dcl_function_body fb20
+      dcl_function_body fb21
+      dcl_function_body fb22
+      dcl_function_body fb23
+      dcl_function_body fb24
+      dcl_function_body fb25
+      dcl_function_body fb26
+      dcl_function_body fb27
+      dcl_function_body fb28
+      dcl_function_body fb29
+      dcl_function_body fb30
+      dcl_function_body fb31
+      dcl_function_body fb32
+      dcl_function_body fb33
+      dcl_function_body fb34
+      dcl_function_body fb35
+      dcl_function_body fb36
+      dcl_function_body fb37
+      dcl_function_body fb38
+      dcl_function_body fb39
+      dcl_function_body fb40
+      dcl_function_body fb41
+      dcl_function_body fb42
+      dcl_function_body fb43
+      dcl_function_body fb44
+      dcl_function_body fb45
+      dcl_function_body fb46
+      dcl_function_body fb47
+      dcl_function_body fb48
+      dcl_function_body fb49
+      dcl_function_body fb50
+      dcl_function_body fb51
+      dcl_function_body fb52
+      dcl_function_body fb53
+      dcl_function_body fb54
+      dcl_function_body fb55
+      dcl_function_body fb56
+      dcl_function_body fb57
+      dcl_function_body fb58
+      dcl_function_body fb59
+      dcl_function_body fb60
+      dcl_function_body fb61
+      dcl_function_body fb62
+      dcl_function_body fb63
+      dcl_function_body fb64
+      dcl_function_body fb65
+      dcl_function_body fb66
+      dcl_function_body fb67
+      dcl_function_body fb68
+      dcl_function_body fb69
+      dcl_function_body fb70
+      dcl_function_body fb71
+      dcl_function_body fb72
+      dcl_function_body fb73
+      dcl_function_body fb74
+      dcl_function_body fb75
+      dcl_function_body fb76
+      dcl_function_body fb77
+      dcl_function_body fb78
+      dcl_function_body fb79
+      dcl_function_body fb80
+      dcl_function_body fb81
+      dcl_function_body fb82
+      dcl_function_body fb83
+      dcl_function_body fb84
+      dcl_function_body fb85
+      dcl_function_body fb86
+      dcl_function_body fb87
+      dcl_function_body fb88
+      dcl_function_body fb89
+      dcl_function_body fb90
+      dcl_function_body fb91
+      dcl_function_body fb92
+      dcl_function_body fb93
+      dcl_function_body fb94
+      dcl_function_body fb95
+      dcl_function_body fb96
+      dcl_function_body fb97
+      dcl_function_body fb98
+      dcl_function_body fb99
+      dcl_function_body fb100
+      dcl_function_body fb101
+      dcl_function_body fb102
+      dcl_function_body fb103
+      dcl_function_body fb104
+      dcl_function_body fb105
+      dcl_function_body fb106
+      dcl_function_body fb107
+      dcl_function_body fb108
+      dcl_function_body fb109
+      dcl_function_body fb110
+      dcl_function_body fb111
+      dcl_function_body fb112
+      dcl_function_body fb113
+      dcl_function_body fb114
+      dcl_function_body fb115
+      dcl_function_body fb116
+      dcl_function_body fb117
+      dcl_function_body fb118
+      dcl_function_body fb119
+      dcl_function_body fb120
+      dcl_function_body fb121
+      dcl_function_body fb122
+      dcl_function_body fb123
+      dcl_function_body fb124
+      dcl_function_body fb125
+      dcl_function_body fb126
+      dcl_function_body fb127
+      dcl_function_body fb128
+      dcl_function_body fb129
+      dcl_function_body fb130
+      dcl_function_body fb131
+      dcl_function_body fb132
+      dcl_function_body fb133
+      dcl_function_body fb134
+      dcl_function_body fb135
+      dcl_function_body fb136
+      dcl_function_body fb137
+      dcl_function_body fb138
+      dcl_function_body fb139
+      dcl_function_body fb140
+      dcl_function_body fb141
+      dcl_function_body fb142
+      dcl_function_body fb143
+      dcl_function_body fb144
+      dcl_function_body fb145
+      dcl_function_body fb146
+      dcl_function_body fb147
+      dcl_function_body fb148
+      dcl_function_body fb149
+      dcl_function_body fb150
+      dcl_function_body fb151
+      dcl_function_body fb152
+      dcl_function_body fb153
+      dcl_function_body fb154
+      dcl_function_body fb155
+      dcl_function_body fb156
+      dcl_function_body fb157
+      dcl_function_body fb158
+      dcl_function_body fb159
+      dcl_function_body fb160
+      dcl_function_body fb161
+      dcl_function_body fb162
+      dcl_function_body fb163
+      dcl_function_body fb164
+      dcl_function_body fb165
+      dcl_function_body fb166
+      dcl_function_body fb167
+      dcl_function_body fb168
+      dcl_function_body fb169
+      dcl_function_body fb170
+      dcl_function_body fb171
+      dcl_function_body fb172
+      dcl_function_body fb173
+      dcl_function_body fb174
+      dcl_function_body fb175
+      dcl_function_body fb176
+      dcl_function_body fb177
+      dcl_function_body fb178
+      dcl_function_body fb179
+      dcl_function_body fb180
+      dcl_function_body fb181
+      dcl_function_body fb182
+      dcl_function_body fb183
+      dcl_function_body fb184
+      dcl_function_body fb185
+      dcl_function_body fb186
+      dcl_function_body fb187
+      dcl_function_body fb188
+      dcl_function_body fb189
+      dcl_function_body fb190
+      dcl_function_body fb191
+      dcl_function_body fb192
+      dcl_function_body fb193
+      dcl_function_body fb194
+      dcl_function_body fb195
+      dcl_function_body fb196
+      dcl_function_body fb197
+      dcl_function_body fb198
+      dcl_function_body fb199
+      dcl_function_body fb200
+      dcl_function_body fb201
+      dcl_function_body fb202
+      dcl_function_body fb203
+      dcl_function_body fb204
+      dcl_function_body fb205
+      dcl_function_body fb206
+      dcl_function_body fb207
+      dcl_function_body fb208
+      dcl_function_body fb209
+      dcl_function_body fb210
+      dcl_function_body fb211
+      dcl_function_body fb212
+      dcl_function_body fb213
+      dcl_function_body fb214
+      dcl_function_body fb215
+      dcl_function_body fb216
+      dcl_function_body fb217
+      dcl_function_body fb218
+      dcl_function_body fb219
+      dcl_function_body fb220
+      dcl_function_body fb221
+      dcl_function_body fb222
+      dcl_function_body fb223
+      dcl_function_body fb224
+      dcl_function_body fb225
+      dcl_function_body fb226
+      dcl_function_body fb227
+      dcl_function_body fb228
+      dcl_function_body fb229
+      dcl_function_body fb230
+      dcl_function_body fb231
+      dcl_function_body fb232
+      dcl_function_body fb233
+      dcl_function_body fb234
+      dcl_function_body fb235
+      dcl_function_body fb236
+      dcl_function_body fb237
+      dcl_function_body fb238
+      dcl_function_body fb239
+      dcl_function_table ft0 = {fb0, fb30, fb60}
+      dcl_function_table ft1 = {fb1, fb31, fb61}
+      dcl_function_table ft2 = {fb2, fb32, fb62}
+      dcl_function_table ft3 = {fb3, fb33, fb63}
+      dcl_function_table ft4 = {fb4, fb34, fb64}
+      dcl_function_table ft5 = {fb5, fb35, fb65}
+      dcl_function_table ft6 = {fb6, fb36, fb66}
+      dcl_function_table ft7 = {fb7, fb37, fb67}
+      dcl_function_table ft8 = {fb8, fb38, fb68}
+      dcl_function_table ft9 = {fb9, fb39, fb69}
+      dcl_function_table ft10 = {fb10, fb40, fb70}
+      dcl_function_table ft11 = {fb11, fb41, fb71}
+      dcl_function_table ft12 = {fb12, fb42, fb72}
+      dcl_function_table ft13 = {fb13, fb43, fb73}
+      dcl_function_table ft14 = {fb14, fb44, fb74}
+      dcl_function_table ft15 = {fb15, fb45, fb75}
+      dcl_function_table ft16 = {fb16, fb46, fb76}
+      dcl_function_table ft17 = {fb17, fb47, fb77}
+      dcl_function_table ft18 = {fb18, fb48, fb78}
+      dcl_function_table ft19 = {fb19, fb49, fb79}
+      dcl_function_table ft20 = {fb20, fb50, fb80}
+      dcl_function_table ft21 = {fb21, fb51, fb81}
+      dcl_function_table ft22 = {fb22, fb52, fb82}
+      dcl_function_table ft23 = {fb23, fb53, fb83}
+      dcl_function_table ft24 = {fb24, fb54, fb84}
+      dcl_function_table ft25 = {fb25, fb55, fb85}
+      dcl_function_table ft26 = {fb26, fb56, fb86}
+      dcl_function_table ft27 = {fb27, fb57, fb87}
+      dcl_function_table ft28 = {fb28, fb58, fb88}
+      dcl_function_table ft29 = {fb29, fb59, fb89}
+      dcl_function_table ft30 = {fb90, fb120}
+      dcl_function_table ft31 = {fb91, fb121}
+      dcl_function_table ft32 = {fb92, fb122}
+      dcl_function_table ft33 = {fb93, fb123}
+      dcl_function_table ft34 = {fb94, fb124}
+      dcl_function_table ft35 = {fb95, fb125}
+      dcl_function_table ft36 = {fb96, fb126}
+      dcl_function_table ft37 = {fb97, fb127}
+      dcl_function_table ft38 = {fb98, fb128}
+      dcl_function_table ft39 = {fb99, fb129}
+      dcl_function_table ft40 = {fb100, fb130}
+      dcl_function_table ft41 = {fb101, fb131}
+      dcl_function_table ft42 = {fb102, fb132}
+      dcl_function_table ft43 = {fb103, fb133}
+      dcl_function_table ft44 = {fb104, fb134}
+      dcl_function_table ft45 = {fb105, fb135}
+      dcl_function_table ft46 = {fb106, fb136}
+      dcl_function_table ft47 = {fb107, fb137}
+      dcl_function_table ft48 = {fb108, fb138}
+      dcl_function_table ft49 = {fb109, fb139}
+      dcl_function_table ft50 = {fb110, fb140}
+      dcl_function_table ft51 = {fb111, fb141}
+      dcl_function_table ft52 = {fb112, fb142}
+      dcl_function_table ft53 = {fb113, fb143}
+      dcl_function_table ft54 = {fb114, fb144}
+      dcl_function_table ft55 = {fb115, fb145}
+      dcl_function_table ft56 = {fb116, fb146}
+      dcl_function_table ft57 = {fb117, fb147}
+      dcl_function_table ft58 = {fb118, fb148}
+      dcl_function_table ft59 = {fb119, fb149}
+      dcl_function_table ft60 = {fb150}
+      dcl_function_table ft61 = {fb151}
+      dcl_function_table ft62 = {fb152}
+      dcl_function_table ft63 = {fb153}
+      dcl_function_table ft64 = {fb154}
+      dcl_function_table ft65 = {fb155}
+      dcl_function_table ft66 = {fb156}
+      dcl_function_table ft67 = {fb157}
+      dcl_function_table ft68 = {fb158}
+      dcl_function_table ft69 = {fb159}
+      dcl_function_table ft70 = {fb160}
+      dcl_function_table ft71 = {fb161}
+      dcl_function_table ft72 = {fb162}
+      dcl_function_table ft73 = {fb163}
+      dcl_function_table ft74 = {fb164}
+      dcl_function_table ft75 = {fb165}
+      dcl_function_table ft76 = {fb166}
+      dcl_function_table ft77 = {fb167}
+      dcl_function_table ft78 = {fb168}
+      dcl_function_table ft79 = {fb169}
+      dcl_function_table ft80 = {fb170}
+      dcl_function_table ft81 = {fb171}
+      dcl_function_table ft82 = {fb172}
+      dcl_function_table ft83 = {fb173}
+      dcl_function_table ft84 = {fb174}
+      dcl_function_table ft85 = {fb175}
+      dcl_function_table ft86 = {fb176}
+      dcl_function_table ft87 = {fb177}
+      dcl_function_table ft88 = {fb178}
+      dcl_function_table ft89 = {fb179}
+      dcl_function_table ft90 = {fb180, fb210}
+      dcl_function_table ft91 = {fb181, fb211}
+      dcl_function_table ft92 = {fb182, fb212}
+      dcl_function_table ft93 = {fb183, fb213}
+      dcl_function_table ft94 = {fb184, fb214}
+      dcl_function_table ft95 = {fb185, fb215}
+      dcl_function_table ft96 = {fb186, fb216}
+      dcl_function_table ft97 = {fb187, fb217}
+      dcl_function_table ft98 = {fb188, fb218}
+      dcl_function_table ft99 = {fb189, fb219}
+      dcl_function_table ft100 = {fb190, fb220}
+      dcl_function_table ft101 = {fb191, fb221}
+      dcl_function_table ft102 = {fb192, fb222}
+      dcl_function_table ft103 = {fb193, fb223}
+      dcl_function_table ft104 = {fb194, fb224}
+      dcl_function_table ft105 = {fb195, fb225}
+      dcl_function_table ft106 = {fb196, fb226}
+      dcl_function_table ft107 = {fb197, fb227}
+      dcl_function_table ft108 = {fb198, fb228}
+      dcl_function_table ft109 = {fb199, fb229}
+      dcl_function_table ft110 = {fb200, fb230}
+      dcl_function_table ft111 = {fb201, fb231}
+      dcl_function_table ft112 = {fb202, fb232}
+      dcl_function_table ft113 = {fb203, fb233}
+      dcl_function_table ft114 = {fb204, fb234}
+      dcl_function_table ft115 = {fb205, fb235}
+      dcl_function_table ft116 = {fb206, fb236}
+      dcl_function_table ft117 = {fb207, fb237}
+      dcl_function_table ft118 = {fb208, fb238}
+      dcl_function_table ft119 = {fb209, fb239}
+      dcl_interface fp0[3][3] = {ft0, ft1, ft2, ft3, ft4, ft5, ft6, ft7, ft8, ft9, ft10, ft11, ft12, ft13, ft14, ft15, ft16, ft17, ft18, ft19, ft20, ft21, ft22, ft23, ft24, ft25, ft26, ft27, ft28, ft29}
+      dcl_interface fp3[2][2] = {ft30, ft31, ft32, ft33, ft34, ft35, ft36, ft37, ft38, ft39, ft40, ft41, ft42, ft43, ft44, ft45, ft46, ft47, ft48, ft49, ft50, ft51, ft52, ft53, ft54, ft55, ft56, ft57, ft58, ft59}
+      dcl_interface fp5[1][1] = {ft60, ft61, ft62, ft63, ft64, ft65, ft66, ft67, ft68, ft69, ft70, ft71, ft72, ft73, ft74, ft75, ft76, ft77, ft78, ft79, ft80, ft81, ft82, ft83, ft84, ft85, ft86, ft87, ft88, ft89}
+      dcl_interface fp6[2][2] = {ft90, ft91, ft92, ft93, ft94, ft95, ft96, ft97, ft98, ft99, ft100, ft101, ft102, ft103, ft104, ft105, ft106, ft107, ft108, ft109, ft110, ft111, ft112, ft113, ft114, ft115, ft116, ft117, ft118, ft119}
+      dcl_input_ps linear v0.xyz
+      dcl_output o0.xyzw
+      dcl_temps 4
+//
+// Initial variable locations:
+//   v0.x <- n.x; v0.y <- n.y; v0.z <- n.z; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 98 "C:\dx-fixtures\classes_slots.hlsl"
+   0: nop 
+   1: mov r0.xyz, v0.xyzx
+   2: fcall fp0[0][0]
+   3: nop 
+   4: mov r0.xyz, v0.xyzx
+   5: fcall fp0[1][1]
+   6: add r0.xyz, r1.xyzx, r2.xyzx
+   7: nop 
+   8: mov r1.xyz, v0.xyzx
+   9: fcall fp0[2][2]
+  10: add r0.xyz, r0.xyzx, r2.xyzx
+  11: nop 
+  12: mov r1.xyz, v0.xyzx
+  13: fcall fp3[0][0]
+  14: add r0.xyz, r0.xyzx, r2.xyzx
+  15: nop 
+  16: mov r1.xyz, v0.yzxy
+  17: fcall fp3[1][1]
+  18: add r0.xyz, r0.xyzx, r2.xyzx
+  19: nop 
+  20: mov r1.xyz, v0.zxyz
+  21: fcall fp5[0][0]
+  22: add r0.xyz, r0.xyzx, r2.xyzx
+  23: nop 
+  24: mov r1.xyz, v0.xyzx
+  25: fcall fp6[0][0]
+  26: add r0.xyz, r0.xyzx, r2.xyzx
+  27: nop 
+  28: mov r1.xyz, v0.xyzx
+  29: fcall fp6[1][1]
+  30: add o0.xyz, r0.xyzx, r2.xyzx
+  31: itof o0.w, l(1)
+  32: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+  33: label fb0
+  34: nop 
+  35: itof r2.xyz, l(30, 30, 30, 0)
+  36: mul r1.xyz, r0.xyzx, r2.xyzx
+  37: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+  38: label fb1
+  39: nop 
+  40: itof r2.xyz, l(29, 29, 29, 0)
+  41: mul r1.xyz, r0.xyzx, r2.xyzx
+  42: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+  43: label fb2
+  44: nop 
+  45: itof r2.xyz, l(28, 28, 28, 0)
+  46: mul r1.xyz, r0.xyzx, r2.xyzx
+  47: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+  48: label fb3
+  49: nop 
+  50: itof r2.xyz, l(27, 27, 27, 0)
+  51: mul r1.xyz, r0.xyzx, r2.xyzx
+  52: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+  53: label fb4
+  54: nop 
+  55: itof r2.xyz, l(26, 26, 26, 0)
+  56: mul r1.xyz, r0.xyzx, r2.xyzx
+  57: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+  58: label fb5
+  59: nop 
+  60: itof r2.xyz, l(25, 25, 25, 0)
+  61: mul r1.xyz, r0.xyzx, r2.xyzx
+  62: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+  63: label fb6
+  64: nop 
+  65: itof r2.xyz, l(24, 24, 24, 0)
+  66: mul r1.xyz, r0.xyzx, r2.xyzx
+  67: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+  68: label fb7
+  69: nop 
+  70: itof r2.xyz, l(23, 23, 23, 0)
+  71: mul r1.xyz, r0.xyzx, r2.xyzx
+  72: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+  73: label fb8
+  74: nop 
+  75: itof r2.xyz, l(22, 22, 22, 0)
+  76: mul r1.xyz, r0.xyzx, r2.xyzx
+  77: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+  78: label fb9
+  79: nop 
+  80: itof r2.xyz, l(21, 21, 21, 0)
+  81: mul r1.xyz, r0.xyzx, r2.xyzx
+  82: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+  83: label fb10
+  84: nop 
+  85: itof r2.xyz, l(20, 20, 20, 0)
+  86: mul r1.xyz, r0.xyzx, r2.xyzx
+  87: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+  88: label fb11
+  89: nop 
+  90: itof r2.xyz, l(19, 19, 19, 0)
+  91: mul r1.xyz, r0.xyzx, r2.xyzx
+  92: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+  93: label fb12
+  94: nop 
+  95: itof r2.xyz, l(18, 18, 18, 0)
+  96: mul r1.xyz, r0.xyzx, r2.xyzx
+  97: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+  98: label fb13
+  99: nop 
+ 100: itof r2.xyz, l(17, 17, 17, 0)
+ 101: mul r1.xyz, r0.xyzx, r2.xyzx
+ 102: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 103: label fb14
+ 104: nop 
+ 105: itof r2.xyz, l(16, 16, 16, 0)
+ 106: mul r1.xyz, r0.xyzx, r2.xyzx
+ 107: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 108: label fb15
+ 109: nop 
+ 110: itof r2.xyz, l(15, 15, 15, 0)
+ 111: mul r1.xyz, r0.xyzx, r2.xyzx
+ 112: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 113: label fb16
+ 114: nop 
+ 115: itof r2.xyz, l(14, 14, 14, 0)
+ 116: mul r1.xyz, r0.xyzx, r2.xyzx
+ 117: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 118: label fb17
+ 119: nop 
+ 120: itof r2.xyz, l(13, 13, 13, 0)
+ 121: mul r1.xyz, r0.xyzx, r2.xyzx
+ 122: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 123: label fb18
+ 124: nop 
+ 125: itof r2.xyz, l(12, 12, 12, 0)
+ 126: mul r1.xyz, r0.xyzx, r2.xyzx
+ 127: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 128: label fb19
+ 129: nop 
+ 130: itof r2.xyz, l(11, 11, 11, 0)
+ 131: mul r1.xyz, r0.xyzx, r2.xyzx
+ 132: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 133: label fb20
+ 134: nop 
+ 135: itof r2.xyz, l(10, 10, 10, 0)
+ 136: mul r1.xyz, r0.xyzx, r2.xyzx
+ 137: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 138: label fb21
+ 139: nop 
+ 140: itof r2.xyz, l(9, 9, 9, 0)
+ 141: mul r1.xyz, r0.xyzx, r2.xyzx
+ 142: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 143: label fb22
+ 144: nop 
+ 145: itof r2.xyz, l(8, 8, 8, 0)
+ 146: mul r1.xyz, r0.xyzx, r2.xyzx
+ 147: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 148: label fb23
+ 149: nop 
+ 150: itof r2.xyz, l(7, 7, 7, 0)
+ 151: mul r1.xyz, r0.xyzx, r2.xyzx
+ 152: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 153: label fb24
+ 154: nop 
+ 155: itof r2.xyz, l(6, 6, 6, 0)
+ 156: mul r1.xyz, r0.xyzx, r2.xyzx
+ 157: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 158: label fb25
+ 159: nop 
+ 160: itof r2.xyz, l(5, 5, 5, 0)
+ 161: mul r1.xyz, r0.xyzx, r2.xyzx
+ 162: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 163: label fb26
+ 164: nop 
+ 165: itof r2.xyz, l(4, 4, 4, 0)
+ 166: mul r1.xyz, r0.xyzx, r2.xyzx
+ 167: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 168: label fb27
+ 169: nop 
+ 170: itof r2.xyz, l(3, 3, 3, 0)
+ 171: mul r1.xyz, r0.xyzx, r2.xyzx
+ 172: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 173: label fb28
+ 174: nop 
+ 175: itof r2.xyz, l(2, 2, 2, 0)
+ 176: mul r1.xyz, r0.xyzx, r2.xyzx
+ 177: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 178: label fb29
+ 179: nop 
+ 180: itof r2.xyz, l(1, 1, 1, 0)
+ 181: mul r1.xyz, r0.xyzx, r2.xyzx
+ 182: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 183: label fb30
+ 184: nop 
+ 185: itof r3.xyz, l(30, 30, 30, 0)
+ 186: mul r2.xyz, r0.xyzx, r3.xyzx
+ 187: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 188: label fb31
+ 189: nop 
+ 190: itof r3.xyz, l(29, 29, 29, 0)
+ 191: mul r2.xyz, r0.xyzx, r3.xyzx
+ 192: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 193: label fb32
+ 194: nop 
+ 195: itof r3.xyz, l(28, 28, 28, 0)
+ 196: mul r2.xyz, r0.xyzx, r3.xyzx
+ 197: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 198: label fb33
+ 199: nop 
+ 200: itof r3.xyz, l(27, 27, 27, 0)
+ 201: mul r2.xyz, r0.xyzx, r3.xyzx
+ 202: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 203: label fb34
+ 204: nop 
+ 205: itof r3.xyz, l(26, 26, 26, 0)
+ 206: mul r2.xyz, r0.xyzx, r3.xyzx
+ 207: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 208: label fb35
+ 209: nop 
+ 210: itof r3.xyz, l(25, 25, 25, 0)
+ 211: mul r2.xyz, r0.xyzx, r3.xyzx
+ 212: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 213: label fb36
+ 214: nop 
+ 215: itof r3.xyz, l(24, 24, 24, 0)
+ 216: mul r2.xyz, r0.xyzx, r3.xyzx
+ 217: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 218: label fb37
+ 219: nop 
+ 220: itof r3.xyz, l(23, 23, 23, 0)
+ 221: mul r2.xyz, r0.xyzx, r3.xyzx
+ 222: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 223: label fb38
+ 224: nop 
+ 225: itof r3.xyz, l(22, 22, 22, 0)
+ 226: mul r2.xyz, r0.xyzx, r3.xyzx
+ 227: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 228: label fb39
+ 229: nop 
+ 230: itof r3.xyz, l(21, 21, 21, 0)
+ 231: mul r2.xyz, r0.xyzx, r3.xyzx
+ 232: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 233: label fb40
+ 234: nop 
+ 235: itof r3.xyz, l(20, 20, 20, 0)
+ 236: mul r2.xyz, r0.xyzx, r3.xyzx
+ 237: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 238: label fb41
+ 239: nop 
+ 240: itof r3.xyz, l(19, 19, 19, 0)
+ 241: mul r2.xyz, r0.xyzx, r3.xyzx
+ 242: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 243: label fb42
+ 244: nop 
+ 245: itof r3.xyz, l(18, 18, 18, 0)
+ 246: mul r2.xyz, r0.xyzx, r3.xyzx
+ 247: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 248: label fb43
+ 249: nop 
+ 250: itof r3.xyz, l(17, 17, 17, 0)
+ 251: mul r2.xyz, r0.xyzx, r3.xyzx
+ 252: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 253: label fb44
+ 254: nop 
+ 255: itof r3.xyz, l(16, 16, 16, 0)
+ 256: mul r2.xyz, r0.xyzx, r3.xyzx
+ 257: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 258: label fb45
+ 259: nop 
+ 260: itof r3.xyz, l(15, 15, 15, 0)
+ 261: mul r2.xyz, r0.xyzx, r3.xyzx
+ 262: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 263: label fb46
+ 264: nop 
+ 265: itof r3.xyz, l(14, 14, 14, 0)
+ 266: mul r2.xyz, r0.xyzx, r3.xyzx
+ 267: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 268: label fb47
+ 269: nop 
+ 270: itof r3.xyz, l(13, 13, 13, 0)
+ 271: mul r2.xyz, r0.xyzx, r3.xyzx
+ 272: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 273: label fb48
+ 274: nop 
+ 275: itof r3.xyz, l(12, 12, 12, 0)
+ 276: mul r2.xyz, r0.xyzx, r3.xyzx
+ 277: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 278: label fb49
+ 279: nop 
+ 280: itof r3.xyz, l(11, 11, 11, 0)
+ 281: mul r2.xyz, r0.xyzx, r3.xyzx
+ 282: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 283: label fb50
+ 284: nop 
+ 285: itof r3.xyz, l(10, 10, 10, 0)
+ 286: mul r2.xyz, r0.xyzx, r3.xyzx
+ 287: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 288: label fb51
+ 289: nop 
+ 290: itof r3.xyz, l(9, 9, 9, 0)
+ 291: mul r2.xyz, r0.xyzx, r3.xyzx
+ 292: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 293: label fb52
+ 294: nop 
+ 295: itof r3.xyz, l(8, 8, 8, 0)
+ 296: mul r2.xyz, r0.xyzx, r3.xyzx
+ 297: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 298: label fb53
+ 299: nop 
+ 300: itof r3.xyz, l(7, 7, 7, 0)
+ 301: mul r2.xyz, r0.xyzx, r3.xyzx
+ 302: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 303: label fb54
+ 304: nop 
+ 305: itof r3.xyz, l(6, 6, 6, 0)
+ 306: mul r2.xyz, r0.xyzx, r3.xyzx
+ 307: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 308: label fb55
+ 309: nop 
+ 310: itof r3.xyz, l(5, 5, 5, 0)
+ 311: mul r2.xyz, r0.xyzx, r3.xyzx
+ 312: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 313: label fb56
+ 314: nop 
+ 315: itof r3.xyz, l(4, 4, 4, 0)
+ 316: mul r2.xyz, r0.xyzx, r3.xyzx
+ 317: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 318: label fb57
+ 319: nop 
+ 320: itof r3.xyz, l(3, 3, 3, 0)
+ 321: mul r2.xyz, r0.xyzx, r3.xyzx
+ 322: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 323: label fb58
+ 324: nop 
+ 325: itof r3.xyz, l(2, 2, 2, 0)
+ 326: mul r2.xyz, r0.xyzx, r3.xyzx
+ 327: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 328: label fb59
+ 329: nop 
+ 330: itof r3.xyz, l(1, 1, 1, 0)
+ 331: mul r2.xyz, r0.xyzx, r3.xyzx
+ 332: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 333: label fb60
+ 334: nop 
+ 335: itof r3.xyz, l(30, 30, 30, 0)
+ 336: mul r2.xyz, r1.xyzx, r3.xyzx
+ 337: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 338: label fb61
+ 339: nop 
+ 340: itof r3.xyz, l(29, 29, 29, 0)
+ 341: mul r2.xyz, r1.xyzx, r3.xyzx
+ 342: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 343: label fb62
+ 344: nop 
+ 345: itof r3.xyz, l(28, 28, 28, 0)
+ 346: mul r2.xyz, r1.xyzx, r3.xyzx
+ 347: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 348: label fb63
+ 349: nop 
+ 350: itof r3.xyz, l(27, 27, 27, 0)
+ 351: mul r2.xyz, r1.xyzx, r3.xyzx
+ 352: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 353: label fb64
+ 354: nop 
+ 355: itof r3.xyz, l(26, 26, 26, 0)
+ 356: mul r2.xyz, r1.xyzx, r3.xyzx
+ 357: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 358: label fb65
+ 359: nop 
+ 360: itof r3.xyz, l(25, 25, 25, 0)
+ 361: mul r2.xyz, r1.xyzx, r3.xyzx
+ 362: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 363: label fb66
+ 364: nop 
+ 365: itof r3.xyz, l(24, 24, 24, 0)
+ 366: mul r2.xyz, r1.xyzx, r3.xyzx
+ 367: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 368: label fb67
+ 369: nop 
+ 370: itof r3.xyz, l(23, 23, 23, 0)
+ 371: mul r2.xyz, r1.xyzx, r3.xyzx
+ 372: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 373: label fb68
+ 374: nop 
+ 375: itof r3.xyz, l(22, 22, 22, 0)
+ 376: mul r2.xyz, r1.xyzx, r3.xyzx
+ 377: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 378: label fb69
+ 379: nop 
+ 380: itof r3.xyz, l(21, 21, 21, 0)
+ 381: mul r2.xyz, r1.xyzx, r3.xyzx
+ 382: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 383: label fb70
+ 384: nop 
+ 385: itof r3.xyz, l(20, 20, 20, 0)
+ 386: mul r2.xyz, r1.xyzx, r3.xyzx
+ 387: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 388: label fb71
+ 389: nop 
+ 390: itof r3.xyz, l(19, 19, 19, 0)
+ 391: mul r2.xyz, r1.xyzx, r3.xyzx
+ 392: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 393: label fb72
+ 394: nop 
+ 395: itof r3.xyz, l(18, 18, 18, 0)
+ 396: mul r2.xyz, r1.xyzx, r3.xyzx
+ 397: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 398: label fb73
+ 399: nop 
+ 400: itof r3.xyz, l(17, 17, 17, 0)
+ 401: mul r2.xyz, r1.xyzx, r3.xyzx
+ 402: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 403: label fb74
+ 404: nop 
+ 405: itof r3.xyz, l(16, 16, 16, 0)
+ 406: mul r2.xyz, r1.xyzx, r3.xyzx
+ 407: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 408: label fb75
+ 409: nop 
+ 410: itof r3.xyz, l(15, 15, 15, 0)
+ 411: mul r2.xyz, r1.xyzx, r3.xyzx
+ 412: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 413: label fb76
+ 414: nop 
+ 415: itof r3.xyz, l(14, 14, 14, 0)
+ 416: mul r2.xyz, r1.xyzx, r3.xyzx
+ 417: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 418: label fb77
+ 419: nop 
+ 420: itof r3.xyz, l(13, 13, 13, 0)
+ 421: mul r2.xyz, r1.xyzx, r3.xyzx
+ 422: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 423: label fb78
+ 424: nop 
+ 425: itof r3.xyz, l(12, 12, 12, 0)
+ 426: mul r2.xyz, r1.xyzx, r3.xyzx
+ 427: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 428: label fb79
+ 429: nop 
+ 430: itof r3.xyz, l(11, 11, 11, 0)
+ 431: mul r2.xyz, r1.xyzx, r3.xyzx
+ 432: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 433: label fb80
+ 434: nop 
+ 435: itof r3.xyz, l(10, 10, 10, 0)
+ 436: mul r2.xyz, r1.xyzx, r3.xyzx
+ 437: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 438: label fb81
+ 439: nop 
+ 440: itof r3.xyz, l(9, 9, 9, 0)
+ 441: mul r2.xyz, r1.xyzx, r3.xyzx
+ 442: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 443: label fb82
+ 444: nop 
+ 445: itof r3.xyz, l(8, 8, 8, 0)
+ 446: mul r2.xyz, r1.xyzx, r3.xyzx
+ 447: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 448: label fb83
+ 449: nop 
+ 450: itof r3.xyz, l(7, 7, 7, 0)
+ 451: mul r2.xyz, r1.xyzx, r3.xyzx
+ 452: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 453: label fb84
+ 454: nop 
+ 455: itof r3.xyz, l(6, 6, 6, 0)
+ 456: mul r2.xyz, r1.xyzx, r3.xyzx
+ 457: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 458: label fb85
+ 459: nop 
+ 460: itof r3.xyz, l(5, 5, 5, 0)
+ 461: mul r2.xyz, r1.xyzx, r3.xyzx
+ 462: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 463: label fb86
+ 464: nop 
+ 465: itof r3.xyz, l(4, 4, 4, 0)
+ 466: mul r2.xyz, r1.xyzx, r3.xyzx
+ 467: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 468: label fb87
+ 469: nop 
+ 470: itof r3.xyz, l(3, 3, 3, 0)
+ 471: mul r2.xyz, r1.xyzx, r3.xyzx
+ 472: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 473: label fb88
+ 474: nop 
+ 475: itof r3.xyz, l(2, 2, 2, 0)
+ 476: mul r2.xyz, r1.xyzx, r3.xyzx
+ 477: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 478: label fb89
+ 479: nop 
+ 480: itof r3.xyz, l(1, 1, 1, 0)
+ 481: mul r2.xyz, r1.xyzx, r3.xyzx
+ 482: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 483: label fb90
+ 484: nop 
+ 485: itof r3.xyz, l(30, 30, 30, 0)
+ 486: mul r2.xyz, r1.xyzx, r3.xyzx
+ 487: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 488: label fb91
+ 489: nop 
+ 490: itof r3.xyz, l(29, 29, 29, 0)
+ 491: mul r2.xyz, r1.xyzx, r3.xyzx
+ 492: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 493: label fb92
+ 494: nop 
+ 495: itof r3.xyz, l(28, 28, 28, 0)
+ 496: mul r2.xyz, r1.xyzx, r3.xyzx
+ 497: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 498: label fb93
+ 499: nop 
+ 500: itof r3.xyz, l(27, 27, 27, 0)
+ 501: mul r2.xyz, r1.xyzx, r3.xyzx
+ 502: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 503: label fb94
+ 504: nop 
+ 505: itof r3.xyz, l(26, 26, 26, 0)
+ 506: mul r2.xyz, r1.xyzx, r3.xyzx
+ 507: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 508: label fb95
+ 509: nop 
+ 510: itof r3.xyz, l(25, 25, 25, 0)
+ 511: mul r2.xyz, r1.xyzx, r3.xyzx
+ 512: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 513: label fb96
+ 514: nop 
+ 515: itof r3.xyz, l(24, 24, 24, 0)
+ 516: mul r2.xyz, r1.xyzx, r3.xyzx
+ 517: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 518: label fb97
+ 519: nop 
+ 520: itof r3.xyz, l(23, 23, 23, 0)
+ 521: mul r2.xyz, r1.xyzx, r3.xyzx
+ 522: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 523: label fb98
+ 524: nop 
+ 525: itof r3.xyz, l(22, 22, 22, 0)
+ 526: mul r2.xyz, r1.xyzx, r3.xyzx
+ 527: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 528: label fb99
+ 529: nop 
+ 530: itof r3.xyz, l(21, 21, 21, 0)
+ 531: mul r2.xyz, r1.xyzx, r3.xyzx
+ 532: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 533: label fb100
+ 534: nop 
+ 535: itof r3.xyz, l(20, 20, 20, 0)
+ 536: mul r2.xyz, r1.xyzx, r3.xyzx
+ 537: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 538: label fb101
+ 539: nop 
+ 540: itof r3.xyz, l(19, 19, 19, 0)
+ 541: mul r2.xyz, r1.xyzx, r3.xyzx
+ 542: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 543: label fb102
+ 544: nop 
+ 545: itof r3.xyz, l(18, 18, 18, 0)
+ 546: mul r2.xyz, r1.xyzx, r3.xyzx
+ 547: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 548: label fb103
+ 549: nop 
+ 550: itof r3.xyz, l(17, 17, 17, 0)
+ 551: mul r2.xyz, r1.xyzx, r3.xyzx
+ 552: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 553: label fb104
+ 554: nop 
+ 555: itof r3.xyz, l(16, 16, 16, 0)
+ 556: mul r2.xyz, r1.xyzx, r3.xyzx
+ 557: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 558: label fb105
+ 559: nop 
+ 560: itof r3.xyz, l(15, 15, 15, 0)
+ 561: mul r2.xyz, r1.xyzx, r3.xyzx
+ 562: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 563: label fb106
+ 564: nop 
+ 565: itof r3.xyz, l(14, 14, 14, 0)
+ 566: mul r2.xyz, r1.xyzx, r3.xyzx
+ 567: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 568: label fb107
+ 569: nop 
+ 570: itof r3.xyz, l(13, 13, 13, 0)
+ 571: mul r2.xyz, r1.xyzx, r3.xyzx
+ 572: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 573: label fb108
+ 574: nop 
+ 575: itof r3.xyz, l(12, 12, 12, 0)
+ 576: mul r2.xyz, r1.xyzx, r3.xyzx
+ 577: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 578: label fb109
+ 579: nop 
+ 580: itof r3.xyz, l(11, 11, 11, 0)
+ 581: mul r2.xyz, r1.xyzx, r3.xyzx
+ 582: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 583: label fb110
+ 584: nop 
+ 585: itof r3.xyz, l(10, 10, 10, 0)
+ 586: mul r2.xyz, r1.xyzx, r3.xyzx
+ 587: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 588: label fb111
+ 589: nop 
+ 590: itof r3.xyz, l(9, 9, 9, 0)
+ 591: mul r2.xyz, r1.xyzx, r3.xyzx
+ 592: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 593: label fb112
+ 594: nop 
+ 595: itof r3.xyz, l(8, 8, 8, 0)
+ 596: mul r2.xyz, r1.xyzx, r3.xyzx
+ 597: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 598: label fb113
+ 599: nop 
+ 600: itof r3.xyz, l(7, 7, 7, 0)
+ 601: mul r2.xyz, r1.xyzx, r3.xyzx
+ 602: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 603: label fb114
+ 604: nop 
+ 605: itof r3.xyz, l(6, 6, 6, 0)
+ 606: mul r2.xyz, r1.xyzx, r3.xyzx
+ 607: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 608: label fb115
+ 609: nop 
+ 610: itof r3.xyz, l(5, 5, 5, 0)
+ 611: mul r2.xyz, r1.xyzx, r3.xyzx
+ 612: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 613: label fb116
+ 614: nop 
+ 615: itof r3.xyz, l(4, 4, 4, 0)
+ 616: mul r2.xyz, r1.xyzx, r3.xyzx
+ 617: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 618: label fb117
+ 619: nop 
+ 620: itof r3.xyz, l(3, 3, 3, 0)
+ 621: mul r2.xyz, r1.xyzx, r3.xyzx
+ 622: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 623: label fb118
+ 624: nop 
+ 625: itof r3.xyz, l(2, 2, 2, 0)
+ 626: mul r2.xyz, r1.xyzx, r3.xyzx
+ 627: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 628: label fb119
+ 629: nop 
+ 630: itof r3.xyz, l(1, 1, 1, 0)
+ 631: mul r2.xyz, r1.xyzx, r3.xyzx
+ 632: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 633: label fb120
+ 634: nop 
+ 635: itof r3.xyz, l(30, 30, 30, 0)
+ 636: mul r2.xyz, r1.xyzx, r3.xyzx
+ 637: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 638: label fb121
+ 639: nop 
+ 640: itof r3.xyz, l(29, 29, 29, 0)
+ 641: mul r2.xyz, r1.xyzx, r3.xyzx
+ 642: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 643: label fb122
+ 644: nop 
+ 645: itof r3.xyz, l(28, 28, 28, 0)
+ 646: mul r2.xyz, r1.xyzx, r3.xyzx
+ 647: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 648: label fb123
+ 649: nop 
+ 650: itof r3.xyz, l(27, 27, 27, 0)
+ 651: mul r2.xyz, r1.xyzx, r3.xyzx
+ 652: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 653: label fb124
+ 654: nop 
+ 655: itof r3.xyz, l(26, 26, 26, 0)
+ 656: mul r2.xyz, r1.xyzx, r3.xyzx
+ 657: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 658: label fb125
+ 659: nop 
+ 660: itof r3.xyz, l(25, 25, 25, 0)
+ 661: mul r2.xyz, r1.xyzx, r3.xyzx
+ 662: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 663: label fb126
+ 664: nop 
+ 665: itof r3.xyz, l(24, 24, 24, 0)
+ 666: mul r2.xyz, r1.xyzx, r3.xyzx
+ 667: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 668: label fb127
+ 669: nop 
+ 670: itof r3.xyz, l(23, 23, 23, 0)
+ 671: mul r2.xyz, r1.xyzx, r3.xyzx
+ 672: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 673: label fb128
+ 674: nop 
+ 675: itof r3.xyz, l(22, 22, 22, 0)
+ 676: mul r2.xyz, r1.xyzx, r3.xyzx
+ 677: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 678: label fb129
+ 679: nop 
+ 680: itof r3.xyz, l(21, 21, 21, 0)
+ 681: mul r2.xyz, r1.xyzx, r3.xyzx
+ 682: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 683: label fb130
+ 684: nop 
+ 685: itof r3.xyz, l(20, 20, 20, 0)
+ 686: mul r2.xyz, r1.xyzx, r3.xyzx
+ 687: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 688: label fb131
+ 689: nop 
+ 690: itof r3.xyz, l(19, 19, 19, 0)
+ 691: mul r2.xyz, r1.xyzx, r3.xyzx
+ 692: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 693: label fb132
+ 694: nop 
+ 695: itof r3.xyz, l(18, 18, 18, 0)
+ 696: mul r2.xyz, r1.xyzx, r3.xyzx
+ 697: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 698: label fb133
+ 699: nop 
+ 700: itof r3.xyz, l(17, 17, 17, 0)
+ 701: mul r2.xyz, r1.xyzx, r3.xyzx
+ 702: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 703: label fb134
+ 704: nop 
+ 705: itof r3.xyz, l(16, 16, 16, 0)
+ 706: mul r2.xyz, r1.xyzx, r3.xyzx
+ 707: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 708: label fb135
+ 709: nop 
+ 710: itof r3.xyz, l(15, 15, 15, 0)
+ 711: mul r2.xyz, r1.xyzx, r3.xyzx
+ 712: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 713: label fb136
+ 714: nop 
+ 715: itof r3.xyz, l(14, 14, 14, 0)
+ 716: mul r2.xyz, r1.xyzx, r3.xyzx
+ 717: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 718: label fb137
+ 719: nop 
+ 720: itof r3.xyz, l(13, 13, 13, 0)
+ 721: mul r2.xyz, r1.xyzx, r3.xyzx
+ 722: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 723: label fb138
+ 724: nop 
+ 725: itof r3.xyz, l(12, 12, 12, 0)
+ 726: mul r2.xyz, r1.xyzx, r3.xyzx
+ 727: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 728: label fb139
+ 729: nop 
+ 730: itof r3.xyz, l(11, 11, 11, 0)
+ 731: mul r2.xyz, r1.xyzx, r3.xyzx
+ 732: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 733: label fb140
+ 734: nop 
+ 735: itof r3.xyz, l(10, 10, 10, 0)
+ 736: mul r2.xyz, r1.xyzx, r3.xyzx
+ 737: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 738: label fb141
+ 739: nop 
+ 740: itof r3.xyz, l(9, 9, 9, 0)
+ 741: mul r2.xyz, r1.xyzx, r3.xyzx
+ 742: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 743: label fb142
+ 744: nop 
+ 745: itof r3.xyz, l(8, 8, 8, 0)
+ 746: mul r2.xyz, r1.xyzx, r3.xyzx
+ 747: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 748: label fb143
+ 749: nop 
+ 750: itof r3.xyz, l(7, 7, 7, 0)
+ 751: mul r2.xyz, r1.xyzx, r3.xyzx
+ 752: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 753: label fb144
+ 754: nop 
+ 755: itof r3.xyz, l(6, 6, 6, 0)
+ 756: mul r2.xyz, r1.xyzx, r3.xyzx
+ 757: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 758: label fb145
+ 759: nop 
+ 760: itof r3.xyz, l(5, 5, 5, 0)
+ 761: mul r2.xyz, r1.xyzx, r3.xyzx
+ 762: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 763: label fb146
+ 764: nop 
+ 765: itof r3.xyz, l(4, 4, 4, 0)
+ 766: mul r2.xyz, r1.xyzx, r3.xyzx
+ 767: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 768: label fb147
+ 769: nop 
+ 770: itof r3.xyz, l(3, 3, 3, 0)
+ 771: mul r2.xyz, r1.xyzx, r3.xyzx
+ 772: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 773: label fb148
+ 774: nop 
+ 775: itof r3.xyz, l(2, 2, 2, 0)
+ 776: mul r2.xyz, r1.xyzx, r3.xyzx
+ 777: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 778: label fb149
+ 779: nop 
+ 780: itof r3.xyz, l(1, 1, 1, 0)
+ 781: mul r2.xyz, r1.xyzx, r3.xyzx
+ 782: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 783: label fb150
+ 784: nop 
+ 785: itof r3.xyz, l(30, 30, 30, 0)
+ 786: mul r2.xyz, r1.xyzx, r3.xyzx
+ 787: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 788: label fb151
+ 789: nop 
+ 790: itof r3.xyz, l(29, 29, 29, 0)
+ 791: mul r2.xyz, r1.xyzx, r3.xyzx
+ 792: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 793: label fb152
+ 794: nop 
+ 795: itof r3.xyz, l(28, 28, 28, 0)
+ 796: mul r2.xyz, r1.xyzx, r3.xyzx
+ 797: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 798: label fb153
+ 799: nop 
+ 800: itof r3.xyz, l(27, 27, 27, 0)
+ 801: mul r2.xyz, r1.xyzx, r3.xyzx
+ 802: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 803: label fb154
+ 804: nop 
+ 805: itof r3.xyz, l(26, 26, 26, 0)
+ 806: mul r2.xyz, r1.xyzx, r3.xyzx
+ 807: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 808: label fb155
+ 809: nop 
+ 810: itof r3.xyz, l(25, 25, 25, 0)
+ 811: mul r2.xyz, r1.xyzx, r3.xyzx
+ 812: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 813: label fb156
+ 814: nop 
+ 815: itof r3.xyz, l(24, 24, 24, 0)
+ 816: mul r2.xyz, r1.xyzx, r3.xyzx
+ 817: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 818: label fb157
+ 819: nop 
+ 820: itof r3.xyz, l(23, 23, 23, 0)
+ 821: mul r2.xyz, r1.xyzx, r3.xyzx
+ 822: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 823: label fb158
+ 824: nop 
+ 825: itof r3.xyz, l(22, 22, 22, 0)
+ 826: mul r2.xyz, r1.xyzx, r3.xyzx
+ 827: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 828: label fb159
+ 829: nop 
+ 830: itof r3.xyz, l(21, 21, 21, 0)
+ 831: mul r2.xyz, r1.xyzx, r3.xyzx
+ 832: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 833: label fb160
+ 834: nop 
+ 835: itof r3.xyz, l(20, 20, 20, 0)
+ 836: mul r2.xyz, r1.xyzx, r3.xyzx
+ 837: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 838: label fb161
+ 839: nop 
+ 840: itof r3.xyz, l(19, 19, 19, 0)
+ 841: mul r2.xyz, r1.xyzx, r3.xyzx
+ 842: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 843: label fb162
+ 844: nop 
+ 845: itof r3.xyz, l(18, 18, 18, 0)
+ 846: mul r2.xyz, r1.xyzx, r3.xyzx
+ 847: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 848: label fb163
+ 849: nop 
+ 850: itof r3.xyz, l(17, 17, 17, 0)
+ 851: mul r2.xyz, r1.xyzx, r3.xyzx
+ 852: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+ 853: label fb164
+ 854: nop 
+ 855: itof r3.xyz, l(16, 16, 16, 0)
+ 856: mul r2.xyz, r1.xyzx, r3.xyzx
+ 857: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+ 858: label fb165
+ 859: nop 
+ 860: itof r3.xyz, l(15, 15, 15, 0)
+ 861: mul r2.xyz, r1.xyzx, r3.xyzx
+ 862: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+ 863: label fb166
+ 864: nop 
+ 865: itof r3.xyz, l(14, 14, 14, 0)
+ 866: mul r2.xyz, r1.xyzx, r3.xyzx
+ 867: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+ 868: label fb167
+ 869: nop 
+ 870: itof r3.xyz, l(13, 13, 13, 0)
+ 871: mul r2.xyz, r1.xyzx, r3.xyzx
+ 872: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+ 873: label fb168
+ 874: nop 
+ 875: itof r3.xyz, l(12, 12, 12, 0)
+ 876: mul r2.xyz, r1.xyzx, r3.xyzx
+ 877: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+ 878: label fb169
+ 879: nop 
+ 880: itof r3.xyz, l(11, 11, 11, 0)
+ 881: mul r2.xyz, r1.xyzx, r3.xyzx
+ 882: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 883: label fb170
+ 884: nop 
+ 885: itof r3.xyz, l(10, 10, 10, 0)
+ 886: mul r2.xyz, r1.xyzx, r3.xyzx
+ 887: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 888: label fb171
+ 889: nop 
+ 890: itof r3.xyz, l(9, 9, 9, 0)
+ 891: mul r2.xyz, r1.xyzx, r3.xyzx
+ 892: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 893: label fb172
+ 894: nop 
+ 895: itof r3.xyz, l(8, 8, 8, 0)
+ 896: mul r2.xyz, r1.xyzx, r3.xyzx
+ 897: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 898: label fb173
+ 899: nop 
+ 900: itof r3.xyz, l(7, 7, 7, 0)
+ 901: mul r2.xyz, r1.xyzx, r3.xyzx
+ 902: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 903: label fb174
+ 904: nop 
+ 905: itof r3.xyz, l(6, 6, 6, 0)
+ 906: mul r2.xyz, r1.xyzx, r3.xyzx
+ 907: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 908: label fb175
+ 909: nop 
+ 910: itof r3.xyz, l(5, 5, 5, 0)
+ 911: mul r2.xyz, r1.xyzx, r3.xyzx
+ 912: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 913: label fb176
+ 914: nop 
+ 915: itof r3.xyz, l(4, 4, 4, 0)
+ 916: mul r2.xyz, r1.xyzx, r3.xyzx
+ 917: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 918: label fb177
+ 919: nop 
+ 920: itof r3.xyz, l(3, 3, 3, 0)
+ 921: mul r2.xyz, r1.xyzx, r3.xyzx
+ 922: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 923: label fb178
+ 924: nop 
+ 925: itof r3.xyz, l(2, 2, 2, 0)
+ 926: mul r2.xyz, r1.xyzx, r3.xyzx
+ 927: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 928: label fb179
+ 929: nop 
+ 930: itof r3.xyz, l(1, 1, 1, 0)
+ 931: mul r2.xyz, r1.xyzx, r3.xyzx
+ 932: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+ 933: label fb180
+ 934: nop 
+ 935: itof r3.xyz, l(30, 30, 30, 0)
+ 936: mul r2.xyz, r1.xyzx, r3.xyzx
+ 937: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+ 938: label fb181
+ 939: nop 
+ 940: itof r3.xyz, l(29, 29, 29, 0)
+ 941: mul r2.xyz, r1.xyzx, r3.xyzx
+ 942: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+ 943: label fb182
+ 944: nop 
+ 945: itof r3.xyz, l(28, 28, 28, 0)
+ 946: mul r2.xyz, r1.xyzx, r3.xyzx
+ 947: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+ 948: label fb183
+ 949: nop 
+ 950: itof r3.xyz, l(27, 27, 27, 0)
+ 951: mul r2.xyz, r1.xyzx, r3.xyzx
+ 952: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+ 953: label fb184
+ 954: nop 
+ 955: itof r3.xyz, l(26, 26, 26, 0)
+ 956: mul r2.xyz, r1.xyzx, r3.xyzx
+ 957: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+ 958: label fb185
+ 959: nop 
+ 960: itof r3.xyz, l(25, 25, 25, 0)
+ 961: mul r2.xyz, r1.xyzx, r3.xyzx
+ 962: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+ 963: label fb186
+ 964: nop 
+ 965: itof r3.xyz, l(24, 24, 24, 0)
+ 966: mul r2.xyz, r1.xyzx, r3.xyzx
+ 967: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+ 968: label fb187
+ 969: nop 
+ 970: itof r3.xyz, l(23, 23, 23, 0)
+ 971: mul r2.xyz, r1.xyzx, r3.xyzx
+ 972: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+ 973: label fb188
+ 974: nop 
+ 975: itof r3.xyz, l(22, 22, 22, 0)
+ 976: mul r2.xyz, r1.xyzx, r3.xyzx
+ 977: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+ 978: label fb189
+ 979: nop 
+ 980: itof r3.xyz, l(21, 21, 21, 0)
+ 981: mul r2.xyz, r1.xyzx, r3.xyzx
+ 982: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+ 983: label fb190
+ 984: nop 
+ 985: itof r3.xyz, l(20, 20, 20, 0)
+ 986: mul r2.xyz, r1.xyzx, r3.xyzx
+ 987: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+ 988: label fb191
+ 989: nop 
+ 990: itof r3.xyz, l(19, 19, 19, 0)
+ 991: mul r2.xyz, r1.xyzx, r3.xyzx
+ 992: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+ 993: label fb192
+ 994: nop 
+ 995: itof r3.xyz, l(18, 18, 18, 0)
+ 996: mul r2.xyz, r1.xyzx, r3.xyzx
+ 997: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+ 998: label fb193
+ 999: nop 
+1000: itof r3.xyz, l(17, 17, 17, 0)
+1001: mul r2.xyz, r1.xyzx, r3.xyzx
+1002: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+1003: label fb194
+1004: nop 
+1005: itof r3.xyz, l(16, 16, 16, 0)
+1006: mul r2.xyz, r1.xyzx, r3.xyzx
+1007: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+1008: label fb195
+1009: nop 
+1010: itof r3.xyz, l(15, 15, 15, 0)
+1011: mul r2.xyz, r1.xyzx, r3.xyzx
+1012: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+1013: label fb196
+1014: nop 
+1015: itof r3.xyz, l(14, 14, 14, 0)
+1016: mul r2.xyz, r1.xyzx, r3.xyzx
+1017: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+1018: label fb197
+1019: nop 
+1020: itof r3.xyz, l(13, 13, 13, 0)
+1021: mul r2.xyz, r1.xyzx, r3.xyzx
+1022: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+1023: label fb198
+1024: nop 
+1025: itof r3.xyz, l(12, 12, 12, 0)
+1026: mul r2.xyz, r1.xyzx, r3.xyzx
+1027: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+1028: label fb199
+1029: nop 
+1030: itof r3.xyz, l(11, 11, 11, 0)
+1031: mul r2.xyz, r1.xyzx, r3.xyzx
+1032: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+1033: label fb200
+1034: nop 
+1035: itof r3.xyz, l(10, 10, 10, 0)
+1036: mul r2.xyz, r1.xyzx, r3.xyzx
+1037: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+1038: label fb201
+1039: nop 
+1040: itof r3.xyz, l(9, 9, 9, 0)
+1041: mul r2.xyz, r1.xyzx, r3.xyzx
+1042: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+1043: label fb202
+1044: nop 
+1045: itof r3.xyz, l(8, 8, 8, 0)
+1046: mul r2.xyz, r1.xyzx, r3.xyzx
+1047: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+1048: label fb203
+1049: nop 
+1050: itof r3.xyz, l(7, 7, 7, 0)
+1051: mul r2.xyz, r1.xyzx, r3.xyzx
+1052: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+1053: label fb204
+1054: nop 
+1055: itof r3.xyz, l(6, 6, 6, 0)
+1056: mul r2.xyz, r1.xyzx, r3.xyzx
+1057: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+1058: label fb205
+1059: nop 
+1060: itof r3.xyz, l(5, 5, 5, 0)
+1061: mul r2.xyz, r1.xyzx, r3.xyzx
+1062: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+1063: label fb206
+1064: nop 
+1065: itof r3.xyz, l(4, 4, 4, 0)
+1066: mul r2.xyz, r1.xyzx, r3.xyzx
+1067: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+1068: label fb207
+1069: nop 
+1070: itof r3.xyz, l(3, 3, 3, 0)
+1071: mul r2.xyz, r1.xyzx, r3.xyzx
+1072: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+1073: label fb208
+1074: nop 
+1075: itof r3.xyz, l(2, 2, 2, 0)
+1076: mul r2.xyz, r1.xyzx, r3.xyzx
+1077: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+1078: label fb209
+1079: nop 
+1080: itof r3.xyz, l(1, 1, 1, 0)
+1081: mul r2.xyz, r1.xyzx, r3.xyzx
+1082: ret 
+
+#line 91 "C:\dx-fixtures\classes_slots.hlsl"
+1083: label fb210
+1084: nop 
+1085: itof r3.xyz, l(30, 30, 30, 0)
+1086: mul r2.xyz, r1.xyzx, r3.xyzx
+1087: ret 
+
+#line 88 "C:\dx-fixtures\classes_slots.hlsl"
+1088: label fb211
+1089: nop 
+1090: itof r3.xyz, l(29, 29, 29, 0)
+1091: mul r2.xyz, r1.xyzx, r3.xyzx
+1092: ret 
+
+#line 85 "C:\dx-fixtures\classes_slots.hlsl"
+1093: label fb212
+1094: nop 
+1095: itof r3.xyz, l(28, 28, 28, 0)
+1096: mul r2.xyz, r1.xyzx, r3.xyzx
+1097: ret 
+
+#line 82 "C:\dx-fixtures\classes_slots.hlsl"
+1098: label fb213
+1099: nop 
+1100: itof r3.xyz, l(27, 27, 27, 0)
+1101: mul r2.xyz, r1.xyzx, r3.xyzx
+1102: ret 
+
+#line 79 "C:\dx-fixtures\classes_slots.hlsl"
+1103: label fb214
+1104: nop 
+1105: itof r3.xyz, l(26, 26, 26, 0)
+1106: mul r2.xyz, r1.xyzx, r3.xyzx
+1107: ret 
+
+#line 76 "C:\dx-fixtures\classes_slots.hlsl"
+1108: label fb215
+1109: nop 
+1110: itof r3.xyz, l(25, 25, 25, 0)
+1111: mul r2.xyz, r1.xyzx, r3.xyzx
+1112: ret 
+
+#line 73 "C:\dx-fixtures\classes_slots.hlsl"
+1113: label fb216
+1114: nop 
+1115: itof r3.xyz, l(24, 24, 24, 0)
+1116: mul r2.xyz, r1.xyzx, r3.xyzx
+1117: ret 
+
+#line 70 "C:\dx-fixtures\classes_slots.hlsl"
+1118: label fb217
+1119: nop 
+1120: itof r3.xyz, l(23, 23, 23, 0)
+1121: mul r2.xyz, r1.xyzx, r3.xyzx
+1122: ret 
+
+#line 67 "C:\dx-fixtures\classes_slots.hlsl"
+1123: label fb218
+1124: nop 
+1125: itof r3.xyz, l(22, 22, 22, 0)
+1126: mul r2.xyz, r1.xyzx, r3.xyzx
+1127: ret 
+
+#line 64 "C:\dx-fixtures\classes_slots.hlsl"
+1128: label fb219
+1129: nop 
+1130: itof r3.xyz, l(21, 21, 21, 0)
+1131: mul r2.xyz, r1.xyzx, r3.xyzx
+1132: ret 
+
+#line 61 "C:\dx-fixtures\classes_slots.hlsl"
+1133: label fb220
+1134: nop 
+1135: itof r3.xyz, l(20, 20, 20, 0)
+1136: mul r2.xyz, r1.xyzx, r3.xyzx
+1137: ret 
+
+#line 58 "C:\dx-fixtures\classes_slots.hlsl"
+1138: label fb221
+1139: nop 
+1140: itof r3.xyz, l(19, 19, 19, 0)
+1141: mul r2.xyz, r1.xyzx, r3.xyzx
+1142: ret 
+
+#line 55 "C:\dx-fixtures\classes_slots.hlsl"
+1143: label fb222
+1144: nop 
+1145: itof r3.xyz, l(18, 18, 18, 0)
+1146: mul r2.xyz, r1.xyzx, r3.xyzx
+1147: ret 
+
+#line 52 "C:\dx-fixtures\classes_slots.hlsl"
+1148: label fb223
+1149: nop 
+1150: itof r3.xyz, l(17, 17, 17, 0)
+1151: mul r2.xyz, r1.xyzx, r3.xyzx
+1152: ret 
+
+#line 49 "C:\dx-fixtures\classes_slots.hlsl"
+1153: label fb224
+1154: nop 
+1155: itof r3.xyz, l(16, 16, 16, 0)
+1156: mul r2.xyz, r1.xyzx, r3.xyzx
+1157: ret 
+
+#line 46 "C:\dx-fixtures\classes_slots.hlsl"
+1158: label fb225
+1159: nop 
+1160: itof r3.xyz, l(15, 15, 15, 0)
+1161: mul r2.xyz, r1.xyzx, r3.xyzx
+1162: ret 
+
+#line 43 "C:\dx-fixtures\classes_slots.hlsl"
+1163: label fb226
+1164: nop 
+1165: itof r3.xyz, l(14, 14, 14, 0)
+1166: mul r2.xyz, r1.xyzx, r3.xyzx
+1167: ret 
+
+#line 40 "C:\dx-fixtures\classes_slots.hlsl"
+1168: label fb227
+1169: nop 
+1170: itof r3.xyz, l(13, 13, 13, 0)
+1171: mul r2.xyz, r1.xyzx, r3.xyzx
+1172: ret 
+
+#line 37 "C:\dx-fixtures\classes_slots.hlsl"
+1173: label fb228
+1174: nop 
+1175: itof r3.xyz, l(12, 12, 12, 0)
+1176: mul r2.xyz, r1.xyzx, r3.xyzx
+1177: ret 
+
+#line 34 "C:\dx-fixtures\classes_slots.hlsl"
+1178: label fb229
+1179: nop 
+1180: itof r3.xyz, l(11, 11, 11, 0)
+1181: mul r2.xyz, r1.xyzx, r3.xyzx
+1182: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+1183: label fb230
+1184: nop 
+1185: itof r3.xyz, l(10, 10, 10, 0)
+1186: mul r2.xyz, r1.xyzx, r3.xyzx
+1187: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+1188: label fb231
+1189: nop 
+1190: itof r3.xyz, l(9, 9, 9, 0)
+1191: mul r2.xyz, r1.xyzx, r3.xyzx
+1192: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+1193: label fb232
+1194: nop 
+1195: itof r3.xyz, l(8, 8, 8, 0)
+1196: mul r2.xyz, r1.xyzx, r3.xyzx
+1197: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+1198: label fb233
+1199: nop 
+1200: itof r3.xyz, l(7, 7, 7, 0)
+1201: mul r2.xyz, r1.xyzx, r3.xyzx
+1202: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+1203: label fb234
+1204: nop 
+1205: itof r3.xyz, l(6, 6, 6, 0)
+1206: mul r2.xyz, r1.xyzx, r3.xyzx
+1207: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+1208: label fb235
+1209: nop 
+1210: itof r3.xyz, l(5, 5, 5, 0)
+1211: mul r2.xyz, r1.xyzx, r3.xyzx
+1212: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+1213: label fb236
+1214: nop 
+1215: itof r3.xyz, l(4, 4, 4, 0)
+1216: mul r2.xyz, r1.xyzx, r3.xyzx
+1217: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+1218: label fb237
+1219: nop 
+1220: itof r3.xyz, l(3, 3, 3, 0)
+1221: mul r2.xyz, r1.xyzx, r3.xyzx
+1222: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+1223: label fb238
+1224: nop 
+1225: itof r3.xyz, l(2, 2, 2, 0)
+1226: mul r2.xyz, r1.xyzx, r3.xyzx
+1227: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+1228: label fb239
+1229: nop 
+1230: itof r3.xyz, l(1, 1, 1, 0)
+1231: mul r2.xyz, r1.xyzx, r3.xyzx
+1232: ret 

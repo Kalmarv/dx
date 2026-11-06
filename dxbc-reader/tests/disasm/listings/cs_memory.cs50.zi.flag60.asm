@@ -1,0 +1,143 @@
+0x00000000: cs_5_0
+0x00000008: dcl_globalFlags refactoringAllowed
+0x0000000C: dcl_resource_structured t0, 16
+0x0000001C: dcl_resource_raw t1
+0x00000028: dcl_uav_raw u0
+0x00000034: dcl_uav_structured_opc u1, 16
+0x00000044: dcl_uav_structured u2, 4
+0x00000054: dcl_uav_structured u3, 4
+0x00000064: dcl_uav_typed_texture1d (sint,sint,sint,sint) u4
+0x00000074: dcl_uav_typed_texture2darray (float,float,float,float) u5
+0x00000084: dcl_uav_typed_texture3d (uint,uint,uint,uint) u6
+0x00000094: dcl_uav_typed_buffer (float,float,float,float) u7
+0x000000A4: dcl_uav_typed_texture1darray (unorm,unorm,unorm,unorm) u8
+0x000000B4: dcl_uav_structured_opc u9, 4
+0x000000C4: dcl_input vThreadIDInGroupFlattened
+0x000000CC: dcl_input vThreadGroupID.xyz
+0x000000D4: dcl_input vThreadIDInGroup.xy
+0x000000DC: dcl_input vThreadID.xyz
+0x000000E4: dcl_temps 4
+0x000000EC: dcl_tgsm_structured g0, 4, 64
+0x00000100: dcl_tgsm_structured g1, 128, 8
+0x00000114: dcl_thread_group 8, 8, 1
+//
+// Initial variable locations:
+//   vThreadID.x <- tid.x; vThreadID.y <- tid.y; vThreadID.z <- tid.z; 
+//   vThreadGroupID.x <- gid.x; vThreadGroupID.y <- gid.y; vThreadGroupID.z <- gid.z; 
+//   vThreadIDInGroup.x <- lid.x; vThreadIDInGroup.y <- lid.y; vThreadIDInGroup.z <- lid.z; 
+//   vThreadIDInGroupFlattened.x <- flat
+//
+#line 30 "C:\dx-fixtures\cs_memory.hlsl"
+0x00000124: store_structured g0.x, vThreadIDInGroupFlattened.x, l(0), vThreadID.x
+
+#line 31
+0x00000140: ld_structured_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r0.xyz, vThreadIDInGroupFlattened.x, l(0), t0.xyzx
+
+#line 50
+0x00000168: ishl r1.xy, vThreadIDInGroup.xyxx, l(4, 4, 0, 0)
+
+#line 31
+0x0000018C: store_structured g1.xyz, vThreadIDInGroup.y, r1.x, r0.xyzx
+
+#line 32
+0x000001AC: sync_g_t
+
+#line 33
+0x000001B0: iadd r0.x, vThreadIDInGroupFlattened.x, l(1)
+0x000001C8: and r0.y, r0.x, l(63)
+0x000001E4: ld_structured r0.y, r0.y, l(0), g0.xxxx  // r0.y <- v
+
+#line 43
+0x00000208: atomic_iadd u0, l(0), r0.y
+
+#line 44
+0x00000224: atomic_cmp_store u0, l(4), r0.y, l(1)
+
+#line 45
+0x00000248: atomic_umin u0, l(8), r0.y
+
+#line 46
+0x00000264: ineg r0.z, r0.y
+0x00000278: imm_atomic_imin r2.x, u4, vThreadGroupID.x, r0.z  // r2.x <- old
+
+#line 47
+0x00000298: atomic_umax u6, vThreadID.xyzx, r0.y
+
+#line 56
+0x000002B0: utof r3.y, r0.y
+
+#line 48
+0x000002C4: sync_uglobal
+
+#line 49
+0x000002C8: imm_atomic_alloc r2.y, u1  // r2.y <- c
+
+#line 50
+0x000002DC: ld_structured r1.x, vThreadIDInGroup.x, r1.y, g1.xxxx
+0x000002FC: imad r0.yz, vThreadIDInGroup.yyyy, l(0, 16, 16, 0), l(0, 4, 8, 0)
+0x00000334: ld_structured r1.y, vThreadIDInGroup.x, r0.y, g1.xxxx
+0x00000354: ld_structured r1.z, vThreadIDInGroup.x, r0.z, g1.xxxx
+
+#line 51
+0x00000374: imad r0.y, vThreadGroupID.y, l(3), vThreadGroupID.x
+0x00000390: iadd r1.w, r0.y, vThreadGroupID.z
+
+#line 50
+0x000003A8: store_structured u1.xyzw, r2.y, l(0), r1.xyzw
+
+#line 53
+0x000003CC: imm_atomic_consume r1.x, u9
+0x000003E0: store_structured u9.x, vThreadIDInGroupFlattened.x, l(0), r1.x
+
+#line 54
+0x00000400: imm_atomic_consume r1.x, u3
+0x00000414: ld_structured_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r0.y, r1.x, l(0), u3.xxxx
+0x00000440: iadd r0.y, r2.x, r0.y
+0x0000045C: imm_atomic_alloc r1.x, u2
+0x00000470: store_structured u2.x, r1.x, l(0), r0.y
+
+#line 55
+0x00000494: sync_uglobal_g_t
+
+#line 56
+0x00000498: mov r1.xy, vThreadIDInGroup.xyxx
+0x000004A8: mov r1.zw, l(0,0,0,0)
+0x000004C8: ld_uav_typed_indexable(texture2darray)(float,float,float,float) r0.yz, r1.xyzw, u5.zxyw
+0x000004EC: utof r3.xzw, r2.yyyy
+0x00000500: add r1.xyzw, r0.yzyy, r3.xyzw
+0x0000051C: mov r3.xy, vThreadID.xyxx
+0x0000052C: mov r3.zw, vThreadGroupID.zzzz
+0x0000053C: store_uav_typed u5.xyzw, r3.xyzw, r1.xyzw
+
+#line 57
+0x00000558: ld_uav_typed_indexable(buffer)(float,float,float,float) r0.xyzw, r0.xxxx, u7.xyzw
+0x0000057C: add r0.xyzw, r0.xyzw, r0.xyzw
+0x00000598: store_uav_typed u7.xyzw, vThreadIDInGroupFlattened.xxxx, r0.xyzw
+
+#line 58
+0x000005B0: store_uav_typed u8.xyzw, vThreadID.xyyy, l(1.000000,0,0,1.000000)
+
+#line 59
+0x000005D4: ishl r0.x, vThreadIDInGroupFlattened.x, l(3)
+0x000005EC: ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r0.yz, r0.x, t1.xxyx
+0x00000610: iadd r0.yz, r2.xxyx, r0.yyzy
+0x0000062C: store_raw u0.xy, r0.x, r0.yzyy
+
+#line 60
+0x00000648: sync_g
+
+#line 61
+0x0000064C: sync_uglobal_g
+
+#line 62
+0x00000650: sync_uglobal_t
+
+#line 64
+0x00000654: bufinfo_indexable(structured_buffer, stride=16)(mixed,mixed,mixed,mixed) r0.x, t0.xyzw  // r0.x <- count
+
+#line 65
+0x00000670: ishl r0.x, r0.x, l(4)
+0x0000068C: store_raw u0.x, l(512), r0.x
+
+#line 66
+0x000006A8: ret 

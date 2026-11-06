@@ -8,6 +8,20 @@
 // fxc: /T ds_5_0 /E ds_tri /Fo tess_stages.tri.ds.dxbc
 // fxc: /T ds_5_0 /E ds_quad /Fo tess_stages.quad.ds.dxbc
 // fxc: /T ds_5_0 /E ds_line /Fo tess_stages.line.ds.dxbc
+// fxc: /T hs_5_0 /E hs_tri /Zi /Fo tess_stages.tri.hs.zi.dxbc
+// fxc: /T hs_5_0 /E hs_tri /Zi /Od /Fo tess_stages.tri.hs.zod.dxbc
+// fxc: /T hs_5_0 /E hs_quad /Zi /Fo tess_stages.quad.hs.zi.dxbc
+// fxc: /T hs_5_0 /E hs_quad /Zi /Od /Fo tess_stages.quad.hs.zod.dxbc
+// fxc: /T hs_5_0 /E hs_line /Zi /Fo tess_stages.line.hs.zi.dxbc
+// fxc: /T hs_5_0 /E hs_line /Zi /Od /Fo tess_stages.line.hs.zod.dxbc
+// fxc: /T hs_5_0 /E hs_pass /Zi /Fo tess_stages.pass.hs.zi.dxbc
+// fxc: /T hs_5_0 /E hs_pass /Zi /Od /Fo tess_stages.pass.hs.zod.dxbc
+// fxc: /T ds_5_0 /E ds_tri /Zi /Fo tess_stages.tri.ds.zi.dxbc
+// fxc: /T ds_5_0 /E ds_tri /Zi /Od /Fo tess_stages.tri.ds.zod.dxbc
+// fxc: /T ds_5_0 /E ds_quad /Zi /Fo tess_stages.quad.ds.zi.dxbc
+// fxc: /T ds_5_0 /E ds_quad /Zi /Od /Fo tess_stages.quad.ds.zod.dxbc
+// fxc: /T ds_5_0 /E ds_line /Zi /Fo tess_stages.line.ds.zi.dxbc
+// fxc: /T ds_5_0 /E ds_line /Zi /Od /Fo tess_stages.line.ds.zod.dxbc
 struct CP { float4 p : POSITION; float3 n : NORMAL; };
 cbuffer T { float4 factors; float4x4 viewProj; };
 struct TriPC { float e[3] : SV_TessFactor; float i : SV_InsideTessFactor; float3 b : CENTER; };

@@ -2,6 +2,10 @@
 // vertex program) interface pointers it never calls, which the buffer definitions give no offset or size.
 // fxc: /T ps_5_0 /E main /Fo classes_resources.ps50.dxbc
 // fxc: /T vs_5_0 /E vmain /Fo classes_resources.vs50.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Fo classes_resources.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Od /Fo classes_resources.ps50.zod.dxbc
+// fxc: /T vs_5_0 /E vmain /Zi /Fo classes_resources.vs50.zi.dxbc
+// fxc: /T vs_5_0 /E vmain /Zi /Od /Fo classes_resources.vs50.zod.dxbc
 interface ILight { float3 shade(float3 n); };
 interface IVeryLongInterfaceNameForTestingColumnWidths { float4 g(float4 x); };
 class TexLight : ILight { Texture2D t; SamplerState s; float3 shade(float3 n) { return t.Sample(s, n.xy).xyz; } };

@@ -1,0 +1,11 @@
+ps_4_0
+dcl_constantbuffer CB0[5], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 1
+sample r0.xyzw, v1.xyxx, t0.xyzw, s0
+mul r0.xyzw, r0.xyzw, cb0[4].xyzw
+add o0.xyzw, r0.xyzw, v1.xyxy
+ret 

@@ -1,0 +1,76 @@
+      ds_5_0
+      dcl_input_control_point_count 4
+      dcl_tessellator_domain domain_quad
+      dcl_globalFlags refactoringAllowed | skipOptimization
+      dcl_constantbuffer CB0[5], immediateIndexed
+      dcl_input_siv vpc4.x, finalQuadUInsideTessFactor
+      dcl_input_siv vpc5.x, finalQuadVInsideTessFactor
+      dcl_input vDomain.xy
+      dcl_input vPrim
+      dcl_input vicp[4][0].xyzw
+      dcl_input vicp[4][1].xyz
+      dcl_output_siv o0.xyzw, position
+      dcl_output o1.xyz
+      dcl_temps 3
+//
+// Initial variable locations:
+//   vpc0.x <- pc.e[0]; 
+//   vpc1.x <- pc.e[1]; 
+//   vpc2.x <- pc.e[2]; 
+//   vpc3.x <- pc.e[3]; 
+//   vpc4.x <- pc.i[0]; 
+//   vpc5.x <- pc.i[1]; 
+//   vDomain.x <- uv.x; vDomain.y <- uv.y; 
+//   vPrim.x <- id; 
+//   o1.x <- <ds_quad return value>.n.x; o1.y <- <ds_quad return value>.n.y; o1.z <- <ds_quad return value>.n.z; 
+//   o0.x <- <ds_quad return value>.pos.x; o0.y <- <ds_quad return value>.pos.y; o0.z <- <ds_quad return value>.pos.z; o0.w <- <ds_quad return value>.pos.w; 
+//   vicp[0][0].x <- patch[0].p.x; vicp[0][0].y <- patch[0].p.y; vicp[0][0].z <- patch[0].p.z; vicp[0][0].w <- patch[0].p.w; 
+//   vicp[0][1].x <- patch[0].n.x; vicp[0][1].y <- patch[0].n.y; vicp[0][1].z <- patch[0].n.z; 
+//   vicp[1][0].x <- patch[1].p.x; vicp[1][0].y <- patch[1].p.y; vicp[1][0].z <- patch[1].p.z; vicp[1][0].w <- patch[1].p.w; 
+//   vicp[1][1].x <- patch[1].n.x; vicp[1][1].y <- patch[1].n.y; vicp[1][1].z <- patch[1].n.z; 
+//   vicp[2][0].x <- patch[2].p.x; vicp[2][0].y <- patch[2].p.y; vicp[2][0].z <- patch[2].p.z; vicp[2][0].w <- patch[2].p.w; 
+//   vicp[2][1].x <- patch[2].n.x; vicp[2][1].y <- patch[2].n.y; vicp[2][1].z <- patch[2].n.z; 
+//   vicp[3][0].x <- patch[3].p.x; vicp[3][0].y <- patch[3].p.y; vicp[3][0].z <- patch[3].p.z; vicp[3][0].w <- patch[3].p.w; 
+//   vicp[3][1].x <- patch[3].n.x; vicp[3][1].y <- patch[3].n.y; vicp[3][1].z <- patch[3].n.z
+//
+#line 95 "C:\dx-fixtures\tess_stages.hlsl"
+   0: mov r0.xyzw, -vicp[0][0].xyzw
+   1: add r0.xyzw, r0.xyzw, vicp[1][0].xyzw
+   2: mul r0.xyzw, r0.xyzw, vDomain.xxxx
+   3: add r0.xyzw, r0.xyzw, vicp[0][0].xyzw  // r0.x <- a.x; r0.y <- a.y; r0.z <- a.z; r0.w <- a.w
+   4: mov r1.xyzw, -vicp[3][0].xyzw
+   5: add r1.xyzw, r1.xyzw, vicp[2][0].xyzw
+   6: mul r1.xyzw, r1.xyzw, vDomain.xxxx
+   7: add r1.xyzw, r1.xyzw, vicp[3][0].xyzw  // r1.x <- b.x; r1.y <- b.y; r1.z <- b.z; r1.w <- b.w
+
+#line 97
+   8: mov r2.xyzw, -r0.xyzw
+   9: add r1.xyzw, r1.xyzw, r2.xyzw
+  10: mul r1.xyzw, r1.xyzw, vDomain.yyyy
+  11: add r0.xyzw, r0.xyzw, r1.xyzw
+  12: mov r1.x, l(1)
+  13: and r1.x, r1.x, vPrim
+  14: utof r1.x, r1.x
+  15: mov r1.y, -vpc4.x
+  16: add r1.y, r1.y, vpc5.x
+  17: mul r1.x, r1.y, r1.x
+  18: add r1.x, r1.x, vpc4.x
+  19: mul r0.xyzw, r0.xyzw, r1.xxxx
+  20: dp4 r1.x, r0.xyzw, cb0[1].xyzw  // r1.x <- o.pos.x
+  21: dp4 r1.y, r0.xyzw, cb0[2].xyzw  // r1.y <- o.pos.y
+  22: dp4 r1.z, r0.xyzw, cb0[3].xyzw  // r1.z <- o.pos.z
+  23: dp4 r1.w, r0.xyzw, cb0[4].xyzw  // r1.w <- o.pos.w
+
+#line 98
+  24: mov r0.x, l(1)
+  25: and r0.x, r0.x, vPrim
+  26: utof r0.x, r0.x
+  27: mov r0.yzw, -vicp[1][1].xxyz
+  28: add r0.yzw, r0.yyzw, vicp[3][1].xxyz
+  29: mul r0.xyz, r0.yzwy, r0.xxxx
+  30: add r0.xyz, r0.xyzx, vicp[1][1].xyzx  // r0.x <- o.n.x; r0.y <- o.n.y; r0.z <- o.n.z
+
+#line 99
+  31: mov o0.xyzw, r1.xyzw
+  32: mov o1.xyz, r0.xyzx
+  33: ret 

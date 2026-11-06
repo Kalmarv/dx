@@ -1,6 +1,8 @@
 // A pixel program with dynamic shader linkage: interfaces, classes with data and the function tables and calls the
 // listing writes for them (dcl_function_body, dcl_function_table, dcl_interface, fcall, this).
 // fxc: /T ps_5_0 /E main /Fo interfaces.ps50.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Fo interfaces.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Od /Fo interfaces.ps50.zod.dxbc
 interface ILight { float3 shade(float3 n); };
 class Sun : ILight { float3 dir; float3 color; float3 shade(float3 n) { return color * saturate(dot(n, dir)); } };
 class Ambient : ILight { float3 color; float3 shade(float3 n) { return color; } };

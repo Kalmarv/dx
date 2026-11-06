@@ -3,6 +3,10 @@
 // reference output.
 // fxc: /T ps_5_1 /E main /enable_unbounded_descriptor_tables /Fo sm51.ps51.dxbc
 // fxc: /T vs_5_1 /E vs /Fo sm51.vs51.dxbc
+// fxc: /T ps_5_1 /E main /enable_unbounded_descriptor_tables /Zi /Fo sm51.ps51.zi.dxbc
+// fxc: /T ps_5_1 /E main /enable_unbounded_descriptor_tables /Zi /Od /Fo sm51.ps51.zod.dxbc
+// fxc: /T vs_5_1 /E vs /Zi /Fo sm51.vs51.zi.dxbc
+// fxc: /T vs_5_1 /E vs /Zi /Od /Fo sm51.vs51.zod.dxbc
 struct Material { float4 color; uint tex; float3 pad; };
 ConstantBuffer<Material> materials[8] : register(b0, space1);
 cbuffer Frame : register(b2) { float4x4 viewProj; uint drawIndex; };

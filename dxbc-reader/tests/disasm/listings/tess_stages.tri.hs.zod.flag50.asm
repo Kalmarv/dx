@@ -1,0 +1,69 @@
+hs_5_0
+hs_decls 
+dcl_input_control_point_count 3
+dcl_output_control_point_count 3
+dcl_tessellator_domain domain_tri
+dcl_tessellator_partitioning partitioning_fractional_odd
+dcl_tessellator_output_primitive output_triangle_cw
+dcl_hs_max_tessfactor l(15.000000)
+dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_constantbuffer CB0[1], immediateIndexed
+hs_control_point_phase 
+dcl_input vOutputControlPointID
+dcl_input v[3][0].xyzw
+dcl_input v[3][1].xyz
+dcl_output o0.xyzw
+dcl_output o1.xyz
+dcl_temps 3
+mov r0.x, vOutputControlPointID
+mov r0.yzw, v[r0.x + 0][0].xxyz
+mov r1.x, v[r0.x + 0][0].w
+mov r1.yzw, v[r0.x + 0][1].xxyz
+mul r2.xyz, r1.yzwy, cb0[0].xxxx
+add r0.xyz, r0.yzwy, r2.xyzx
+mov o0.xyz, r0.xyzx
+mov o0.w, r1.x
+mov o1.xyz, r1.yzwy
+ret 
+hs_join_phase 
+dcl_input vPrim
+dcl_input vicp[3][0].xyzw
+dcl_input vocp[3][0].xyzw
+dcl_output_siv o0.x, finalTriUeq0EdgeTessFactor
+dcl_output o0.yzw
+dcl_output_siv o1.x, finalTriVeq0EdgeTessFactor
+dcl_output_siv o2.x, finalTriWeq0EdgeTessFactor
+dcl_output_siv o3.x, finalTriInsideTessFactor
+dcl_temps 3
+mov r0.xyzw, -vicp[1][0].xyzw
+add r0.xyzw, r0.xyzw, vocp[0][0].xyzw
+dp4 r0.x, r0.xyzw, r0.xyzw
+sqrt r0.x, r0.x
+mul r0.x, r0.x, cb0[0].x
+mov r1.xyzw, -vicp[2][0].xyzw
+add r1.xyzw, r1.xyzw, vocp[1][0].xyzw
+dp4 r1.x, r1.xyzw, r1.xyzw
+sqrt r1.x, r1.x
+mul r0.y, r1.x, cb0[0].y
+mov r1.xyzw, -vicp[0][0].xyzw
+add r1.xyzw, r1.xyzw, vocp[2][0].xyzw
+dp4 r1.x, r1.xyzw, r1.xyzw
+sqrt r1.x, r1.x
+mul r0.z, r1.x, cb0[0].z
+utof r1.x, vPrim
+add r0.w, r1.x, cb0[0].w
+add r1.xyz, vicp[1][0].xyzx, vicp[0][0].xyzx
+add r1.xyz, r1.xyzx, vicp[2][0].xyzx
+itof r2.xyz, l(3, 3, 3, 0)
+div r1.xyz, r1.xyzx, r2.xyzx
+mov r0.x, r0.x
+mov r0.y, r0.y
+mov r0.z, r0.z
+mov r0.w, r0.w
+mov o0.yzw, r1.xxyz
+min r0.xyzw, r0.xyzw, l(15.000000, 15.000000, 15.000000, 15.000000)
+mov o0.x, r0.x
+mov o1.x, r0.y
+mov o2.x, r0.z
+mov o3.x, r0.w
+ret 

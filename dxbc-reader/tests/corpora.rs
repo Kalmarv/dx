@@ -15,8 +15,7 @@ use std::path::{Path, PathBuf};
 struct Tally {
     /// Listings compared.
     compared: usize,
-    /// Listings of programs with an `SPDB` part, whose annotations the listing does not write, each checked to
-    /// differ so that the count cannot go stale.
+    /// Of them, listings of programs with an `SPDB` part (the PDB `fxc /Zi` embeds) written with its annotations.
     debug: usize,
     /// The first differing line of each listing that differs.
     differing: Vec<String>,
@@ -41,9 +40,7 @@ fn compare(folder: &Path, flags: &[u32], listing: impl Fn(&Path, u32) -> PathBuf
             let ours = disassemble_with(&bytes, &Options::from_flags(word).unwrap()).unwrap();
             let what = format!("{} flags 0x{word:02x}", container.display());
             if debug && word & 0x10 == 0 {
-                assert_ne!(ours, theirs, "{what} now matches: count it with the others");
                 tally.debug += 1;
-                continue;
             }
             tally.compared += 1;
             tally.differing.extend(difference(&what, &ours, &theirs));
@@ -96,5 +93,5 @@ fn sledding_game_unity_player() {
     };
     let tally = compare(&folder, &[0], beside);
     // 3,316 ps_4_0 and 1,538 ps_5_0 programs, 16 of them with an SPDB part
-    assert_eq!((tally.compared, tally.debug), (4838, 16));
+    assert_eq!((tally.compared, tally.debug), (4854, 16));
 }

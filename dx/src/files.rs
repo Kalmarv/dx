@@ -104,12 +104,6 @@ pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
     }
 }
 
-/// Whether `bytes` are a `DXBC` container with an `SPDB` part, the PDB `fxc /Zi` embeds, whose annotations Microsoft's
-/// listing interleaves and this one does not.
-pub fn has_debug_part(bytes: &[u8]) -> bool {
-    dxbc_reader::parts(bytes).is_ok_and(|parts| parts.iter().any(|c| &c.kind == b"SPDB"))
-}
-
 /// The shader model and stage a program's listing names on its version line (`ps_5_0`), for grouping counts.
 pub fn target(listing: &str) -> Option<String> {
     listing

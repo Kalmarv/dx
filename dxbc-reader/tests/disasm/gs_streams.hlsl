@@ -2,6 +2,10 @@
 // writes (render target array index, viewport array index, primitive id).
 // fxc: /T gs_5_0 /E main /Fo gs_streams.gs50.dxbc
 // fxc: /T gs_4_0 /E points /Fo gs_streams.gs40.dxbc
+// fxc: /T gs_5_0 /E main /Zi /Fo gs_streams.gs50.zi.dxbc
+// fxc: /T gs_5_0 /E main /Zi /Od /Fo gs_streams.gs50.zod.dxbc
+// fxc: /T gs_4_0 /E points /Zi /Fo gs_streams.gs40.zi.dxbc
+// fxc: /T gs_4_0 /E points /Zi /Od /Fo gs_streams.gs40.zod.dxbc
 struct V { float4 pos : SV_Position; float2 uv : TEXCOORD0; };
 struct G { float4 pos : SV_Position; float2 uv : TEXCOORD0; uint layer : SV_RenderTargetArrayIndex; uint vp : SV_ViewportArrayIndex; uint prim : SV_PrimitiveID; };
 struct S { float4 data : DATA; };

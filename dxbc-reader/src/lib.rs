@@ -32,6 +32,7 @@ pub mod level9;
 mod opcodes;
 pub mod reflection;
 mod sampling;
+mod spdb;
 pub mod statistics;
 
 pub use controls::{GlobalFlags, InfoReturn, SyncFlags};

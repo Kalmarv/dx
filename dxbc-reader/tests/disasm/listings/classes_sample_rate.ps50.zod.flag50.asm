@@ -1,0 +1,23 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_constantbuffer CB0[1], immediateIndexed
+dcl_function_body fb0
+dcl_function_table ft0 = {fb0}
+dcl_interface fp0[1][1] = {ft0}
+dcl_input_ps linear v0.xyz
+dcl_input_ps_sgv constant v1.x, sampleIndex
+dcl_output o0.xyzw
+dcl_temps 2
+nop 
+mov r0.xyz, v0.xyzx
+fcall fp0[0][0]
+utof r0.xyz, v1.xxxx
+mul o0.xyz, r0.xyzx, r1.xyzx
+itof o0.w, l(1)
+ret 
+label fb0
+nop 
+mov r0.w, this[0].y
+mov r1.w, this[0].x
+mul r1.xyz, r0.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+ret 

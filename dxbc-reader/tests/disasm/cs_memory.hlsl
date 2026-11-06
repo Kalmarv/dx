@@ -4,6 +4,12 @@
 // fxc: /T cs_5_0 /E main /Fo cs_memory.cs50.dxbc
 // fxc: /T cs_4_0 /E main4 /Fo cs_memory.cs40.dxbc
 // fxc: /T cs_4_1 /E main4 /Fo cs_memory.cs41.dxbc
+// fxc: /T cs_5_0 /E main /Zi /Fo cs_memory.cs50.zi.dxbc
+// fxc: /T cs_5_0 /E main /Zi /Od /Fo cs_memory.cs50.zod.dxbc
+// fxc: /T cs_4_0 /E main4 /Zi /Fo cs_memory.cs40.zi.dxbc
+// fxc: /T cs_4_0 /E main4 /Zi /Od /Fo cs_memory.cs40.zod.dxbc
+// fxc: /T cs_4_1 /E main4 /Zi /Fo cs_memory.cs41.zi.dxbc
+// fxc: /T cs_4_1 /E main4 /Zi /Od /Fo cs_memory.cs41.zod.dxbc
 struct Item { float3 p; uint id; };
 RWByteAddressBuffer raw : register(u0);
 RWStructuredBuffer<Item> items : register(u1);

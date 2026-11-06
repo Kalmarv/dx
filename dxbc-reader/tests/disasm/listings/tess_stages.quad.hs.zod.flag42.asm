@@ -1,0 +1,105 @@
+hs_5_0
+hs_decls 
+dcl_input_control_point_count 16
+dcl_output_control_point_count 4
+dcl_tessellator_domain domain_quad
+dcl_tessellator_partitioning partitioning_fractional_even
+dcl_tessellator_output_primitive output_triangle_ccw
+dcl_globalFlags refactoringAllowed | skipOptimization
+dcl_constantbuffer CB0[1], immediateIndexed
+hs_control_point_phase 
+dcl_input vOutputControlPointID
+dcl_input vPrim
+dcl_input v[16][0].xyzw
+dcl_input v[16][1].xyz
+dcl_output o0.xyzw
+dcl_output o1.xyz
+dcl_temps 2
+//
+// Initial variable locations:
+//   vOutputControlPointID.x <- i; 
+//   vPrim.x <- id; 
+//   o1.x <- <hs_quad return value>.n.x; o1.y <- <hs_quad return value>.n.y; o1.z <- <hs_quad return value>.n.z; 
+//   o0.x <- <hs_quad return value>.p.x; o0.y <- <hs_quad return value>.p.y; o0.z <- <hs_quad return value>.p.z; o0.w <- <hs_quad return value>.p.w; 
+//   v[0][0].x <- patch[0].p.x; v[0][0].y <- patch[0].p.y; v[0][0].z <- patch[0].p.z; v[0][0].w <- patch[0].p.w; 
+//   v[0][1].x <- patch[0].n.x; v[0][1].y <- patch[0].n.y; v[0][1].z <- patch[0].n.z; 
+//   v[1][0].x <- patch[1].p.x; v[1][0].y <- patch[1].p.y; v[1][0].z <- patch[1].p.z; v[1][0].w <- patch[1].p.w; 
+//   v[1][1].x <- patch[1].n.x; v[1][1].y <- patch[1].n.y; v[1][1].z <- patch[1].n.z; 
+//   v[2][0].x <- patch[2].p.x; v[2][0].y <- patch[2].p.y; v[2][0].z <- patch[2].p.z; v[2][0].w <- patch[2].p.w; 
+//   v[2][1].x <- patch[2].n.x; v[2][1].y <- patch[2].n.y; v[2][1].z <- patch[2].n.z; 
+//   v[3][0].x <- patch[3].p.x; v[3][0].y <- patch[3].p.y; v[3][0].z <- patch[3].p.z; v[3][0].w <- patch[3].p.w; 
+//   v[3][1].x <- patch[3].n.x; v[3][1].y <- patch[3].n.y; v[3][1].z <- patch[3].n.z; 
+//   v[4][0].x <- patch[4].p.x; v[4][0].y <- patch[4].p.y; v[4][0].z <- patch[4].p.z; v[4][0].w <- patch[4].p.w; 
+//   v[4][1].x <- patch[4].n.x; v[4][1].y <- patch[4].n.y; v[4][1].z <- patch[4].n.z; 
+//   v[5][0].x <- patch[5].p.x; v[5][0].y <- patch[5].p.y; v[5][0].z <- patch[5].p.z; v[5][0].w <- patch[5].p.w; 
+//   v[5][1].x <- patch[5].n.x; v[5][1].y <- patch[5].n.y; v[5][1].z <- patch[5].n.z; 
+//   v[6][0].x <- patch[6].p.x; v[6][0].y <- patch[6].p.y; v[6][0].z <- patch[6].p.z; v[6][0].w <- patch[6].p.w; 
+//   v[6][1].x <- patch[6].n.x; v[6][1].y <- patch[6].n.y; v[6][1].z <- patch[6].n.z; 
+//   v[7][0].x <- patch[7].p.x; v[7][0].y <- patch[7].p.y; v[7][0].z <- patch[7].p.z; v[7][0].w <- patch[7].p.w; 
+//   v[7][1].x <- patch[7].n.x; v[7][1].y <- patch[7].n.y; v[7][1].z <- patch[7].n.z; 
+//   v[8][0].x <- patch[8].p.x; v[8][0].y <- patch[8].p.y; v[8][0].z <- patch[8].p.z; v[8][0].w <- patch[8].p.w; 
+//   v[8][1].x <- patch[8].n.x; v[8][1].y <- patch[8].n.y; v[8][1].z <- patch[8].n.z; 
+//   v[9][0].x <- patch[9].p.x; v[9][0].y <- patch[9].p.y; v[9][0].z <- patch[9].p.z; v[9][0].w <- patch[9].p.w; 
+//   v[9][1].x <- patch[9].n.x; v[9][1].y <- patch[9].n.y; v[9][1].z <- patch[9].n.z; 
+//   v[10][0].x <- patch[10].p.x; v[10][0].y <- patch[10].p.y; v[10][0].z <- patch[10].p.z; v[10][0].w <- patch[10].p.w; 
+//   v[10][1].x <- patch[10].n.x; v[10][1].y <- patch[10].n.y; v[10][1].z <- patch[10].n.z; 
+//   v[11][0].x <- patch[11].p.x; v[11][0].y <- patch[11].p.y; v[11][0].z <- patch[11].p.z; v[11][0].w <- patch[11].p.w; 
+//   v[11][1].x <- patch[11].n.x; v[11][1].y <- patch[11].n.y; v[11][1].z <- patch[11].n.z; 
+//   v[12][0].x <- patch[12].p.x; v[12][0].y <- patch[12].p.y; v[12][0].z <- patch[12].p.z; v[12][0].w <- patch[12].p.w; 
+//   v[12][1].x <- patch[12].n.x; v[12][1].y <- patch[12].n.y; v[12][1].z <- patch[12].n.z; 
+//   v[13][0].x <- patch[13].p.x; v[13][0].y <- patch[13].p.y; v[13][0].z <- patch[13].p.z; v[13][0].w <- patch[13].p.w; 
+//   v[13][1].x <- patch[13].n.x; v[13][1].y <- patch[13].n.y; v[13][1].z <- patch[13].n.z; 
+//   v[14][0].x <- patch[14].p.x; v[14][0].y <- patch[14].p.y; v[14][0].z <- patch[14].p.z; v[14][0].w <- patch[14].p.w; 
+//   v[14][1].x <- patch[14].n.x; v[14][1].y <- patch[14].n.y; v[14][1].z <- patch[14].n.z; 
+//   v[15][0].x <- patch[15].p.x; v[15][0].y <- patch[15].p.y; v[15][0].z <- patch[15].p.z; v[15][0].w <- patch[15].p.w; 
+//   v[15][1].x <- patch[15].n.x; v[15][1].y <- patch[15].n.y; v[15][1].z <- patch[15].n.z
+//
+#line 57 "C:\dx-fixtures\tess_stages.hlsl"
+mov r0.x, l(4)
+imul null, r0.x, r0.x, vOutputControlPointID
+mov r0.y, l(4)
+imul null, r0.y, r0.y, vOutputControlPointID
+mov r0.z, l(3)
+iadd r0.y, r0.z, r0.y
+utof r1.xyzw, vPrim
+mul r1.xyzw, r1.xyzw, v[r0.y + 0][0].xyzw
+add r0.xyzw, r1.xyzw, v[r0.x + 0][0].xyzw  // r0.x <- o.p.x; r0.y <- o.p.y; r0.z <- o.p.z; r0.w <- o.p.w
+
+#line 58
+mov r1.x, vOutputControlPointID
+mov r1.xyz, v[r1.x + 0][1].xyzx  // r1.x <- o.n.x; r1.y <- o.n.y; r1.z <- o.n.z
+
+#line 59
+mov o0.xyzw, r0.xyzw
+mov o1.xyz, r1.xyzx
+ret 
+hs_join_phase 
+dcl_input vicp[16][0].w
+dcl_output_siv o0.x, finalQuadUeq0EdgeTessFactor
+dcl_output_siv o1.x, finalQuadVeq0EdgeTessFactor
+dcl_output_siv o2.x, finalQuadUeq1EdgeTessFactor
+dcl_output_siv o3.x, finalQuadVeq1EdgeTessFactor
+dcl_output_siv o4.x, finalQuadUInsideTessFactor
+dcl_output_siv o5.x, finalQuadVInsideTessFactor
+dcl_temps 2
+
+#line 48
+add r0.x, cb0[0].x, vicp[0][0].w  // r0.x <- o.e[0]
+add r0.y, cb0[0].y, vicp[4][0].w  // r0.y <- o.e[1]
+add r0.z, cb0[0].z, vicp[8][0].w  // r0.z <- o.e[2]
+add r0.w, cb0[0].w, vicp[12][0].w  // r0.w <- o.e[3]
+
+#line 49
+mov r1.x, cb0[0].x  // r1.x <- o.i[0]
+
+#line 50
+mov r1.y, cb0[0].y  // r1.y <- o.i[1]
+
+#line 51
+mov o0.x, r0.x
+mov o1.x, r0.y
+mov o2.x, r0.z
+mov o3.x, r0.w
+mov o4.x, r1.x
+mov o5.x, r1.y
+ret 

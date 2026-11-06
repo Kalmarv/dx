@@ -1,6 +1,8 @@
 // Class instances that hold one texture, textures and samplers, one of each, and an array of instances: the
 // `// Texture:` lines of the buffer definitions.
 // fxc: /T ps_5_0 /E main /Fo classes_textures.ps50.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Fo classes_textures.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Od /Fo classes_textures.ps50.zod.dxbc
 interface IL { float3 f(float3 n); };
 class T1 : IL { float4 k; Texture2D t; float3 f(float3 n) { return t.Load(int3(n.xy, 0)).xyz * k.xyz; } };
 class S2 : IL { float4 k; SamplerState a; SamplerState b; Texture2D t; float3 f(float3 n) { return t.Sample(a, n.xy).xyz + t.Sample(b, n.yz).xyz * k.x; } };

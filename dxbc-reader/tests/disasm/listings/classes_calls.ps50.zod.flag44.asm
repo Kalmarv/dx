@@ -1,0 +1,124 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed | skipOptimization
+      dcl_constantbuffer CB0[1], immediateIndexed
+      dcl_function_body fb0
+      dcl_function_body fb1
+      dcl_function_body fb2
+      dcl_function_body fb3
+      dcl_function_body fb4
+      dcl_function_body fb5
+      dcl_function_body fb6
+      dcl_function_body fb7
+      dcl_function_body fb8
+      dcl_function_body fb9
+      dcl_function_table ft0 = {fb0, fb2, fb4, fb6}
+      dcl_function_table ft1 = {fb1, fb3, fb5, fb7}
+      dcl_function_table ft2 = {fb8}
+      dcl_function_table ft3 = {fb9}
+      dcl_interface_dynamicindexed fp0[3][4] = {ft0, ft1}
+      dcl_interface fp3[1][1] = {ft2, ft3}
+      dcl_input_ps linear v0.xyz
+      dcl_output o0.xyzw
+      dcl_temps 2
+//
+// Initial variable locations:
+//   v0.x <- n.x; v0.y <- n.y; v0.z <- n.z; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 12 "C:\dx-fixtures\classes_calls.hlsl"
+   0: nop 
+   1: mov r0.xyz, v0.xyzx
+   2: fcall fp0[0][0]
+   3: nop 
+   4: mov r0.xyz, v0.xyzx
+   5: fcall fp0[1][1]
+   6: add r0.xyz, r0.xyzx, r1.xyzx
+   7: nop 
+   8: mov r1.xyz, v0.xyzx
+   9: fcall fp0[2][2]
+  10: add r0.xyz, r0.xyzx, r1.xyzx
+  11: nop 
+  12: mov r0.w, v0.x
+  13: mov r1.x, cb0[0].x
+  14: fcall fp0[r1.x + 0][3]
+  15: add r0.xyz, r0.xyzx, r1.yyyy
+  16: nop 
+  17: mov r0.w, v0.y
+  18: fcall fp3[0][0]
+  19: add o0.xyz, r0.xyzx, r1.xxxx
+  20: itof o0.w, l(1)
+  21: ret 
+
+#line 8 "C:\dx-fixtures\classes_calls.hlsl"
+  22: label fb0
+  23: nop   // this[0].x <- this.x; this[0].y <- this.y; this[0].z <- this.z; this[0].w <- this.w
+  24: mov r1.xyz, -r0.xyzx
+  25: ret 
+
+#line 7 "C:\dx-fixtures\classes_calls.hlsl"
+  26: label fb1
+  27: nop   // this[0].x <- this.x; this[0].y <- this.y; this[0].z <- this.z; this[0].w <- this.w
+  28: mov r0.w, this[0].y
+  29: mov r1.w, this[0].x
+  30: add r1.xyz, r0.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+  31: ret 
+
+#line 8 "C:\dx-fixtures\classes_calls.hlsl"
+  32: label fb2
+  33: nop   // this[1].x <- this.x; this[1].y <- this.y; this[1].z <- this.z; this[1].w <- this.w
+  34: mov r0.xyz, r0.xyzx
+  35: ret 
+
+#line 7 "C:\dx-fixtures\classes_calls.hlsl"
+  36: label fb3
+  37: nop   // this[1].x <- this.x; this[1].y <- this.y; this[1].z <- this.z; this[1].w <- this.w
+  38: mov r0.w, this[1].y
+  39: mov r1.w, this[1].x
+  40: mul r0.xyz, r0.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+  41: ret 
+
+#line 8 "C:\dx-fixtures\classes_calls.hlsl"
+  42: label fb4
+  43: nop   // this[2].x <- this.x; this[2].y <- this.y; this[2].z <- this.z; this[2].w <- this.w
+  44: mov r1.xyz, r1.xyzx
+  45: ret 
+
+#line 7 "C:\dx-fixtures\classes_calls.hlsl"
+  46: label fb5
+  47: nop   // this[2].x <- this.x; this[2].y <- this.y; this[2].z <- this.z; this[2].w <- this.w
+  48: mov r0.w, this[2].y
+  49: mov r1.w, this[2].x
+  50: mul r1.xyz, r1.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+  51: ret 
+
+#line 8 "C:\dx-fixtures\classes_calls.hlsl"
+  52: label fb6
+  53: nop 
+  54: itof r1.z, l(2)
+  55: mul r1.y, r0.w, r1.z
+  56: ret 
+
+#line 7 "C:\dx-fixtures\classes_calls.hlsl"
+  57: label fb7
+  58: nop 
+  59: mov r1.z, this[r1.x + 0].y
+  60: mov r1.x, this[r1.x + 0].x
+  61: mov r1.x, -cb[r1.x + 0][r1.z + 0].x
+  62: add r1.y, r0.w, r1.x
+  63: ret 
+
+#line 8 "C:\dx-fixtures\classes_calls.hlsl"
+  64: label fb8
+  65: nop 
+  66: itof r1.y, l(2)
+  67: mul r1.x, r0.w, r1.y
+  68: ret 
+
+#line 7 "C:\dx-fixtures\classes_calls.hlsl"
+  69: label fb9
+  70: nop 
+  71: mov r1.y, this[3].y
+  72: mov r1.z, this[3].x
+  73: mov r1.y, -cb[r1.z + 0][r1.y + 0].x
+  74: add r1.x, r0.w, r1.y
+  75: ret 

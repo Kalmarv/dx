@@ -5,6 +5,7 @@ use std::fmt::Write;
 use super::Options;
 use super::number::{self, Style};
 use crate::decode::{Declaration, Declared, Decoded, Index, Instruction, Operand, Register, Selection};
+use crate::spdb::Annotations;
 use crate::{GlobalFlags, InfoReturn, OperandClass, OperandFormat};
 
 const COMPONENTS: [char; 4] = ['x', 'y', 'z', 'w'];
@@ -932,8 +933,32 @@ fn numbered(opcode: u16) -> bool {
     matches!(opcode, 114..=116)
 }
 
-/// The program's lines after the header: the version line, the declarations and instructions in program order.
-pub(super) fn write(out: &mut String, program: &Decoded, options: &Options) {
+/// A line of the program: the version, a declaration or an instruction.
+enum Row<'a> {
+    Version,
+    Declaration(&'a Declaration),
+    Instruction(&'a Instruction),
+}
+
+impl Row<'_> {
+    /// The word of the token stream the row starts at.
+    fn word(&self) -> usize {
+        match self {
+            Row::Version => 0,
+            Row::Declaration(d) => d.word,
+            Row::Instruction(i) => i.word,
+        }
+    }
+}
+
+/// The program's lines after the header: the version line, the declarations and instructions in program order, and
+/// with `annotations` the `SPDB` part's lines and locations among them.
+pub(super) fn write(
+    out: &mut String,
+    program: &Decoded,
+    options: &Options,
+    annotations: Option<&Annotations>,
+) {
     let writer = Writer {
         sm51: (program.major, program.minor) >= (5, 1),
         hex: options.hex_literals,
@@ -955,32 +980,88 @@ pub(super) fn write(out: &mut String, program: &Decoded, options: &Options) {
             let _ = write!(out, "0x{:08X}: ", word.saturating_mul(4));
         }
     };
-    prefix(out, 0, false);
-    let _ = writeln!(out, "{}", program.target());
+    // the rows in program order: declarations and instructions interleave by their words
+    let mut rows = vec![Row::Version];
     let mut declarations = program.declarations.iter().peekable();
     let mut instructions = program.instructions.iter().peekable();
-    let mut depth: i32 = 0;
     loop {
         let next_declaration = declarations.peek().map(|d| d.word);
         let next_instruction = instructions.peek().map(|i| i.word);
         match (next_declaration, next_instruction) {
-            (Some(d), i) if i.is_none_or(|i| d < i) => {
-                if let Some(d) = declarations.next() {
-                    prefix(out, d.word, numbered(d.opcode));
-                    writer.declaration(out, d);
-                }
-            }
-            (_, Some(_)) => {
-                if let Some(i) = instructions.next() {
-                    prefix(out, i.word, true);
-                    let (before, after) = indentation(i.opcode);
-                    depth = depth.saturating_add(before).max(0);
-                    out.push_str(&" ".repeat(usize::try_from(depth).unwrap_or(0).saturating_mul(2)));
-                    writer.instruction(out, i);
-                    depth = depth.saturating_add(after);
-                }
-            }
+            (Some(d), i) if i.is_none_or(|i| d < i) => rows.extend(declarations.next().map(Row::Declaration)),
+            (_, Some(_)) => rows.extend(instructions.next().map(Row::Instruction)),
             _ => break,
+        }
+    }
+    let offset = |row: &Row<'_>| u32::try_from(row.word().saturating_mul(4)).unwrap_or(u32::MAX);
+    // the file and line of the last `#line`
+    let mut source: Option<(&str, u32)> = None;
+    let mut depth: i32 = 0;
+    for (n, row) in rows.iter().enumerate() {
+        let at = offset(row);
+        let mut text = String::new();
+        let numbered = match row {
+            Row::Version => {
+                text.push_str(&program.target());
+                false
+            }
+            Row::Declaration(d) => {
+                writer.declaration(&mut text, d);
+                numbered(d.opcode)
+            }
+            Row::Instruction(i) => {
+                let (before, after) = indentation(i.opcode);
+                depth = depth.saturating_add(before).max(0);
+                text.push_str(&" ".repeat(usize::try_from(depth).unwrap_or(0).saturating_mul(2)));
+                writer.instruction(&mut text, i);
+                depth = depth.saturating_add(after);
+                true
+            }
+        };
+        let bare = text.trim_start();
+        if let Some(a) = annotations {
+            if a.first == Some(at) && !a.initial.is_empty() {
+                out.push_str("//\n// Initial variable locations:\n");
+                let last = a.initial.len().saturating_sub(1);
+                for (g, group) in a.initial.iter().enumerate() {
+                    let _ = writeln!(out, "//   {group}{}", if g < last { "; " } else { "" });
+                }
+                out.push_str("//\n");
+            }
+            // a `#line` where the line or the file changes: the path with the first, a new file and a label
+            if let Some((path, line)) = a.sources.get(&at)
+                && source != Some((path.as_str(), *line))
+            {
+                match source {
+                    None => {
+                        let _ = writeln!(out, "#line {line} \"{path}\"");
+                    }
+                    Some((file, _)) if file != path || bare.starts_with("label ") => {
+                        let _ = writeln!(out, "\n#line {line} \"{path}\"");
+                    }
+                    Some(_) => {
+                        let _ = writeln!(out, "\n#line {line}");
+                    }
+                }
+                source = Some((path.as_str(), *line));
+            }
+        }
+        prefix(out, row.word(), numbered);
+        out.push_str(&text);
+        // after an instruction, the locations that start at the next row (`else` says they are the prior ones)
+        if let Some(a) = annotations
+            && a.first.is_none_or(|first| at >= first)
+            && !bare.starts_with("dcl_")
+            && let Some(starting) = rows
+                .get(n.saturating_add(1))
+                .and_then(|next| a.starting.get(&offset(next)))
+        {
+            let prior = if bare.starts_with("else") {
+                "Prior locations: "
+            } else {
+                ""
+            };
+            let _ = write!(out, "  // {prior}{}", starting.join("; "));
         }
         out.push('\n');
     }

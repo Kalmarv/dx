@@ -1,0 +1,45 @@
+hs_5_0
+hs_decls 
+dcl_input_control_point_count 2
+dcl_output_control_point_count 2
+dcl_tessellator_domain domain_isoline
+dcl_tessellator_partitioning partitioning_pow2
+dcl_tessellator_output_primitive output_line
+dcl_globalFlags refactoringAllowed | skipOptimization
+hs_control_point_phase 
+dcl_input vOutputControlPointID
+dcl_input v[2][0].xyzw
+dcl_input v[2][1].xyz
+dcl_output o0.xyzw
+dcl_output o1.xyz
+dcl_temps 1
+//
+// Initial variable locations:
+//   vOutputControlPointID.x <- i; 
+//   o1.x <- <hs_line return value>.n.x; o1.y <- <hs_line return value>.n.y; o1.z <- <hs_line return value>.n.z; 
+//   o0.x <- <hs_line return value>.p.x; o0.y <- <hs_line return value>.p.y; o0.z <- <hs_line return value>.p.z; o0.w <- <hs_line return value>.p.w; 
+//   v[0][0].x <- patch[0].p.x; v[0][0].y <- patch[0].p.y; v[0][0].z <- patch[0].p.z; v[0][0].w <- patch[0].p.w; 
+//   v[0][1].x <- patch[0].n.x; v[0][1].y <- patch[0].n.y; v[0][1].z <- patch[0].n.z; 
+//   v[1][0].x <- patch[1].p.x; v[1][0].y <- patch[1].p.y; v[1][0].z <- patch[1].p.z; v[1][0].w <- patch[1].p.w; 
+//   v[1][1].x <- patch[1].n.x; v[1][1].y <- patch[1].n.y; v[1][1].z <- patch[1].n.z
+//
+#line 70 "C:\dx-fixtures\tess_stages.hlsl"
+mov r0.x, vOutputControlPointID
+mov o0.xyzw, v[r0.x + 0][0].xyzw
+mov o1.xyz, v[r0.x + 0][1].xyzx
+ret 
+hs_join_phase 
+dcl_output_siv o0.x, finalLineDensityTessFactor
+dcl_output_siv o1.x, finalLineDetailTessFactor
+dcl_temps 1
+
+#line 64
+itof r0.x, l(0x00000008)  // r0.x <- o.e[0]
+
+#line 65
+itof r0.y, l(0x00000001)  // r0.y <- o.e[1]
+
+#line 66
+mov o0.x, r0.x
+mov o1.x, r0.y
+ret 

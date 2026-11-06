@@ -25,8 +25,10 @@ pub struct Options {
     pub offsets: bool,
     /// Every 32-bit value as eight hex digits, `l(0x3f800000)` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80).
     pub hex_literals: bool,
-    /// A `/Zi` build's source lines and variable locations, where the listing writes them: in a feature level 9
-    /// container's Direct3D 9 program (cleared by `D3D_DISASM_DISABLE_DEBUG_INFO`, 0x10).
+    /// A `/Zi` build's source lines and variable locations: from the `SPDB` part, `#line` lines, the variables'
+    /// initial locations before the first instruction with a line, and after an instruction the locations that start
+    /// at the next; from a feature level 9 container's Direct3D 9 program, its own (cleared by
+    /// `D3D_DISASM_DISABLE_DEBUG_INFO`, 0x10).
     pub debug_info: bool,
 }
 
@@ -129,7 +131,11 @@ pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
             level9::write(&mut out, &part, options)?;
         }
     }
-    program::write(&mut out, &program, options);
+    let annotations = match directory.iter().any(|c| &c.kind == b"SPDB") && options.debug_info {
+        true => Some(crate::spdb::annotations(chunk(&directory, b"SPDB")?)?),
+        false => None,
+    };
+    program::write(&mut out, &program, options, annotations.as_ref());
     if !options.header {
         return Ok(out);
     }

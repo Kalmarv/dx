@@ -9,13 +9,6 @@ use compare::{difference, flag_words};
 use dxbc_reader::{Options, disassemble_with};
 use std::path::{Path, PathBuf};
 
-/// The programs whose listings differ for a reason this disassembler does not write yet. Each is checked to still
-/// differ, so the list cannot go stale.
-const GAPS: &[(&str, &str)] = &[(
-    "ps_sm5.debug",
-    "the source and variable locations of an SPDB part (the PDB fxc /Zi embeds)",
-)];
-
 fn containers() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let mut found: Vec<PathBuf> = ["disasm", "fixtures"]
@@ -48,16 +41,9 @@ fn listings_are_microsofts() {
     for container in containers() {
         let stem = container.file_stem().unwrap().to_str().unwrap().to_owned();
         let bytes = std::fs::read(&container).unwrap();
-        let gap = GAPS.iter().find(|(name, _)| *name == stem);
         for flags in flag_words() {
             let theirs = listing(&container, flags);
             let ours = disassemble_with(&bytes, &Options::from_flags(flags).unwrap()).unwrap();
-            if gap.is_some() {
-                if flags == 0 {
-                    assert_ne!(ours, theirs, "{stem} now matches: take it off GAPS");
-                }
-                continue;
-            }
             compared += 1;
             differing.extend(difference(&format!("{stem} flags 0x{flags:02x}"), &ours, &theirs));
         }
@@ -68,8 +54,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 82 programs outside the gaps, each with 23 listings
-    assert_eq!(compared, 1886);
+    // 174 programs, 92 of them fxc /Zi builds with an SPDB part, each with 23 listings
+    assert_eq!(compared, 4002);
 }
 
 /// The programs of another disassembler's tests (`tests/third-party/t7_dxbc`, see its README), against the listings

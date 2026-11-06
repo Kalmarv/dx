@@ -4,6 +4,10 @@
 // fxc: /T ps_5_0 /E main /Fo ps_sm5.ps50.dxbc
 // fxc: /T ps_5_0 /E main /D EARLY /Fo ps_sm5.early.dxbc
 // fxc: /T ps_5_0 /E main /Od /Zi /Fo ps_sm5.debug.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Fo ps_sm5.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Od /Fo ps_sm5.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D EARLY /Zi /Fo ps_sm5.early.zi.dxbc
+// fxc: /T ps_5_0 /E main /D EARLY /Zi /Od /Fo ps_sm5.early.zod.dxbc
 RWTexture2D<float4> image : register(u2);
 RWStructuredBuffer<uint> counts : register(u3);
 globallycoherent RWByteAddressBuffer bytes : register(u4);

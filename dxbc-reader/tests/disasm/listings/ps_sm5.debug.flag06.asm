@@ -98,7 +98,7 @@
 //   o0.x <- <main return value>.c.x; o0.y <- <main return value>.c.y; o0.z <- <main return value>.c.z; o0.w <- <main return value>.c.w; 
 //   x0 <- arr
 //
-#line 28 "C:\dx-fixtures\ps_sm5.hlsl"
+#line 32 "C:\dx-fixtures\ps_sm5.hlsl"
    0: mov r0.x, l(0)  // r0.x <- i
    1: itof r1.xyzw, r0.xxxx
    2: mul r1.xyzw, r1.xyzw, v1.xyzw
@@ -120,12 +120,12 @@
   18: mul r0.xyzw, r0.xyzw, v1.xyzw
   19: mov x0[4].xyzw, r0.xyzw
 
-#line 29
+#line 33
   20: mov r0.x, l(5)
   21: udiv null, r0.x, cb0[2].x, r0.x
   22: mov r0.xyzw, x0[r0.x + 0].xyzw  // r0.x <- c.x; r0.y <- c.y; r0.z <- c.z; r0.w <- c.w
 
-#line 30
+#line 34
   23: eval_sample_index r1.xyzw, v1.xyzw, v6.x
   24: eval_centroid r2.xyzw, v1.xyzw
   25: add r1.xyzw, r1.xyzw, r2.xyzw
@@ -133,7 +133,7 @@
   27: add r1.xyzw, r1.xyzw, r2.xyzw
   28: add r0.xyzw, r0.xyzw, r1.xyzw
 
-#line 31
+#line 35
   29: mov r1.x, v6.x
   30: samplepos r1.xy, rasterizer.xyxx, r1.x
   31: sampleinfo_uint r1.z, rasterizer.x
@@ -142,22 +142,22 @@
   34: add r1.xy, r1.xyxx, v2.xyxx
   35: add r1.xy, r0.xyxx, r1.xyxx  // r1.x <- c.x; r1.y <- c.y
 
-#line 32
+#line 36
   36: ftod r1.zw, r1.x
   37: dmul r1.zw, r1.zwzw, cb0[1].xyxy
   38: dadd r1.zw, r1.zwzw, cb0[1].zwzw
   39: dmov r1.zw, r1.zwzw  // r1.z <- d
 
-#line 33
+#line 37
   40: dfma r1.zw, r1.zwzw, cb0[1].zwzw, cb0[1].xyxy
   41: dmov r1.zw, r1.zwzw  // r1.z <- d
 
-#line 34
+#line 38
   42: ddiv r2.xy, r1.zwzw, cb0[1].zwzw
   43: dtof r2.x, r2.xyxy
   44: add r0.x, r1.x, r2.x  // r0.x <- c.x
 
-#line 35
+#line 39
   45: dmin r2.xy, r1.zwzw, cb0[1].xyxy
   46: dtof r1.x, r2.xyxy
   47: deq r1.z, r1.zwzw, cb0[1].zwzw
@@ -165,45 +165,45 @@
   49: add r1.x, r1.z, r1.x
   50: add r0.y, r1.x, r1.y  // r0.y <- c.y
 
-#line 36
+#line 40
   51: mov r1.xyzw {min16f}, cb0[0].xyxy {def32 as min16f}
   52: mul r1.xyzw {min16f}, r1.xyzw {min16f}, v5.xyxy {min16f}
   53: mov r3.x {min16f}, l(1.500000) {def32 as min16f}
   54: add r1.xyzw {min16f}, r1.xyzw {min16f}, r3.xxxx {min16f}  // r1.z <- h.x; r1.w <- h.y
 
-#line 38
+#line 42
   55: mov r2.x, cb0[2].x
   56: mov r2.y, l(0)
   57: imm_atomic_iadd r2.x, u3, r2.xyxx, l(1)
   58: mov r2.x, r2.x  // r2.x <- old
 
-#line 39
+#line 43
   59: ftou r3.xyzw, v0.xyyy
   60: store_uav_typed u2.xyzw, r3.xyzw, r0.xyzw
 
-#line 40
+#line 44
   61: mov r2.y, l(4)
   62: imul null, r2.y, r2.y, cb0[2].x
   63: atomic_umax u4, r2.y, r2.x
 
-#line 41
+#line 45
   64: store_raw u4.xyz, l(16), r0.xyzx
 
-#line 42
+#line 46
   65: add r0.xyzw, r0.xyzw, v3.xyzx
   66: add r0.xyzw, r0.xyzw, v4.xxxx  // r0.x <- o.c.x; r0.y <- o.c.y; r0.z <- o.c.z; r0.w <- o.c.w
 
-#line 43
+#line 47
   67: mov r1.xyzw {min16f}, r1.xyzw {min16f}  // r1.x <- o.h.x; r1.y <- o.h.y; r1.z <- o.h.z; r1.w <- o.h.w
 
-#line 44
+#line 48
   68: add r2.x, v0.z, l(0.010000)  // r2.x <- o.d
 
-#line 45
+#line 49
   69: mov r2.y, l(5)
   70: and r2.y, r2.y, vCoverage.x  // r2.y <- o.mask
 
-#line 46
+#line 50
   71: mov o0.xyzw, r0.xyzw
   72: mov o1.xyzw {min16f}, r1.xyzw {min16f}
   73: mov oDepthGE, r2.x

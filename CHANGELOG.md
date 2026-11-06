@@ -13,7 +13,7 @@
   as a container or a Direct3D 9 program does, so the other files beside them (scripts, tables) are left out and
   counted. `--check` finds a program's listing by its whole file name first (`NAME.vpo.flag24.asm`), and by `NAME`
   alone only where no other program in the folder is `NAME` with another extension; it fails when no program has a
-  listing to compare. `dx disasm` says on stderr when a container's `SPDB` annotations are left out.
+  listing to compare.
 - `dxbc-reader`: `disassemble` and `disassemble_with(&[u8], &Options)` write a Shader Model 4, 5 or 5.1 container's
   listing as `D3DDisassemble` (d3dcompiler_47 10.0.26100.4654) does, byte for byte: the header (buffer definitions,
   resource bindings, signatures, functionality notes, tessellation tables), the program and its slot count.
@@ -23,19 +23,17 @@
   refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's disassembler refuses too. The listings are identical to
   Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 432 of Sekiro's under each of 23 flag
   words, and for 1,817 listings of 79 fixture programs under the same 23 (no flags, and the flags that change the text
-  alone, in pairs and all together), class linkage included; a container with an `SPDB` part (the PDB
-  `fxc /Zi` embeds: source lines and variable locations) differs, in those annotations only.
+  alone, in pairs and all together), class linkage and `fxc /Zi` builds included.
 - `dxbc-reader`: the listing writes an operand's minimum precision as Microsoft's does where an instruction mixes
   precisions: a source says `{def32 as min16f}` only where it is read at the result's precision (a source of the
   first destination's type, not a comparison's or a shift's amount), every other operand its own (`{min16u}`, none for
   full precision), and an absolute value holds it inside its bars (`|r0.z {min16f}|`). It wrote both precisions on
   every operand that differed from the first, destinations, conversions, load addresses, resources and samplers
-  included: 20 of the 3,316 `ps_4_0` programs of Sledding Game's Unity player differed for it. All 4,838 of its 4,854
-  programs without an `SPDB` part are now identical (3,300 `ps_4_0`, 1,538 `ps_5_0`).
+  included: 20 of the 3,316 `ps_4_0` programs of Sledding Game's Unity player differed for it.
 - `dxbc-reader` and `d3d9-reader`: real-data tests (`tests/corpora.rs`, through `primase-testdata` and `GAME_DATA`;
   each skips where its oracle entry is not configured) compare the listing with Microsoft's for whole games:
   Riders Republic's 2,443 programs, Sekiro's 432 under 23 flag words (9,936 listings), Sledding Game's Unity
-  player's 4,854 (4,838 compared, the 16 with an `SPDB` part checked to differ), Shaun White Skateboarding's 7,306
+  player's 4,854 (16 of them `/Zi` builds), Shaun White Skateboarding's 7,306
   and three more of its programs. The counts quoted in this file were one-off runs before.
 - `dxbc-reader`: the tests compare the listing with Microsoft's for the 19 test programs of t7_dxbc (MIT, copied with
   its licence into `tests/third-party/t7_dxbc`), HLSL this crate's listing was not written against.
@@ -53,6 +51,15 @@
   (`ps_4_0_level_9_1` and the like): the Direct3D 9 program and the tables that map constant buffers, samplers and
   resources onto its registers (`Level9`, `ConstantMapping`, `ScalarMapping`, `SamplerMapping`, `RuntimeConstant`).
   The listing writes them and the program, as Microsoft's does. `dxbc-reader` now depends on `d3d9-reader`.
+- `dxbc-reader`: the listing writes the `SPDB` part of an `fxc /Zi` build as Microsoft's does: `#line N "file"` and
+  `#line N` lines (the inlined function's line where an instruction is inlined), the variables' initial locations
+  before the first instruction with a line (`// Initial variable locations:`, one line to a register), and after an
+  instruction the locations that start at the next one (`// r0.x <- c.x; r0.y <- uv.y`, with `Prior locations: `
+  after an `else`), struct members, array elements, matrix elements and vector components named by the PDB's types;
+  `0x10` leaves them out (`Options::debug_info`). The PDB is read from the part's bytes (MSF streams, DBI modules,
+  C13 lines, checksums and inlinee lines, symbols, types). All 4,854 programs of Sledding Game's Unity player are now
+  identical, its 16 `/Zi` builds included, and so are the listings of 92 `/Zi` fixture programs (with and without
+  `/Od`, class linkage, every stage, level 9) under the 23 flag words. `dx disasm` no longer warns about them.
 - `d3d9-reader`: a constant table may name a constant once in each register set: fxc gives a uniform read both as
   an integer and as a float a range in each (`int2 limit` as a loop count in `i0` and a float in `c0`). Reading
   refused the second; it now refuses a name only when it repeats within one set, and the listing names such a

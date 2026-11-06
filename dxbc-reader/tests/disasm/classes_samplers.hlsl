@@ -1,5 +1,7 @@
 // Class instances that hold samplers but no texture.
 // fxc: /T ps_5_0 /E main /Fo classes_samplers.ps50.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Fo classes_samplers.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /Zi /Od /Fo classes_samplers.ps50.zod.dxbc
 interface IL { float3 f(float3 n); };
 Texture2D gT;
 class S1 : IL { float4 k; SamplerState s; float3 f(float3 n) { return gT.Sample(s, n.xy).xyz * k.xyz; } };

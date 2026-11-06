@@ -1,0 +1,552 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_function_body fb0
+      dcl_function_body fb1
+      dcl_function_body fb2
+      dcl_function_body fb3
+      dcl_function_body fb4
+      dcl_function_body fb5
+      dcl_function_body fb6
+      dcl_function_body fb7
+      dcl_function_body fb8
+      dcl_function_body fb9
+      dcl_function_body fb10
+      dcl_function_body fb11
+      dcl_function_body fb12
+      dcl_function_body fb13
+      dcl_function_body fb14
+      dcl_function_body fb15
+      dcl_function_body fb16
+      dcl_function_body fb17
+      dcl_function_body fb18
+      dcl_function_body fb19
+      dcl_function_body fb20
+      dcl_function_body fb21
+      dcl_function_body fb22
+      dcl_function_body fb23
+      dcl_function_body fb24
+      dcl_function_body fb25
+      dcl_function_body fb26
+      dcl_function_body fb27
+      dcl_function_body fb28
+      dcl_function_body fb29
+      dcl_function_body fb30
+      dcl_function_body fb31
+      dcl_function_body fb32
+      dcl_function_body fb33
+      dcl_function_body fb34
+      dcl_function_body fb35
+      dcl_function_body fb36
+      dcl_function_body fb37
+      dcl_function_body fb38
+      dcl_function_body fb39
+      dcl_function_body fb40
+      dcl_function_body fb41
+      dcl_function_body fb42
+      dcl_function_body fb43
+      dcl_function_body fb44
+      dcl_function_body fb45
+      dcl_function_body fb46
+      dcl_function_body fb47
+      dcl_function_body fb48
+      dcl_function_body fb49
+      dcl_function_body fb50
+      dcl_function_body fb51
+      dcl_function_body fb52
+      dcl_function_body fb53
+      dcl_function_body fb54
+      dcl_function_body fb55
+      dcl_function_body fb56
+      dcl_function_body fb57
+      dcl_function_body fb58
+      dcl_function_body fb59
+      dcl_function_body fb60
+      dcl_function_body fb61
+      dcl_function_body fb62
+      dcl_function_body fb63
+      dcl_function_body fb64
+      dcl_function_body fb65
+      dcl_function_body fb66
+      dcl_function_body fb67
+      dcl_function_body fb68
+      dcl_function_body fb69
+      dcl_function_body fb70
+      dcl_function_body fb71
+      dcl_function_body fb72
+      dcl_function_body fb73
+      dcl_function_body fb74
+      dcl_function_body fb75
+      dcl_function_body fb76
+      dcl_function_body fb77
+      dcl_function_body fb78
+      dcl_function_body fb79
+      dcl_function_table ft0 = {fb0, fb10, fb20}
+      dcl_function_table ft1 = {fb1, fb11, fb21}
+      dcl_function_table ft2 = {fb2, fb12, fb22}
+      dcl_function_table ft3 = {fb3, fb13, fb23}
+      dcl_function_table ft4 = {fb4, fb14, fb24}
+      dcl_function_table ft5 = {fb5, fb15, fb25}
+      dcl_function_table ft6 = {fb6, fb16, fb26}
+      dcl_function_table ft7 = {fb7, fb17, fb27}
+      dcl_function_table ft8 = {fb8, fb18, fb28}
+      dcl_function_table ft9 = {fb9, fb19, fb29}
+      dcl_function_table ft10 = {fb30, fb40}
+      dcl_function_table ft11 = {fb31, fb41}
+      dcl_function_table ft12 = {fb32, fb42}
+      dcl_function_table ft13 = {fb33, fb43}
+      dcl_function_table ft14 = {fb34, fb44}
+      dcl_function_table ft15 = {fb35, fb45}
+      dcl_function_table ft16 = {fb36, fb46}
+      dcl_function_table ft17 = {fb37, fb47}
+      dcl_function_table ft18 = {fb38, fb48}
+      dcl_function_table ft19 = {fb39, fb49}
+      dcl_function_table ft20 = {fb50}
+      dcl_function_table ft21 = {fb51}
+      dcl_function_table ft22 = {fb52}
+      dcl_function_table ft23 = {fb53}
+      dcl_function_table ft24 = {fb54}
+      dcl_function_table ft25 = {fb55}
+      dcl_function_table ft26 = {fb56}
+      dcl_function_table ft27 = {fb57}
+      dcl_function_table ft28 = {fb58}
+      dcl_function_table ft29 = {fb59}
+      dcl_function_table ft30 = {fb60, fb70}
+      dcl_function_table ft31 = {fb61, fb71}
+      dcl_function_table ft32 = {fb62, fb72}
+      dcl_function_table ft33 = {fb63, fb73}
+      dcl_function_table ft34 = {fb64, fb74}
+      dcl_function_table ft35 = {fb65, fb75}
+      dcl_function_table ft36 = {fb66, fb76}
+      dcl_function_table ft37 = {fb67, fb77}
+      dcl_function_table ft38 = {fb68, fb78}
+      dcl_function_table ft39 = {fb69, fb79}
+      dcl_interface fp0[3][3] = {ft0, ft1, ft2, ft3, ft4, ft5, ft6, ft7, ft8, ft9}
+      dcl_interface fp3[2][2] = {ft10, ft11, ft12, ft13, ft14, ft15, ft16, ft17, ft18, ft19}
+      dcl_interface fp5[1][1] = {ft20, ft21, ft22, ft23, ft24, ft25, ft26, ft27, ft28, ft29}
+      dcl_interface fp6[2][2] = {ft30, ft31, ft32, ft33, ft34, ft35, ft36, ft37, ft38, ft39}
+      dcl_input_ps linear v0.xyz
+      dcl_output o0.xyzw
+      dcl_temps 2
+//
+// Initial variable locations:
+//   v0.x <- n.x; v0.y <- n.y; v0.z <- n.z; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 98 "C:\dx-fixtures\classes_slots.hlsl"
+   0: fcall fp0[0][0]
+   1: fcall fp0[1][1]
+   2: add r0.xyz, r0.xyzx, r1.xyzx
+   3: fcall fp0[2][2]
+   4: add r0.xyz, r0.xyzx, r1.xyzx
+   5: fcall fp3[0][0]
+   6: add r0.xyz, r0.xyzx, r1.xyzx
+   7: fcall fp3[1][1]
+   8: add r0.xyz, r0.xyzx, r1.xyzx
+   9: fcall fp5[0][0]
+  10: add r0.xyz, r0.xyzx, r1.xyzx
+  11: fcall fp6[0][0]
+  12: add r0.xyz, r0.xyzx, r1.xyzx
+  13: fcall fp6[1][1]
+  14: add o0.xyz, r0.xyzx, r1.xyzx
+  15: mov o0.w, l(1.000000)
+  16: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+  17: label fb0
+  18: mul r0.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+  19: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+  20: label fb1
+  21: mul r0.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+  22: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+  23: label fb2
+  24: mul r0.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+  25: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+  26: label fb3
+  27: mul r0.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+  28: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+  29: label fb4
+  30: mul r0.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+  31: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+  32: label fb5
+  33: mul r0.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+  34: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+  35: label fb6
+  36: mul r0.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+  37: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+  38: label fb7
+  39: mul r0.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+  40: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+  41: label fb8
+  42: add r0.xyz, v0.xyzx, v0.xyzx
+  43: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+  44: label fb9
+  45: mov r0.xyz, v0.xyzx
+  46: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+  47: label fb10
+  48: mul r1.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+  49: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+  50: label fb11
+  51: mul r1.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+  52: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+  53: label fb12
+  54: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+  55: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+  56: label fb13
+  57: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+  58: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+  59: label fb14
+  60: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+  61: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+  62: label fb15
+  63: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+  64: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+  65: label fb16
+  66: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+  67: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+  68: label fb17
+  69: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+  70: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+  71: label fb18
+  72: add r1.xyz, v0.xyzx, v0.xyzx
+  73: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+  74: label fb19
+  75: mov r1.xyz, v0.xyzx
+  76: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+  77: label fb20
+  78: mul r1.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+  79: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+  80: label fb21
+  81: mul r1.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+  82: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+  83: label fb22
+  84: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+  85: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+  86: label fb23
+  87: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+  88: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+  89: label fb24
+  90: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+  91: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+  92: label fb25
+  93: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+  94: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+  95: label fb26
+  96: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+  97: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+  98: label fb27
+  99: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 100: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 101: label fb28
+ 102: add r1.xyz, v0.xyzx, v0.xyzx
+ 103: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 104: label fb29
+ 105: mov r1.xyz, v0.xyzx
+ 106: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 107: label fb30
+ 108: mul r1.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+ 109: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 110: label fb31
+ 111: mul r1.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+ 112: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 113: label fb32
+ 114: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+ 115: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 116: label fb33
+ 117: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+ 118: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 119: label fb34
+ 120: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+ 121: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 122: label fb35
+ 123: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+ 124: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 125: label fb36
+ 126: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+ 127: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 128: label fb37
+ 129: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 130: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 131: label fb38
+ 132: add r1.xyz, v0.xyzx, v0.xyzx
+ 133: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 134: label fb39
+ 135: mov r1.xyz, v0.xyzx
+ 136: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 137: label fb40
+ 138: mul r1.xyz, v0.yzxy, l(10.000000, 10.000000, 10.000000, 0.000000)
+ 139: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 140: label fb41
+ 141: mul r1.xyz, v0.yzxy, l(9.000000, 9.000000, 9.000000, 0.000000)
+ 142: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 143: label fb42
+ 144: mul r1.xyz, v0.yzxy, l(8.000000, 8.000000, 8.000000, 0.000000)
+ 145: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 146: label fb43
+ 147: mul r1.xyz, v0.yzxy, l(7.000000, 7.000000, 7.000000, 0.000000)
+ 148: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 149: label fb44
+ 150: mul r1.xyz, v0.yzxy, l(6.000000, 6.000000, 6.000000, 0.000000)
+ 151: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 152: label fb45
+ 153: mul r1.xyz, v0.yzxy, l(5.000000, 5.000000, 5.000000, 0.000000)
+ 154: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 155: label fb46
+ 156: mul r1.xyz, v0.yzxy, l(4.000000, 4.000000, 4.000000, 0.000000)
+ 157: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 158: label fb47
+ 159: mul r1.xyz, v0.yzxy, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 160: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 161: label fb48
+ 162: add r1.xyz, v0.yzxy, v0.yzxy
+ 163: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 164: label fb49
+ 165: mov r1.xyz, v0.yzxy
+ 166: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 167: label fb50
+ 168: mul r1.xyz, v0.zxyz, l(10.000000, 10.000000, 10.000000, 0.000000)
+ 169: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 170: label fb51
+ 171: mul r1.xyz, v0.zxyz, l(9.000000, 9.000000, 9.000000, 0.000000)
+ 172: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 173: label fb52
+ 174: mul r1.xyz, v0.zxyz, l(8.000000, 8.000000, 8.000000, 0.000000)
+ 175: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 176: label fb53
+ 177: mul r1.xyz, v0.zxyz, l(7.000000, 7.000000, 7.000000, 0.000000)
+ 178: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 179: label fb54
+ 180: mul r1.xyz, v0.zxyz, l(6.000000, 6.000000, 6.000000, 0.000000)
+ 181: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 182: label fb55
+ 183: mul r1.xyz, v0.zxyz, l(5.000000, 5.000000, 5.000000, 0.000000)
+ 184: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 185: label fb56
+ 186: mul r1.xyz, v0.zxyz, l(4.000000, 4.000000, 4.000000, 0.000000)
+ 187: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 188: label fb57
+ 189: mul r1.xyz, v0.zxyz, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 190: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 191: label fb58
+ 192: add r1.xyz, v0.zxyz, v0.zxyz
+ 193: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 194: label fb59
+ 195: mov r1.xyz, v0.zxyz
+ 196: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 197: label fb60
+ 198: mul r1.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+ 199: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 200: label fb61
+ 201: mul r1.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+ 202: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 203: label fb62
+ 204: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+ 205: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 206: label fb63
+ 207: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+ 208: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 209: label fb64
+ 210: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+ 211: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 212: label fb65
+ 213: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+ 214: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 215: label fb66
+ 216: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+ 217: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 218: label fb67
+ 219: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 220: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 221: label fb68
+ 222: add r1.xyz, v0.xyzx, v0.xyzx
+ 223: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 224: label fb69
+ 225: mov r1.xyz, v0.xyzx
+ 226: ret 
+
+#line 31 "C:\dx-fixtures\classes_slots.hlsl"
+ 227: label fb70
+ 228: mul r1.xyz, v0.xyzx, l(10.000000, 10.000000, 10.000000, 0.000000)
+ 229: ret 
+
+#line 28 "C:\dx-fixtures\classes_slots.hlsl"
+ 230: label fb71
+ 231: mul r1.xyz, v0.xyzx, l(9.000000, 9.000000, 9.000000, 0.000000)
+ 232: ret 
+
+#line 26 "C:\dx-fixtures\classes_slots.hlsl"
+ 233: label fb72
+ 234: mul r1.xyz, v0.xyzx, l(8.000000, 8.000000, 8.000000, 0.000000)
+ 235: ret 
+
+#line 25 "C:\dx-fixtures\classes_slots.hlsl"
+ 236: label fb73
+ 237: mul r1.xyz, v0.xyzx, l(7.000000, 7.000000, 7.000000, 0.000000)
+ 238: ret 
+
+#line 24 "C:\dx-fixtures\classes_slots.hlsl"
+ 239: label fb74
+ 240: mul r1.xyz, v0.xyzx, l(6.000000, 6.000000, 6.000000, 0.000000)
+ 241: ret 
+
+#line 23 "C:\dx-fixtures\classes_slots.hlsl"
+ 242: label fb75
+ 243: mul r1.xyz, v0.xyzx, l(5.000000, 5.000000, 5.000000, 0.000000)
+ 244: ret 
+
+#line 22 "C:\dx-fixtures\classes_slots.hlsl"
+ 245: label fb76
+ 246: mul r1.xyz, v0.xyzx, l(4.000000, 4.000000, 4.000000, 0.000000)
+ 247: ret 
+
+#line 21 "C:\dx-fixtures\classes_slots.hlsl"
+ 248: label fb77
+ 249: mul r1.xyz, v0.xyzx, l(3.000000, 3.000000, 3.000000, 0.000000)
+ 250: ret 
+
+#line 20 "C:\dx-fixtures\classes_slots.hlsl"
+ 251: label fb78
+ 252: add r1.xyz, v0.xyzx, v0.xyzx
+ 253: ret 
+
+#line 19 "C:\dx-fixtures\classes_slots.hlsl"
+ 254: label fb79
+ 255: mov r1.xyz, v0.xyzx
+ 256: ret 

@@ -1,5 +1,7 @@
 // Class linkage in a hull program: the class tables come after the tessellation tables.
 // fxc: /T hs_5_0 /E main /Fo classes_hull.hs50.dxbc
+// fxc: /T hs_5_0 /E main /Zi /Fo classes_hull.hs50.zi.dxbc
+// fxc: /T hs_5_0 /E main /Zi /Od /Fo classes_hull.hs50.zod.dxbc
 interface IL { float f(float n); };
 class A : IL { float k; float f(float n) { return n * k; } };
 class B : IL { float f(float n) { return n; } };

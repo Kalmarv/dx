@@ -65,10 +65,13 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   byte: the header (buffer definitions, resource bindings, class tables, signatures, functionality notes,
   tessellation tables), the program and its instruction count; a level 9 container's as well, with the Direct3D 9
   program of its `Aon9` part. `Options::from_flags` takes the `D3D_DISASM_*` flags word: `0x40` leaves out the
-  header, `0x04` numbers the instructions, `0x20` writes their offsets, `0x80` writes literals in hex (`0x02` and
-  `0x10` change nothing in the text this writes); it refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's
-  disassembler refuses too. A container with an `SPDB` part (the PDB `fxc /Zi` embeds) is written without the source
-  lines and variable locations Microsoft's listing interleaves (its listing with `0x10`).
+  header, `0x04` numbers the instructions, `0x20` writes their offsets, `0x80` writes literals in hex, `0x10` leaves
+  out the debug information (`0x02` changes nothing in the text this writes); it refuses `0x01` (an HTML listing) and
+  `0x08`, which Microsoft's disassembler refuses too. A container with an `SPDB` part (the PDB `fxc /Zi` embeds) is
+  written with the source lines and variable locations Microsoft's listing interleaves: `#line` lines, the
+  variables' initial locations, and after an instruction the locations that start at the next (`r0.xyz <- c.rgb`).
+  The PDB is read without file access, from the part's bytes: the MSF streams, the line and inlinee tables, the
+  symbols and the types the locations name.
 - **Container** (`parts`, over the `dxcontainer` crate).
 
 Numbers are Direct3D's own (`D3D_NAME`, `D3D_SHADER_INPUT_TYPE`, `D3D_REGISTER_COMPONENT_TYPE`, ...), as stored.
@@ -100,8 +103,10 @@ Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s
 controls and extended tokens, the refusals by name) and the committed fixtures in `tests/fixtures` and `tests/disasm`,
 compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end. `tests/disasm.rs` compares
 the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
-change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them), and the listings of the
-19 test programs of t7_dxbc (`tests/third-party`). No game files are needed for these.
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 4,002 listings of 174
+programs, 92 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
+`tests/spdb.rs` changes every byte of two `/Zi` builds' `SPDB` parts and checks each is written or refused without a
+panic. No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for whole
 games: Riders Republic's 2,443 programs, Sekiro's 432 under 23 flag words and Sledding Game's Unity player's 4,854;

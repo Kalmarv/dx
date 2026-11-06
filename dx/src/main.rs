@@ -106,13 +106,6 @@ fn disasm(path: &Path, flags: u32) -> Result<ExitCode, String> {
                     println!("// {}", path.display());
                 }
                 print!("{text}");
-                if flags & 0x10 == 0 && files::has_debug_part(&bytes) {
-                    eprintln!(
-                        "dx: {}: the SPDB part's source lines and variable locations are not written (this is \
-                         Microsoft's listing with --flags 0x10)",
-                        path.display()
-                    );
-                }
             }
             Err(e) => {
                 eprintln!("dx: {}: {e}", path.display());

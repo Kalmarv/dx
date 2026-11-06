@@ -48,4 +48,20 @@ float4 lone(float4 p : POSITION) : SV_Position {
 }
 // no constants and no textures: the mapping sections with nothing in them
 // fxc: /T ps_4_0_level_9_1 /E bare /Fo level9.bare.ps91.dxbc
+// fxc: /T ps_4_0_level_9_1 /E ps /Zi /Fo level9.ps91.zi.dxbc
+// fxc: /T ps_4_0_level_9_1 /E ps /Zi /Od /Fo level9.ps91.zod.dxbc
+// fxc: /T vs_4_0_level_9_3 /E vs /Zi /Fo level9.vs93.zi.dxbc
+// fxc: /T vs_4_0_level_9_3 /E vs /Zi /Od /Fo level9.vs93.zod.dxbc
+// fxc: /T ps_4_0_level_9_3 /E mapped /Zi /Fo level9.mapped.ps93.zi.dxbc
+// fxc: /T ps_4_0_level_9_3 /E mapped /Zi /Od /Fo level9.mapped.ps93.zod.dxbc
+// fxc: /T vs_4_0_level_9_1 /E looped /Zi /Fo level9.looped.vs91.zi.dxbc
+// fxc: /T vs_4_0_level_9_1 /E looped /Zi /Od /Fo level9.looped.vs91.zod.dxbc
+// fxc: /T vs_4_0_level_9_3 /E looped /Zi /Fo level9.looped.vs93.zi.dxbc
+// fxc: /T vs_4_0_level_9_3 /E looped /Zi /Od /Fo level9.looped.vs93.zod.dxbc
+// fxc: /T vs_4_0_level_9_3 /E twice /Zi /Fo level9.twice.vs93.zi.dxbc
+// fxc: /T vs_4_0_level_9_3 /E twice /Zi /Od /Fo level9.twice.vs93.zod.dxbc
+// fxc: /T vs_4_0_level_9_3 /E lone /Zi /Fo level9.lone.vs93.zi.dxbc
+// fxc: /T vs_4_0_level_9_3 /E lone /Zi /Od /Fo level9.lone.vs93.zod.dxbc
+// fxc: /T ps_4_0_level_9_1 /E bare /Zi /Fo level9.bare.ps91.zi.dxbc
+// fxc: /T ps_4_0_level_9_1 /E bare /Zi /Od /Fo level9.bare.ps91.zod.dxbc
 float4 bare(float4 pos : SV_Position, float4 c : COLOR0) : SV_Target { return c * c; }

@@ -4,6 +4,14 @@
 // fxc: /T ps_4_1 /E main /D SM41 /Fo ps_sampling.ps41.dxbc
 // fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Fo ps_sampling.ps50.dxbc
 // fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Gfp /Fo ps_sampling.gfp.dxbc
+// fxc: /T ps_4_0 /E main /Zi /Fo ps_sampling.ps40.zi.dxbc
+// fxc: /T ps_4_0 /E main /Zi /Od /Fo ps_sampling.ps40.zod.dxbc
+// fxc: /T ps_4_1 /E main /D SM41 /Zi /Fo ps_sampling.ps41.zi.dxbc
+// fxc: /T ps_4_1 /E main /D SM41 /Zi /Od /Fo ps_sampling.ps41.zod.dxbc
+// fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Zi /Fo ps_sampling.ps50.zi.dxbc
+// fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Zi /Od /Fo ps_sampling.ps50.zod.dxbc
+// fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Gfp /Zi /Fo ps_sampling.gfp.zi.dxbc
+// fxc: /T ps_5_0 /E main /D SM41 /D SM5 /Gfp /Zi /Od /Fo ps_sampling.gfp.zod.dxbc
 Texture1D<float4> t1 : register(t0);
 Texture1DArray<float4> t1a : register(t1);
 Texture2D<float4> t2 : register(t2);
