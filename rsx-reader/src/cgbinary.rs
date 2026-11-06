@@ -20,6 +20,38 @@ fn error(offset: usize, detail: impl Into<String>) -> Error {
     }
 }
 
+/// The number of components of a numeric `CGtype` (Cg's `cg_datatypes.h`, numbered from
+/// `CG_TYPE_START_ENUM` = 1024): its half, float, fixed, int and bool scalars (1),
+/// vectors of 1 to 4 and matrices of 1 to 4 rows by 1 to 4 columns. `None` for the
+/// samplers, strings, programs and textures, and for a number outside the table.
+pub fn components(ty: u32) -> Option<usize> {
+    // the count of a type `n` places after the first of a run: a vector run counts from `first` components, a run of
+    // 16 matrix types goes 1x1 to 4x4 in row-major order of their shapes
+    let vector = |start: u32, first: u32| ty.saturating_sub(start).saturating_add(first);
+    let matrix = |start: u32| {
+        let m = ty.saturating_sub(start);
+        (m / 4)
+            .saturating_add(1)
+            .saturating_mul((m % 4).saturating_add(1))
+    };
+    let n = match ty {
+        1025..=1028 => vector(1025, 1), // half, half2, half3, half4
+        1029..=1044 => matrix(1029),    // half1x1 .. half4x4
+        1045..=1048 => vector(1045, 1), // float .. float4
+        1049..=1064 => matrix(1049),    // float1x1 .. float4x4
+        1070..=1073 => vector(1070, 1), // fixed .. fixed4
+        1074..=1089 => matrix(1074),    // fixed1x1 .. fixed4x4
+        1090..=1094 => 1,               // half1, float1, fixed1, int, int1
+        1095..=1097 => vector(1095, 2), // int2 .. int4
+        1098..=1113 => matrix(1098),    // int1x1 .. int4x4
+        1114 | 1115 => 1,               // bool, bool1
+        1116..=1118 => vector(1116, 2), // bool2 .. bool4
+        1119..=1134 => matrix(1119),    // bool1x1 .. bool4x4
+        _ => return None, // samplers 1065-1069, string 1135, program 1136, texture 1137, unknown
+    };
+    usize::try_from(n).ok()
+}
+
 /// The offset `delta` bytes after `at`, which the caller has checked to lie in the container.
 fn plus(at: usize, delta: usize) -> Result<usize, Error> {
     at.checked_add(delta)
@@ -102,8 +134,11 @@ pub struct Parameter<'a> {
     pub referenced: bool,
     /// Whether the parameter is shared between programs.
     pub shared: bool,
-    /// Big-endian float bits, preserving NaNs and signed zeros. Float scalar,
-    /// vector and matrix types are supported; other types with defaults refuse.
+    /// The default value's words as stored (big-endian, NaNs and signed zeros
+    /// kept): one per component of the parameter's numeric type (half, float,
+    /// fixed, int and bool scalars, vectors and matrices; [`components`]). The
+    /// container types the field `CgBinaryFloatOffset`, so the words are float
+    /// bits whatever the type. A default on another type is refused.
     pub default_value: Option<Vec<u32>>,
     /// Byte offsets of 16-byte constants in this program's microcode.
     pub embedded_constants: Vec<u32>,
@@ -217,22 +252,12 @@ impl<'a> Reader<'a> {
         if at == 0 {
             return Ok(None);
         }
-        let count = match ty {
-            1045 | 1091 => 1,
-            1046..=1048 => (ty.saturating_sub(1044)) as usize,
-            1049..=1064 => {
-                let m = ty.saturating_sub(1049);
-                ((m / 4)
-                    .saturating_add(1)
-                    .saturating_mul((m % 4).saturating_add(1))) as usize
-            }
-            _ => {
-                return Err(error(
-                    field,
-                    format!("default values for CGtype {ty} are unsupported"),
-                ));
-            }
-        };
+        let count = components(ty).ok_or_else(|| {
+            error(
+                field,
+                format!("a default value for CGtype {ty}, which is not a numeric type"),
+            )
+        })?;
         if !at.is_multiple_of(4) {
             return Err(error(field, "unaligned default value"));
         }

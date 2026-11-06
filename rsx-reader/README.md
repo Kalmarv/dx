@@ -29,8 +29,8 @@ Run it with `cargo run -p rsx-reader --example inspect_rsx -- <files>`; the sour
   header, 48-byte parameter records and a 24-byte stage descriptor. Microcode stays encoded and is returned as bytes.
   Parameter strings keep their source bytes; resource, type, variability and direction keep the original Cg enum values;
   resource indices and parameter numbers stay signed. `Parameter::texture_unit` recognises the resources
-  `CG_TEXUNIT0..15` and does not reinterpret a constant-register index as a sampler. Defaults keep float bits for float
-  scalars, vectors and matrices; defaults of other types are refused. The fragment instruction count includes inline
+  `CG_TEXUNIT0..15` and does not reinterpret a constant-register index as a sampler. Defaults keep their stored words (float
+  bits) for every numeric type, one per component (`components`); a default on another type is refused. The fragment instruction count includes inline
   constant slots.
 - **`fragment::decode`** reads unchanged big-endian fragment microcode into instructions, rotating each word's halfwords
   first. It keeps sources, swizzles, predicates, destination masks, modifier bits, texture units, control-flow offsets and

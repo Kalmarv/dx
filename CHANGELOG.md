@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `rsx-reader`: a parameter's default value reads for every numeric `CGtype` (half, float, fixed, int and bool scalars,
+  vectors and matrices, 105 types), one stored word per component; before, only float types read and the others were
+  refused. `cgbinary::components` gives a type's component count from Cg's `cg_datatypes.h`; a default on a sampler,
+  string, program, texture or unknown type is refused as not numeric. All 8,041,219 parameters of SHRED's 380,868
+  programs read, as before.
+
 ## 0.7.0 (2026-11-06)
 
 - `dxbc-reader`: listings are Microsoft's where a sweep of outside programs found them refused or different outside

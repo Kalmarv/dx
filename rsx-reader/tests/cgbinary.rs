@@ -1,4 +1,4 @@
-use rsx_reader::cgbinary::{Stage, parse, parse_prefix};
+use rsx_reader::cgbinary::{Stage, components, parse, parse_prefix};
 
 fn word(b: &mut [u8], at: usize, value: u32) {
     b[at..at + 4].copy_from_slice(&value.to_be_bytes());
@@ -152,7 +152,7 @@ fn invalid_headers_ranges_booleans_strings_and_constants_refuse() {
         (128, u32::MAX, "outside"),
         (132, 1, "embedded"),
         (136, 32, "embedded"),
-        (32, 9999, "unsupported"),
+        (32, 9999, "not a numeric type"),
     ] {
         let mut b = fixture(true);
         word(&mut b, at, value);
@@ -204,4 +204,113 @@ fn matrix_defaults_and_metadata_at_the_exact_end_are_bounded() {
     assert_eq!(p.parameters[0].semantic, Some(b"".as_slice()));
     word(&mut b, 52, 176); // matrix would cross into microcode
     assert!(parse(&b).unwrap_err().detail.contains("metadata"));
+}
+
+/// The `CGtype`s in the order of Cg's `cg_datatypes.h` (the enum counts from `CG_TYPE_START_ENUM` = 1024, so the first is
+/// 1025), each with its component count read from its name: a scalar 1, `<base>N` N, `<base>RxC` R times C, and `None`
+/// for the types that hold no numbers.
+fn cg_datatypes() -> Vec<(u32, String, Option<usize>)> {
+    let mut names = Vec::new();
+    let shapes = |base: &str, names: &mut Vec<String>| {
+        names.extend([
+            base.to_owned(),
+            format!("{base}2"),
+            format!("{base}3"),
+            format!("{base}4"),
+        ]);
+        for r in 1..=4 {
+            for c in 1..=4 {
+                names.push(format!("{base}{r}x{c}"));
+            }
+        }
+    };
+    shapes("half", &mut names);
+    shapes("float", &mut names);
+    names.extend(
+        [
+            "sampler1D",
+            "sampler2D",
+            "sampler3D",
+            "samplerRECT",
+            "samplerCUBE",
+        ]
+        .map(String::from),
+    );
+    shapes("fixed", &mut names);
+    names.extend(["half1", "float1", "fixed1", "int", "int1"].map(String::from));
+    let mut int = Vec::new();
+    shapes("int", &mut int);
+    names.extend(int.into_iter().skip(1));
+    names.extend(["bool", "bool1"].map(String::from));
+    let mut boolean = Vec::new();
+    shapes("bool", &mut boolean);
+    names.extend(boolean.into_iter().skip(1));
+    names.extend(["string", "program", "texture"].map(String::from));
+    names
+        .into_iter()
+        .zip(1025..)
+        .map(|(name, ty)| {
+            let digits = name.trim_start_matches(|c: char| c.is_ascii_alphabetic());
+            let numeric = ["half", "float", "fixed", "int", "bool"]
+                .iter()
+                .any(|b| name.strip_prefix(b).is_some_and(|rest| rest == digits));
+            let n = match digits.split_once('x') {
+                _ if !numeric => None,
+                Some((r, c)) => {
+                    Some(r.parse::<usize>().expect("rows") * c.parse::<usize>().expect("columns"))
+                }
+                None if digits.is_empty() => Some(1),
+                None => Some(digits.parse().expect("components")),
+            };
+            (ty, name, n)
+        })
+        .collect()
+}
+
+#[test]
+fn every_numeric_type_takes_a_default_of_its_component_count() {
+    let types = cg_datatypes();
+    // the numbers Cg's headers give some of them: CG_FLOAT 1045, CG_FLOAT4x4 1064, CG_FIXED 1070, CG_FLOAT1 1091,
+    // CG_FIXED1 1092, CG_INT 1093, CG_BOOL 1114, CG_TEXTURE 1137
+    let number = |name: &str| types.iter().find(|(_, n, _)| n == name).expect(name).0;
+    assert_eq!(
+        [
+            "float", "float4x4", "fixed", "float1", "fixed1", "int", "bool", "texture"
+        ]
+        .map(number),
+        [1045, 1064, 1070, 1091, 1092, 1093, 1114, 1137]
+    );
+    let mut numeric = 0;
+    for (ty, name, n) in &types {
+        assert_eq!(components(*ty), *n, "{name} ({ty})");
+        // a parameter of the type with a default at 112, as many words as the type has components (sixteen at most)
+        let mut b = fixture(false);
+        b.resize(240, 0);
+        word(&mut b, 8, 240);
+        word(&mut b, 28, 208);
+        word(&mut b, 32, *ty);
+        word(&mut b, 48, 0);
+        word(&mut b, 52, 112);
+        word(&mut b, 56, 0);
+        word(&mut b, 60, 207);
+        for i in 0..16 {
+            word(&mut b, 112 + i * 4, 0x3f80_0000 + i as u32);
+        }
+        match n {
+            Some(n) => {
+                let p = parse(&b).unwrap_or_else(|e| panic!("{name} ({ty}): {e}"));
+                let want: Vec<u32> = (0..*n as u32).map(|i| 0x3f80_0000 + i).collect();
+                assert_eq!(p.parameters[0].default_value, Some(want), "{name}");
+                numeric += 1;
+            }
+            None => {
+                let e = parse(&b).expect_err(name);
+                assert!(e.detail.contains("not a numeric type"), "{name}: {e}");
+            }
+        }
+    }
+    // 4 + 16 each of half, float, fixed, int and bool, and half1, float1, fixed1, int1, bool1
+    assert_eq!((types.len(), numeric), (113, 105));
+    assert_eq!(components(1024), None);
+    assert_eq!(components(1138), None);
 }
