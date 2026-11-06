@@ -26,7 +26,7 @@ fn compare(folder: &Path, flags: &[u32], listing: impl Fn(&Path, u32) -> PathBuf
     let mut containers: Vec<PathBuf> = std::fs::read_dir(folder)
         .unwrap()
         .map(|entry| entry.unwrap().path())
-        .filter(|p| std::fs::read(p).is_ok_and(|b| b.starts_with(b"DXBC")))
+        .filter(|p| starts_dxbc(p))
         .collect();
     containers.sort();
     let mut tally = Tally::default();
@@ -54,6 +54,14 @@ fn compare(folder: &Path, flags: &[u32], listing: impl Fn(&Path, u32) -> PathBuf
         tally.differing.join("\n")
     );
     tally
+}
+
+/// Whether the file at `path` starts with a container's magic, reading only its first four bytes (a set holds far
+/// more listings than programs).
+fn starts_dxbc(path: &Path) -> bool {
+    use std::io::Read;
+    let mut magic = [0u8; 4];
+    std::fs::File::open(path).is_ok_and(|mut f| f.read_exact(&mut magic).is_ok() && &magic == b"DXBC")
 }
 
 /// `NAME.EXT.asm` with no flags, `NAME.EXT.flagNN.asm` with flags.
@@ -94,4 +102,23 @@ fn sledding_game_unity_player() {
     let tally = compare(&folder, &[0], beside);
     // 3,316 ps_4_0 and 1,538 ps_5_0 programs, 16 of them with an SPDB part
     assert_eq!((tally.compared, tally.debug), (4854, 16));
+}
+
+#[test]
+fn fxc_sweep_zi_under_every_flags_word() {
+    let Some(folder) = inputs::oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zi") else {
+        return;
+    };
+    let tally = compare(&folder, &flag_words(), beside);
+    // 4,304 programs, each with 23 listings, 16 of them with the SPDB part's annotations
+    assert_eq!((tally.compared, tally.debug), (98_992, 68_864));
+}
+
+#[test]
+fn fxc_sweep_zod_under_every_flags_word() {
+    let Some(folder) = inputs::oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zod") else {
+        return;
+    };
+    let tally = compare(&folder, &flag_words(), beside);
+    assert_eq!((tally.compared, tally.debug), (98_992, 68_864));
 }

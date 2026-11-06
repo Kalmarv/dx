@@ -1136,8 +1136,8 @@ pub(super) fn write(
                 }
                 out.push_str("//\n");
             }
-            // a `#line` where the line or the file changes: the path with the first, a new file and a label; an empty
-            // line before each but the first after the initial locations
+            // a `#line` where the line or the file changes: the path with the first, a new file and a function
+            // body's label; an empty line before each but the first after the initial locations
             if let Some((path, line)) = a.sources.get(&at)
                 && source != Some((path.as_str(), *line))
             {
@@ -1148,7 +1148,7 @@ pub(super) fn write(
                     None => {
                         let _ = writeln!(out, "#line {line} \"{path}\"");
                     }
-                    Some((file, _)) if file != path || bare.starts_with("label ") => {
+                    Some((file, _)) if file != path || bare.starts_with("label fb") => {
                         let _ = writeln!(out, "\n#line {line} \"{path}\"");
                     }
                     Some(_) => {
@@ -1160,7 +1160,9 @@ pub(super) fn write(
         }
         prefix(out, row.word(), numbered);
         out.push_str(&text);
-        // after an instruction, the locations that start at the next row (`else` says they are the prior ones)
+        // after an instruction, the locations that start at the next row (`else` says they are the prior ones, `call`
+        // the ones after the call), up to one Microsoft's disassembler could not name, which ends the comment with its
+        // internal error
         if let Some(a) = annotations
             && a.first.is_none_or(|first| at >= first)
             && !bare.starts_with("dcl_")
@@ -1168,12 +1170,20 @@ pub(super) fn write(
             && let starting = a.after(at, offset(next))
             && !starting.is_empty()
         {
-            let prior = if bare.starts_with("else") {
-                "Prior locations: "
-            } else {
-                ""
+            let label = match bare.split(' ').next() {
+                Some("else") => "Prior locations: ",
+                Some("call") => "Post-call locations: ",
+                _ => "",
             };
-            let _ = write!(out, "  // {prior}{}", starting.join("; "));
+            let end = starting
+                .iter()
+                .position(|l| l.error.is_some())
+                .map_or(starting.len(), |e| e.saturating_add(1));
+            let written: Vec<&str> = starting.iter().take(end).map(|l| l.text.as_str()).collect();
+            let _ = write!(out, "  // {label}{}", written.join("; "));
+            if let Some(error) = starting.get(end.saturating_sub(1)).and_then(|l| l.error) {
+                let _ = writeln!(out, "\n// <internal error> {error}");
+            }
         }
         out.push('\n');
     }

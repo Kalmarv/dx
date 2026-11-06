@@ -4,6 +4,7 @@
 
 primase_testdata::inputs! {
     games {
+        General = "general",
         Riders = "riders",
         Sekiro = "sekiro",
         Sledding = "sledding",
@@ -35,6 +36,18 @@ primase_testdata::inputs! {
             gate: true,
             about: r#"the 4,854 Shader Model 4.0 and 5.0 programs of Sledding Game's Unity player (`NNNNN.dxbc`), each with Microsoft's listing with no flags (`NNNNN.dxbc.asm`); 16 carry an SPDB part; tests/corpora.rs"#,
             source: r#"independent: d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (primase-oracles tools/wine/d3d_disassemble.py) over the programs of the user's own Sledding Game install; programs and listings stay outside the repository"#,
+        },
+        Query::Oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zi") => {
+            status: Live,
+            gate: false,
+            about: r#"the /Zi sweep's 4,304 programs (`NAME.dxbc`): fxc 10.0.26100.4654 `/Zi` builds of the HLSL in dxc's tests, vkd3d's and vkd3d-proton's shader tests and MiniEngine, each with Microsoft's listing under no flags (`NAME.dxbc.asm`) and 22 other flag words (`NAME.dxbc.flagNN.asm`); tests/corpora.rs"#,
+            source: r#"independent: fxc and d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (tests/inputs/fxc_sweep.py) over outside open-source HLSL, the commits in the set's MANIFEST.toml; programs and listings stay outside the repository"#,
+        },
+        Query::Oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zod") => {
+            status: Live,
+            gate: false,
+            about: r#"the /Zi sweep's 4,304 programs built with `/Zi /Od` (`NAME.dxbc`), as `fxc-sweep-zi` otherwise: each with Microsoft's listing under no flags and 22 other flag words; tests/corpora.rs"#,
+            source: r#"independent: fxc and d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (tests/inputs/fxc_sweep.py) over outside open-source HLSL, the commits in the set's MANIFEST.toml; programs and listings stay outside the repository"#,
         },
     }
     debug {}

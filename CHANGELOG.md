@@ -1,7 +1,32 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 (2026-11-06)
 
+- `dxbc-reader`: `/Zi` listings name and order the variables' locations as Microsoft's disassembler does, so the
+  sweep of 0.7.0 (4,304 programs, each built with `/Zi` and with `/Zi /Od`) is Microsoft's under every one of the 23
+  flag words: 8,608 of 8,608 listings, none differing or refused. What changed:
+  - a variable of one value (a scalar, a one-component vector, a one-element array, a one-member struct, nested) is
+    named by its own name, and a vector's component always has its lane, a one-component vector's too (`.x`); an
+    interface pointer is four values;
+  - a struct's member is the first whose bytes hold the offset;
+  - an indexable temp or `m#` register is numbered by its first index, and named by the variable alone where it holds
+    the variable from its start;
+  - a minimum-precision scalar inside a struct is written as Microsoft's `<unknown HLSL built-in N offset M>`;
+  - where Microsoft's disassembler cannot name the byte (a static member before the member, an offset past its type,
+    an offset inside a vector's component where fxc's structured-buffer layout differs from the PDB's), the
+    location ends with its `// <internal error> ...` line and the instruction's later locations are left out;
+  - the locations after a `call` are `Post-call locations`, a `#line` before a label has the file only before a
+    function body's (`label fb...`), and the initial locations put an inlined call's variables before its caller's,
+    where an instruction's locations put a scope's own first.
+- `dxbc-reader`: two new fixture programs, `zi_names` built with `/Zi` and with `/Zi /Od`, and their 46 listings
+  (`tests/disasm`; 4,853 listings of 211 programs, 108 of them `/Zi` builds), which fail before the change under the
+  16 flag words that write the names; a build with the initial locations in an instruction's order fails
+  `classes_hull` and `tess_stages.line`.
+- `dxbc-reader`: the sweep is a real-data test: `tests/corpora.rs` compares the oracle entries
+  `d3d-disassembler.general/fxc-sweep-zi` and `fxc-sweep-zod` (each 4,304 programs, 98,992 listings) with
+  Microsoft's under all 23 flag words; with the initial locations in an instruction's order, 768 of the `/Zi` build's
+  listings and 16 of the `/Zi /Od` build's differ. They are not yet required inputs of a full run (`gate: false`) until the
+  primase-testdata release that records their manifests.
 - `rsx-reader`: a parameter's default value reads for every numeric `CGtype` (half, float, fixed, int and bool scalars,
   vectors and matrices, 105 types), one stored word per component; before, only float types read and the others were
   refused. `cgbinary::components` gives a type's component count from Cg's `cg_datatypes.h`; a default on a sampler,

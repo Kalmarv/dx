@@ -1,0 +1,68 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer CB0[2], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_structured t2, 80
+dcl_input_ps linear v0.xy
+dcl_input_ps constant v1.x
+dcl_input_ps constant v1.y
+dcl_output o0.xyzw
+dcl_temps 3
+dcl_indexableTemp x0[4], 4
+dcl_indexableTemp x1[3], 4
+mov x0[0].x, cb0[0].x
+mov x0[1].x, cb0[0].y
+mov x0[2].x, cb0[0].z
+mov x0[3].x, cb0[0].w
+mov x1[0].y, cb0[0].y
+mov x1[1].y, cb0[0].w
+mov x1[2].y, v0.y
+add r0.x, cb0[1].y, cb0[1].y
+ld_structured_indexable(structured_buffer, stride=80)(mixed,mixed,mixed,mixed) r0.y, v1.x, l(60), t2.xxxx
+and r0.z, v1.x, l(3)
+mov r0.z, x0[r0.z + 0].x
+udiv null, r0.w, v1.x, l(3)
+mov r0.w, x1[r0.w + 0].y
+add r0.z, r0.w, r0.z
+mad r0.z, cb0[1].y, l(2.000000), r0.z
+utof r0.w, cb0[1].x
+add r0.z, r0.w, r0.z
+add r0.z, r0.z, cb0[0].x
+add r0.z, r0.z, cb0[1].y
+add r0.z, r0.z, cb0[0].z
+add r0.z, r0.z, cb0[0].w
+add r0.z, r0.z, l(8.500000)
+switch v1.y
+  case l(1)
+  call label0
+  break 
+  case l(2)
+  call label1
+  break 
+  default 
+  call label2
+  break 
+endswitch 
+mul r0.x, r0.x, r0.z
+lt r1.x, l(1.000000), r0.x
+sqrt r1.y, r0.x
+movc r0.x, r1.x, r1.y, r0.x
+add r0.x, r0.y, r0.x
+add r0.x, r0.w, r0.x
+add r0.x, r0.x, r0.z
+mov r1.x, v1.x
+mov r1.yzw, l(0,0,0,0)
+ld_indexable(texture2d)(float,float,float,float) r1.xyzw, r1.xyzw, t0.xyzw
+ld_indexable(texture2d)(float,float,float,float) r2.xyzw, l(0, 0, 0, 0), t0.xyzw
+mad r0.xyzw, r1.xyzw, r0.xxxx, r2.xyzw
+add o0.xyzw, r0.xyzw, l(30.000000, 40.000000, 50.000000, 60.000000)
+ret 
+label label0
+mov r0.w, l(5.000000)
+ret 
+label label1
+mov r0.w, v0.x
+ret 
+label label2
+mov r0.w, l(3.000000)
+ret 

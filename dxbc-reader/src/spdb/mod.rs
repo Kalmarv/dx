@@ -47,9 +47,9 @@ pub(crate) struct Annotations {
     pub(crate) initial: Vec<String>,
     /// The source file's path and line of each record's byte offset that has one.
     pub(crate) sources: BTreeMap<u32, (String, u32)>,
-    /// The locations that start at each byte offset: `r0.x <- name.member`, and the inlined call whose scope holds
-    /// the variable (`None` for a function's own).
-    starting: BTreeMap<u32, Vec<(String, Option<usize>)>>,
+    /// The locations that start at each byte offset, and the inlined call whose scope holds the variable (`None` for a
+    /// function's own).
+    starting: BTreeMap<u32, Vec<(Location, Option<usize>)>>,
     /// The code each inlined call spans: from its first row's byte offset to its last row's end, any of the caller's
     /// code between its rows among it.
     sites: Vec<(u32, u32)>,
@@ -59,7 +59,7 @@ impl Annotations {
     /// The locations written after the record at byte offset `at`: those that start at `next`, the following record,
     /// where the variable's scope covers `at`. A function's variables are written after any record; an inlined call's
     /// only after a record in the code the call spans, so not after the caller's code that leads into it.
-    pub(crate) fn after(&self, at: u32, next: u32) -> Vec<&str> {
+    pub(crate) fn after(&self, at: u32, next: u32) -> Vec<&Location> {
         let covers = |site: usize| {
             self.sites
                 .get(site)
@@ -70,9 +70,17 @@ impl Annotations {
             .into_iter()
             .flatten()
             .filter(|(_, site)| site.is_none_or(covers))
-            .map(|(name, _)| name.as_str())
+            .map(|(location, _)| location)
             .collect()
     }
+}
+
+/// A variable's location in a register: `r0.x <- name.member`, and where Microsoft's disassembler could not name the
+/// byte the register holds, its internal error, after which it writes no further location of the instruction.
+#[derive(Clone, Debug)]
+pub(crate) struct Location {
+    pub(crate) text: String,
+    pub(crate) error: Option<&'static str>,
 }
 
 /// A variable's range in a register (`S_DEFRANGE_HLSL`).
@@ -88,7 +96,7 @@ struct Range {
     /// The gaps in the range: byte offsets from `start` and lengths.
     gaps: Vec<(u16, u16)>,
     /// The register indices: the first is the register times 16 plus the component times 4 (the register alone for an
-    /// indexable temp's array and `m#`).
+    /// indexable temp and `m#`).
     indices: Vec<u32>,
 }
 
@@ -102,7 +110,7 @@ struct Local {
     ranges: Vec<Range>,
 }
 
-/// A scope's variables: its nested scopes' come before its own.
+/// A scope's variables and its nested scopes.
 #[derive(Default)]
 struct Scope {
     /// The inlined call the scope is (its index in the calls in symbol order), `None` for a function.
@@ -112,12 +120,16 @@ struct Scope {
 }
 
 impl Scope {
-    /// The variables in listing order, each with the inlined call whose scope holds it.
-    fn flatten(self, out: &mut Vec<(Local, Option<usize>)>) {
-        for scope in self.nested {
-            scope.flatten(out);
-        }
+    /// The variables in symbol order, a scope's own before its nested scopes', each with the inlined call whose scope
+    /// holds it; and into `initial` their indices in the order of the initial locations, which put a scope's nested
+    /// scopes' variables before its own.
+    fn flatten(self, out: &mut Vec<(Local, Option<usize>)>, initial: &mut Vec<usize>) {
+        let own = out.len()..out.len().saturating_add(self.locals.len());
         out.extend(self.locals.into_iter().map(|local| (local, self.site)));
+        for scope in self.nested {
+            scope.flatten(out, initial);
+        }
+        initial.extend(own);
     }
 }
 
@@ -231,8 +243,9 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
         }
     }
     let mut locals = Vec::new();
+    let mut initial = Vec::new();
     match <[Scope; 1]>::try_from(root) {
-        Ok([scope]) => scope.flatten(&mut locals),
+        Ok([scope]) => scope.flatten(&mut locals, &mut initial),
         Err(open) => {
             return Err(error(
                 0,
@@ -265,26 +278,38 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
         let (file, line) = inlined.map_or((file, line), |r| (r.file, r.line));
         out.sources.insert(offset, (path(file)?, line));
     }
+    let location = |local: &Local, r: &Range| -> Result<Location> {
+        // an indexable temp or `m#` holding the variable from its start is named by the variable alone
+        let path = match (r.register, r.parent) {
+            (3 | 16, 0) => types::Path::default(),
+            _ => types.path(local.ty, u32::from(r.parent))?,
+        };
+        Ok(Location {
+            text: format!("{} <- {}{}", register(r), local.name, path.text),
+            error: path.error,
+        })
+    };
+    let before_first = |r: &Range| out.first.is_some_and(|first| r.start <= first);
     // the initial locations group by register: one line to each run of the same register
     let mut groups: Vec<(Base, Vec<String>)> = Vec::new();
+    for (local, _) in initial.iter().filter_map(|&i| locals.get(i)) {
+        for r in local.ranges.iter().filter(|r| before_first(r)) {
+            let name = location(local, r)?;
+            let base = (
+                r.register,
+                r.indices.first().map(|i| i / 16),
+                r.indices.get(1..).unwrap_or_default().to_vec(),
+            );
+            match groups.last_mut() {
+                Some((b, entries)) if *b == base => entries.push(name.text),
+                _ => groups.push((base, vec![name.text])),
+            }
+        }
+    }
     for (local, site) in &locals {
         for r in &local.ranges {
-            let mut name = format!("{} <- {}", register(r), local.name);
-            // an indexable temp's array is named whole
-            if r.register != 3 {
-                name.push_str(&types.path(local.ty, u32::from(r.parent))?);
-            }
-            if out.first.is_some_and(|first| r.start <= first) {
-                let base = (
-                    r.register,
-                    r.indices.first().map(|i| i / 16),
-                    r.indices.get(1..).unwrap_or_default().to_vec(),
-                );
-                match groups.last_mut() {
-                    Some((b, entries)) if *b == base => entries.push(name.clone()),
-                    _ => groups.push((base, vec![name.clone()])),
-                }
-            } else {
+            let name = location(local, r)?;
+            if !before_first(r) {
                 out.starting
                     .entry(r.start)
                     .or_default()
@@ -666,9 +691,9 @@ fn register(r: &Range) -> String {
     let Some(&first) = r.indices.first().filter(|_| r.dimension > 0) else {
         return name.to_owned();
     };
-    // an indexable temp's array and `m#` are named without a component, and `m#` by its number alone
+    // an indexable temp and `m#` are named by their number alone, without a component
     let whole = matches!(r.register, 3 | 16);
-    let number = if r.register == 16 { first } else { first / 16 };
+    let number = if whole { first } else { first / 16 };
     let component = if whole {
         String::new()
     } else {
