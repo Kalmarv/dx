@@ -32,6 +32,11 @@
   every operand that differed from the first, destinations, conversions, load addresses, resources and samplers
   included: 20 of the 3,316 `ps_4_0` programs of Sledding Game's Unity player differed for it. All 4,838 of its 4,854
   programs without an `SPDB` part are now identical (3,300 `ps_4_0`, 1,538 `ps_5_0`).
+- `dxbc-reader` and `d3d9-reader`: real-data tests (`tests/corpora.rs`, through `primase-testdata` and `GAME_DATA`;
+  each skips where its oracle entry is not configured) compare the listing with Microsoft's for whole games:
+  Riders Republic's 2,443 programs, Sekiro's 432 under 23 flag words (9,936 listings), Sledding Game's Unity
+  player's 4,854 (4,838 compared, the 16 with an `SPDB` part checked to differ), Shaun White Skateboarding's 7,306
+  and three more of its programs. The counts quoted in this file were one-off runs before.
 - `dxbc-reader`: the tests compare the listing with Microsoft's for the 19 test programs of t7_dxbc (MIT, copied with
   its licence into `tests/third-party/t7_dxbc`), HLSL this crate's listing was not written against.
 - `dxbc-reader`: `interfaces` reads the `IFCE` part of a program with class linkage: its class types, class instances

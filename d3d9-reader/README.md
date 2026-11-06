@@ -70,7 +70,12 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 `cargo test -p d3d9-reader`: token streams laid out by hand for every version (the vertex and pixel 1.x texture
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
-and every single-bit change of one is read or refused without a panic. No game files are needed.
+and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words. No game files are needed for these.
+
+With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every
+program of Shaun White Skateboarding's three SDB2 bundles (7,306) and three more of its programs; the inputs are in
+[`tests/inputs/README.md`](tests/inputs/README.md), and each test skips where its input is not configured.
 
 The reader was also checked, outside the repository, against the 173 programs of Wine's `d3dx9` assembler tests
 (`vs_1_1` to `ps_3_0`; each read, and its disassembly the same as Wine's apart from spelling), and against the 7,308

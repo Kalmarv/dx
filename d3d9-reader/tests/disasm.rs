@@ -3,21 +3,11 @@
 //! `D3DDisassemble`'s listing of every program in `tests/disasm` (built from the HLSL there, or the tokens of a Shader
 //! Model 1 program, by `generate.py`), with no flags (`NAME.asm`) and with the flags that change the text alone, in
 //! pairs and all together (`NAME.flagNN.asm`).
+mod compare;
+
+use compare::{difference, flag_words};
 use d3d9_reader::{Options, disassemble_with};
 use std::path::Path;
-
-/// The flags words the listings were made with (`generate.py`'s `FLAGS`): no flags, and the flags that change the text
-/// alone, in pairs and all together.
-fn flag_words() -> Vec<u32> {
-    const TEXT: [u32; 6] = [0x02, 0x04, 0x10, 0x20, 0x40, 0x80];
-    let mut words = vec![0, TEXT.iter().sum()];
-    for (i, a) in TEXT.iter().enumerate() {
-        words.push(*a);
-        words.extend(TEXT[i + 1..].iter().map(|b| a | b));
-    }
-    words.sort_unstable();
-    words
-}
 
 #[test]
 fn listings_are_microsofts() {
@@ -47,19 +37,7 @@ fn listings_are_microsofts() {
         )
         .unwrap();
         compared += 1;
-        if ours != theirs {
-            let line = ours
-                .lines()
-                .zip(theirs.lines())
-                .position(|(a, b)| a != b)
-                .unwrap_or(0);
-            differing.push(format!(
-                "{stem} flags 0x{flags:02x} line {}:\n  dx: {:?}\n  ms: {:?}",
-                line + 1,
-                ours.lines().nth(line).unwrap_or(""),
-                theirs.lines().nth(line).unwrap_or("")
-            ));
-        }
+        differing.extend(difference(&format!("{stem} flags 0x{flags:02x}"), &ours, &theirs));
     }
     assert!(
         differing.is_empty(),

@@ -100,7 +100,13 @@ Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s
 controls and extended tokens, the refusals by name) and the committed fixtures in `tests/fixtures` and `tests/disasm`,
 compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end. `tests/disasm.rs` compares
 the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
-change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them). No game files are needed.
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them), and the listings of the
+19 test programs of t7_dxbc (`tests/third-party`). No game files are needed for these.
+
+With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for whole
+games: Riders Republic's 2,443 programs, Sekiro's 432 under 23 flag words and Sledding Game's Unity player's 4,854;
+the inputs are in [`tests/inputs/README.md`](tests/inputs/README.md), and each test skips where its input is not
+configured.
 
 ## Check the examples
 
