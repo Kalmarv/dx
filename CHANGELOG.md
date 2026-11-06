@@ -25,6 +25,13 @@
   words, and for 1,817 listings of 79 fixture programs under the same 23 (no flags, and the flags that change the text
   alone, in pairs and all together), class linkage included; a container with an `SPDB` part (the PDB
   `fxc /Zi` embeds: source lines and variable locations) differs, in those annotations only.
+- `dxbc-reader`: the listing writes an operand's minimum precision as Microsoft's does where an instruction mixes
+  precisions: a source says `{def32 as min16f}` only where it is read at the result's precision (a source of the
+  first destination's type, not a comparison's or a shift's amount), every other operand its own (`{min16u}`, none for
+  full precision), and an absolute value holds it inside its bars (`|r0.z {min16f}|`). It wrote both precisions on
+  every operand that differed from the first, destinations, conversions, load addresses, resources and samplers
+  included: 20 of the 3,316 `ps_4_0` programs of Sledding Game's Unity player differed for it. All 4,838 of its 4,854
+  programs without an `SPDB` part are now identical (3,300 `ps_4_0`, 1,538 `ps_5_0`).
 - `dxbc-reader`: `interfaces` reads the `IFCE` part of a program with class linkage: its class types, class instances
   and interface slot records (`Interfaces`, `ClassType`, `ClassInstance`, `InterfaceSlots`). The listing writes them
   as Microsoft's does, its quirks included (eight entries a slot row, the ninth skipped). `decode` types the class

@@ -1,0 +1,39 @@
+ps_4_0
+dcl_globalFlags refactoringAllowed | enableMinimumPrecision
+dcl_constantbuffer CB0[4], immediateIndexed
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_buffer (float,float,float,float) t1
+dcl_input_ps linear v0.xyz
+dcl_input_ps constant v1.xyzw
+dcl_output o0.xyzw
+dcl_temps 6
+mov r0.zw {min16u}, l(0x00000000,0x00000000,0x00000000,0x00000000) {def32 as min16u}
+ftou r0.x {min16u}, v0.x
+iadd r0.y {min16u}, r0.x {min16u}, v1.x {def32 as min16u}
+and r1.x {min16u}, r0.y {min16u}, l(0x00000007) {def32 as min16u}
+ld r2.xyzw, r0.xyzw {min16u}, t0.xyzw
+xor r3.x, r0.x {min16u as def32}, v1.y
+or r3.x, r1.x {min16u as def32}, r3.x
+ushr r0.y {min16u}, r3.x {def32 as min16u}, l(0x00000002)
+utof r3.x, r3.x
+ld r1.xyzw, r0.yyyy {min16u}, t1.xyzw
+ieq r3.y, r0.x {min16u}, v1.w
+ult r3.z, r0.x {min16u}, cb0[1].x
+movc r0.xyzw, r3.yyyy, r2.xyzw, r1.xyzw
+mad r0.xyzw, r0.xyzw, cb0[3].xyzw {min16f as def32}, cb0[0].xyzw
+ftoi r4.x {min16i}, v0.y
+ishl r4.y {min16i}, r4.x {min16i}, l(0x00000001)
+ilt r2.y, r4.x {min16i}, cb0[2].x
+imax r4.x {min16i}, r4.x {min16i}, -r4.x {min16i}
+itof r2.xz, r4.yyxy {min16i}
+movc r2.x, r2.y, r2.x, r3.x
+add o0.yw, r0.yyyw, r2.xxxz
+utof r5.x {min16f}, v1.z
+min r5.y {min16f}, r5.x {min16f}, cb0[3].x {min16f}
+max r5.z {min16f}, r5.x {min16f}, cb0[3].y {min16f}
+lt r2.x, r5.x {min16f}, v0.z
+and r2.x, r2.x, l(0x3f800000)
+add o0.x, r0.x, r2.x
+movc r5.x {min16f}, r3.z, r5.y {min16f}, r5.z {min16f}
+add o0.z, r0.z, r5.x {min16f as def32}
+ret 

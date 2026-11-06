@@ -5,7 +5,7 @@ use std::fmt::Write;
 use super::Options;
 use super::number::{self, Style};
 use crate::decode::{Declaration, Declared, Decoded, Index, Instruction, Operand, Register, Selection};
-use crate::{GlobalFlags, InfoReturn};
+use crate::{GlobalFlags, InfoReturn, OperandClass, OperandFormat};
 
 const COMPONENTS: [char; 4] = ['x', 'y', 'z', 'w'];
 
@@ -197,12 +197,13 @@ impl Writer {
     }
 
     fn operand(&self, out: &mut String, o: &Operand, style: Style) {
-        self.annotated(out, o, style, o.precision);
+        self.annotated(out, o, style, None);
     }
 
-    /// An operand of an instruction whose precision (its destination's) is `precision`: an operand of another
-    /// precision says both, `{def32 as min16f}`.
-    fn annotated(&self, out: &mut String, o: &Operand, style: Style, precision: u8) {
+    /// An operand and its precision, `{min16f}` (none for full precision). A source that takes the precision of the
+    /// instruction's result, `reference`, says both where they differ, `{def32 as min16f}`. The precision is written
+    /// inside an absolute value's bars.
+    fn annotated(&self, out: &mut String, o: &Operand, style: Style, reference: Option<u8>) {
         match o.modifier {
             1 | 4 => out.push('-'),
             2 => out.push('|'),
@@ -210,20 +211,22 @@ impl Writer {
             _ => {}
         }
         self.body(out, o, style);
-        if matches!(o.modifier, 2 | 3) {
-            out.push('|');
-        }
-        if o.precision == precision {
-            if o.precision != 0 {
+        match reference {
+            Some(precision) if precision != o.precision => {
+                let _ = write!(
+                    out,
+                    " {{{} as {}}}",
+                    precision_name(o.precision),
+                    precision_name(precision)
+                );
+            }
+            _ if o.precision != 0 => {
                 let _ = write!(out, " {{{}}}", precision_name(o.precision));
             }
-        } else {
-            let _ = write!(
-                out,
-                " {{{} as {}}}",
-                precision_name(o.precision),
-                precision_name(precision)
-            );
+            _ => {}
+        }
+        if matches!(o.modifier, 2 | 3) {
+            out.push('|');
         }
         if o.non_uniform {
             out.push_str(" { nonuniform }");
@@ -874,18 +877,42 @@ impl Writer {
             out.push(' ');
         }
         let style = style(i.opcode);
+        // the precision of the result, the first destination's, which the sources of its type take
         let precision = i.operands.first().map_or(0, |o| o.precision);
+        let format = i.format();
+        let destinations = format.map_or(0, |f| f.destinations.len());
         for (n, o) in i.operands.iter().enumerate() {
             if n != 0 {
                 out.push_str(", ");
             }
-            self.annotated(out, o, style, precision);
+            let source = n.checked_sub(destinations);
+            let takes = format
+                .zip(source)
+                .is_some_and(|(f, s)| takes_result_precision(i.opcode, f, s));
+            self.annotated(out, o, style, takes.then_some(precision));
         }
         // the call site after the interface pointer's indices, `fcall fp0[1][2]`
         if let Some(function) = i.function {
             let _ = write!(out, "[{function}]");
         }
     }
+}
+
+/// Whether source `source` of an instruction is read at the precision of its result, so that the listing writes a
+/// source of another precision as `{def32 as min16f}`: a source of the first destination's type (a conversion's
+/// source, a load's address and a resource are not), except a comparison's (its result is a mask, not a value of the
+/// sources' type) and a shift's amount. Checked against Microsoft's listings of fixtures that mix the precisions in each.
+fn takes_result_precision(opcode: u16, format: OperandFormat, source: usize) -> bool {
+    let (Some(result), Some(class)) = (format.destinations.first(), format.sources.get(source)) else {
+        return false;
+    };
+    let name = crate::opcode_name(opcode);
+    let comparison = matches!(name, "ieq" | "ine" | "ige" | "ilt" | "uge" | "ult");
+    let shift_amount = matches!(name, "ishl" | "ishr" | "ushr") && source == 1;
+    result == class
+        && !matches!(class, OperandClass::Resource | OperandClass::Varies)
+        && !comparison
+        && !shift_amount
 }
 
 /// How an instruction moves the indentation: before it is written and after.

@@ -1,0 +1,45 @@
+      0x00000000: ps_5_0
+      0x00000008: dcl_globalFlags refactoringAllowed | enableMinimumPrecision
+      0x0000000C: dcl_constantbuffer CB0[3], immediateIndexed
+      0x0000001C: dcl_sampler s0, mode_default
+      0x00000028: dcl_resource_texture2d (float,float,float,float) t0
+      0x00000038: dcl_input_ps linear v0.xyzw
+      0x00000044: dcl_input_ps constant v1.yzw
+      0x00000050: dcl_input_ps constant v2.xyzw {min16u}
+      0x00000060: dcl_output o0.xyzw {min16f}
+      0x00000070: dcl_temps 4
+   0  0x00000078: firstbit_shi r0.x, v2.x {min16u as def32}
+   1  0x00000090: ieq r0.y, r0.x, l(0xffffffff)
+   2  0x000000AC: iadd r0.x, -r0.x, l(0x0000001f)
+   3  0x000000CC: movc r0.x, r0.y, l(0xffffffff), r0.x
+   4  0x000000F0: ushr r1.x {min16u}, v2.x {min16u}, v1.y
+   5  0x00000114: ishl r1.y {min16u}, v2.x {min16u}, v2.y {min16u}
+   6  0x0000013C: iadd r1.x {min16u}, r1.y {min16u}, r1.x {min16u}
+   7  0x00000164: countbits r0.y, r1.x {min16u as def32}
+   8  0x0000017C: imul null, r1.x {min16u}, r1.x {min16u as def32}, v2.x {min16u as def32}
+   9  0x000001A8: udiv r1.x {min16u}, null, r1.x {min16u}, v1.z {def32 as min16u}
+  10  0x000001D0: utof r2.x {min16f}, r1.x {min16u}
+  11  0x000001EC: bfrev r0.z, v2.x {min16u as def32}
+  12  0x00000204: iadd r0.y, r0.y, r0.z
+  13  0x00000220: iadd r0.x, r0.x, r0.y
+  14  0x0000023C: utof r2.y {min16f}, r0.x
+  15  0x00000254: sample_indexable(texture2d)(float,float,float,float) r0.xyzw {min16f}, v0.xyxx, t0.xyzw, s0
+  16  0x00000284: gather4_indexable(texture2d)(float,float,float,float) r1.xyzw {min16f}, v0.zwzz, t0.xyzw, s0.x
+  17  0x000002B4: mad r0.xyzw {min16f}, r0.xyzw {min16f}, r1.xyzw {min16f}, r2.yyyy {min16f}
+  18  0x000002E8: add r0.xyzw {min16f}, r2.xxxx {min16f}, r0.xyzw {min16f}
+  19  0x00000310: f16tof32 r3.x, v1.w
+  20  0x00000324: add r0.xyzw {min16f}, r0.xyzw {min16f}, r3.xxxx {def32 as min16f}
+  21  0x00000348: f32tof16 r3.x, v0.x
+  22  0x0000035C: iadd r3.x, r3.x, v2.z {min16u as def32}
+  23  0x0000037C: ubfe r3.x, l(0x00000005), l(0x00000003), r3.x
+  24  0x000003A0: imad r3.x, v2.w {min16u as def32}, cb0[2].y, r3.x
+  25  0x000003CC: utof r2.x {min16f}, r3.x
+  26  0x000003E4: add r0.x {min16f}, r0.x {min16f}, r2.x {min16f}
+  27  0x0000040C: dp3 o0.y {min16f}, r0.xyzx {min16f}, v0.xyzx {def32 as min16f}
+  28  0x00000430: mov o0.x {min16f}, r0.x {min16f}
+  29  0x0000044C: sqrt r2.x {min16f}, |r0.z {min16f}|
+  30  0x00000468: max r2.y {min16f}, r0.w {min16f}, cb0[0].x {def32 as min16f}
+  31  0x00000490: min o0.w {min16f}, r2.y {min16f}, cb0[0].y {def32 as min16f}
+  32  0x000004B8: rcp r2.y {min16f}, cb0[0].w {def32 as min16f}
+  33  0x000004D4: add o0.z {min16f}, r2.y {min16f}, r2.x {min16f}
+  34  0x000004FC: ret 
