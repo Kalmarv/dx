@@ -18,6 +18,9 @@
   vertex, geometry and pixel programs, feature level 9_1 and 9_3 pixel and vertex programs (one a `/Zi` build) and
   Shader Model 5.1 pixel and compute programs with register spaces and unbounded arrays. `generate.py` takes the
   sources to build and copies the `.hlsli` files beside them.
+- `dx`: `tests/cli.rs` checks `dx disasm` over corpus folders: a listing named by the whole file name, one named by the
+  stem only where no other program shares it, a folder's files that are not programs left out, `--check` failing on a
+  differing listing and where no program has one.
 - `dxil-reader`: `ops.rs` is written by `cargo xtask dxil-ops` (a Rust task in the workspace) from the operation tables
   dxc 1.9.2609 commits in C++ (`DxilOperations.cpp`, `DxilInstructions.h`, `DxilConstants.h`), where `generate_ops.py`
   ran dxc's Python database and rustfmt. The tables are the same; the file is marked `@generated`, rustfmt leaves it
