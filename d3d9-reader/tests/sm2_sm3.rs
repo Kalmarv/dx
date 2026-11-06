@@ -192,14 +192,17 @@ fn vertex_2_x_reads_predication_comparisons_and_breaks() {
     assert_eq!(i[10].sources[1].modifier, Modifier::Not);
     assert_eq!(i[1].comparison(), None);
 
-    // 2.0 has no predicate register, and a comparison is 1 to 6
+    // setp and predication are 2.x's, but a 2.0 program with them is read, as Microsoft's disassembler lists it; a
+    // comparison is 1 to 6
     let mut two = bytes.clone();
     two[..4].copy_from_slice(&0xfffe_0200u32.to_le_bytes());
-    assert!(
+    assert_eq!(
         read(&two)
-            .unwrap_err()
-            .detail
-            .contains("setp_comp (opcode 94) is not an instruction of vs_2_0")
+            .unwrap()
+            .instructions()
+            .filter(|i| i.predicate.is_some())
+            .count(),
+        2
     );
     let bad = program(
         0xfffe_0201,
@@ -325,10 +328,10 @@ fn pixel_2_x_reads_derivatives_and_texldd() {
     let p = read(&bytes).unwrap();
     let ops: Vec<_> = p.instructions().map(|i| (i.opcode, i.sources.len())).collect();
     assert_eq!(ops, [(Opcode::Dsx, 1), (Opcode::Dsy, 1), (Opcode::TexLdd, 4)]);
-    // derivatives are 2.x's on: not in 2.0
+    // derivatives are 2.x's on, but a 2.0 program with them is read, as Microsoft's disassembler lists it
     let mut older = bytes.clone();
     older[..4].copy_from_slice(&0xffff_0200u32.to_le_bytes());
-    assert!(read(&older).is_err());
+    assert_eq!(read(&older).unwrap().instructions().count(), 3);
 }
 
 #[test]
@@ -406,7 +409,7 @@ fn vertex_3_0_reads_texture_fetch_outputs_and_relative_outputs() {
     );
     assert_eq!(i[4].sources[0].relative.unwrap().swizzle, [3; 4]);
     assert_eq!(i[5].sources[0].modifier, Modifier::AbsNegate);
-    // vs_3_0 has four samplers' worth of register type, and no texld or texkill
+    // texld is a pixel instruction, but a vertex 3.0 program with it is read, as Microsoft's disassembler lists it
     let tex = program(
         0xfffe_0300,
         &[op(
@@ -414,10 +417,10 @@ fn vertex_3_0_reads_texture_fetch_outputs_and_relative_outputs() {
             &[dst(TEMP, 0, 15), src(INPUT, 0, 0xe4, 0), src(SAMPLER, 0, 0xe4, 0)],
         )],
     );
-    assert!(
-        refusal(&tex)
-            .1
-            .contains("tex (opcode 66) is a pixel instruction, not one of vs_3_0")
+    let i = read(&tex).unwrap().instructions().next().unwrap().clone();
+    assert_eq!(
+        (i.opcode, i.sources[1].register.kind),
+        (Opcode::Tex, RegisterType::Sampler)
     );
 }
 

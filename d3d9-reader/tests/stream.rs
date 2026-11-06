@@ -182,7 +182,7 @@ fn malformed_tokens_are_refused_at_their_word() {
             3,
             "register type 20 is not a Direct3D 9 register type",
         ),
-        // a source modifier past 13, a result modifier bit 23, a shift outside pixel 1.x
+        // a source modifier past 13, a result modifier bit 23, a shift that is none of x2 to x8 and d2 to d8
         (
             mov(dst(TEMP, 0, 15), src(CONST, 0, 0xe4, 14)),
             3,
@@ -194,9 +194,9 @@ fn malformed_tokens_are_refused_at_their_word() {
             "result modifier bit 23",
         ),
         (
-            mov(dst(TEMP, 0, 15) | 1 << 24, src(CONST, 0, 0xe4, 0)),
+            mov(dst(TEMP, 0, 15) | 5 << 24, src(CONST, 0, 0xe4, 0)),
             2,
-            "result shift 1",
+            "result shift 5",
         ),
         // the stated length disagrees with the operands
         (
@@ -217,16 +217,6 @@ fn malformed_tokens_are_refused_at_their_word() {
             .concat(),
             1,
             "reserved bit 29",
-        ),
-        // co-issue outside pixel 1.x
-        (
-            [
-                vec![1 | 2 << 24 | 1 << 30],
-                vec![dst(TEMP, 0, 15), src(CONST, 0, 0xe4, 0)],
-            ]
-            .concat(),
-            1,
-            "co-issue",
         ),
         // a relative source without its token, and one whose token is not a0 or aL
         (
@@ -331,5 +321,47 @@ fn every_truncation_and_bit_flip_is_read_or_refused_without_a_panic() {
                 let _ = frame(&changed);
             }
         }
+    }
+}
+
+#[test]
+fn malformed_streams_microsoft_lists_as_garbage_are_refused() {
+    // Microsoft's disassembler lists each of these without validating it; the reader refuses each at the word that
+    // breaks it. The comment one word short leaves its last word to be read as the instruction after it: Microsoft
+    // reads the dcl's usage token 0x80000005 as `mul v0.xyz`, its bit 31 ignored; it lists opcodes 43776 and 49 as
+    // `???`, and version 0xffff02fe as `ps_2_254`
+    let cases: [(&[u32], usize, &str); 4] = [
+        (
+            &[
+                0xffff_0300,
+                0x0001_fffe,
+                0x0200_001f,
+                0x8000_0005,
+                0x9007_0000,
+                0xffff,
+            ],
+            3,
+            "instruction token 0x80000005 sets reserved bit 29 or 31",
+        ),
+        (
+            &[0xfffe_0300, 0x0000_ab00, 0xffff],
+            1,
+            "opcode 43776 is not a Direct3D 9 instruction",
+        ),
+        (
+            &[0xffff_03ff, 0x0000_0031, 0xffff],
+            1,
+            "opcode 49 is not a Direct3D 9 instruction",
+        ),
+        (
+            &[0xffff_02fe, 0xffff],
+            0,
+            "version token 0xffff02fe is not a Direct3D 9 vertex (0xfffe) or pixel (0xffff) program of version 1.0 to 3.0",
+        ),
+    ];
+    for (words, word, wanted) in cases {
+        let bytes: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+        let (at, why) = refusal(&bytes);
+        assert_eq!((at, why.as_str()), (word, wanted));
     }
 }

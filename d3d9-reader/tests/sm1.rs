@@ -238,14 +238,14 @@ fn pixel_1_3_reads_the_texture_matrix_instructions() {
         ]
     );
     assert_eq!(p.instructions().nth(6).unwrap().destination.unwrap().shift, 2);
-    // texm3x2depth is 1.3 only
+    // texm3x2depth is 1.3's, and a 1.2 program with it is read, as Microsoft's disassembler lists it
     let mut older = bytes.clone();
     older[..4].copy_from_slice(&0xffff_0102u32.to_le_bytes());
-    let (word, why) = refusal(&older);
-    assert_eq!(word, 16);
     assert!(
-        why.contains("texm3x2depth (opcode 84) is not an instruction of ps_1_2"),
-        "{why}"
+        read(&older)
+            .unwrap()
+            .instructions()
+            .any(|i| i.opcode == Opcode::TexM3x2Depth)
     );
 }
 
@@ -366,72 +366,88 @@ fn shader_model_1_lengths_are_the_opcode_table_s_or_the_stated_one() {
 }
 
 #[test]
-fn shader_model_1_has_no_flow_control_samplers_or_relative_pixel_operands() {
-    let cases = [
-        // rep in a vertex 1.1 program
+fn a_result_shift_the_token_format_does_not_define_is_refused() {
+    // shift 5 is none of x2, x4, x8, d2, d4 or d8 (Microsoft's disassembler writes no shift for 4 to 12)
+    let bytes = program(
+        0xffff_0101,
+        &[op1(1, &[dst(TEMP, 0, 15) | 5 << 24, src(INPUT, 0, 0xe4, 0)])],
+    );
+    let (_, why) = refusal(&bytes);
+    assert!(why.contains("result shift 5"), "{why}");
+}
+
+#[test]
+fn instructions_and_registers_of_later_versions_are_read_in_shader_model_1() {
+    // rep i0 in a vertex 1.1 program, texld r0, s0 in a pixel 1.4 one, and the pixel instruction cnd in a vertex
+    // program: Microsoft's disassembler lists each, whatever the version
+    let rep = program(0xfffe_0101, &[op1(38, &[src(CONSTINT, 0, 0xe4, 0)])]);
+    let i = read(&rep).unwrap().instructions().next().unwrap().clone();
+    assert_eq!(
+        (i.opcode, i.sources[0].register),
         (
-            program(0xfffe_0101, &[op1(38, &[src(CONSTINT, 0, 0xe4, 0)])]),
-            "not an instruction of vs_1_1",
-        ),
-        // a sampler register in a pixel 1.4 program
-        (
-            program(
-                0xffff_0104,
-                &[op1(66, &[dst(TEMP, 0, 15), src(SAMPLER, 0, 0xe4, 0)])],
-            ),
-            "register type 10 is not a register of ps_1_4",
-        ),
-        // the relative flag in a pixel 1.x program
-        (
-            program(
-                0xffff_0101,
-                &[op1(1, &[dst(TEMP, 0, 15), src(CONST, 0, 0xe4, 0) | 0x2000])],
-            ),
-            "relative addressing in a pixel 1.x program",
-        ),
-        // predication before 2.x
-        (
-            program(
-                0xfffe_0101,
-                &[op1(1 | 1 << 28, &[dst(TEMP, 0, 15), src(INPUT, 0, 0xe4, 0)])],
-            ),
-            "predication in vs_1_1",
-        ),
-        // co-issue in a vertex program
-        (
-            program(
-                0xfffe_0101,
-                &[op1(1 | 1 << 30, &[dst(TEMP, 0, 15), src(INPUT, 0, 0xe4, 0)])],
-            ),
-            "co-issue outside a pixel 1.x program",
-        ),
-        // a result shift the token format does not define
-        (
-            program(
-                0xffff_0101,
-                &[op1(1, &[dst(TEMP, 0, 15) | 5 << 24, src(INPUT, 0, 0xe4, 0)])],
-            ),
-            "result shift 5",
-        ),
-        // a pixel-only instruction in a vertex program
-        (
-            program(
-                0xfffe_0101,
-                &[op1(
-                    80,
-                    &[
-                        dst(TEMP, 0, 15),
-                        src(INPUT, 0, 0xe4, 0),
-                        src(INPUT, 0, 0xe4, 0),
-                        src(INPUT, 0, 0xe4, 0),
-                    ],
-                )],
-            ),
-            "cnd (opcode 80) is a pixel instruction, not one of vs_1_1",
-        ),
-    ];
-    for (bytes, wanted) in cases {
-        let (_, why) = refusal(&bytes);
-        assert!(why.contains(wanted), "expected {wanted}: {why}");
-    }
+            Opcode::Rep,
+            Register {
+                kind: RegisterType::ConstInt,
+                number: 0
+            }
+        )
+    );
+    let sampler = program(
+        0xffff_0104,
+        &[op1(66, &[dst(TEMP, 0, 15), src(SAMPLER, 0, 0xe4, 0)])],
+    );
+    let i = read(&sampler).unwrap().instructions().next().unwrap().clone();
+    assert_eq!(i.sources[0].register.kind, RegisterType::Sampler);
+    let cnd = program(
+        0xfffe_0101,
+        &[op1(
+            80,
+            &[
+                dst(TEMP, 0, 15),
+                src(INPUT, 0, 0xe4, 0),
+                src(INPUT, 0, 0xe4, 0),
+                src(INPUT, 0, 0xe4, 0),
+            ],
+        )],
+    );
+    let i = read(&cnd).unwrap().instructions().next().unwrap().clone();
+    assert_eq!((i.opcode, i.sources.len()), (Opcode::Cnd, 3));
+    // and the operand flags of other versions: a relative source in a pixel 1.x program (its implicit index is listed
+    // `t0.x`), a relative destination, predication, co-issue in a vertex program, and a pixel 1.x shift in one
+    let relative = program(
+        0xffff_0101,
+        &[op1(1, &[dst(TEMP, 0, 15), src(CONST, 0, 0xe4, 0) | 0x2000])],
+    );
+    let i = read(&relative).unwrap().instructions().next().unwrap().clone();
+    assert!(i.sources[0].relative.is_some_and(|r| r.word.is_none()));
+    let destination = program(
+        0xfffe_0101,
+        &[op1(1, &[dst(TEMP, 0, 15) | 0x2000, src(INPUT, 0, 0xe4, 0)])],
+    );
+    let i = read(&destination).unwrap().instructions().next().unwrap().clone();
+    assert!(i.destination.unwrap().relative.is_some());
+    let predicated = program(
+        0xfffe_0101,
+        &[op1(
+            1 | 1 << 28,
+            &[
+                dst(TEMP, 0, 15),
+                src(PREDICATE, 0, 0xe4, 0),
+                src(INPUT, 0, 0xe4, 0),
+            ],
+        )],
+    );
+    let i = read(&predicated).unwrap().instructions().next().unwrap().clone();
+    assert_eq!(i.predicate.unwrap().register.kind, RegisterType::Predicate);
+    let coissued = program(
+        0xfffe_0101,
+        &[op1(1 | 1 << 30, &[dst(TEMP, 0, 15), src(INPUT, 0, 0xe4, 0)])],
+    );
+    assert!(read(&coissued).unwrap().instructions().next().unwrap().coissue);
+    let shifted = program(
+        0xfffe_0101,
+        &[op1(1, &[dst(TEMP, 0, 15) | 1 << 24, src(INPUT, 0, 0xe4, 0)])],
+    );
+    let i = read(&shifted).unwrap().instructions().next().unwrap().clone();
+    assert_eq!(i.destination.unwrap().shift, 1);
 }

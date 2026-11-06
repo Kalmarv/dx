@@ -8,9 +8,12 @@
 //! as well ([`ConstantTable`]), and so is the `DBUG` comment of a `/Zi` build ([`DebugInfo`]). [`frame`] reads the first program of a buffer that holds more after it.
 //!
 //! It reads and checks bytes and never interprets them for an API: registers are Direct3D's register types and numbers,
-//! modifiers and usages Direct3D's own values. Whatever the format does not define (an opcode outside the instruction
-//! set of the program's version, a register type it has no name for, a reserved bit set, an instruction whose length
-//! disagrees with its operands) is an [`Error`] naming the 32-bit word where it is; it never panics on untrusted input.
+//! modifiers and usages Direct3D's own values. An instruction, register type or operand flag of another version (a
+//! pixel instruction in a vertex program, `i0` in vs_1_1, predication in 2.0) is read, as Microsoft's disassembler lists
+//! it. Whatever the format does not define (an opcode or register type with no name, a version that is none of 1.0 to
+//! 3.0, a reserved bit set, an instruction whose length disagrees with its operands) is an [`Error`] naming the 32-bit
+//! word where it is, where Microsoft's disassembler lists such a stream as garbage (`???`, `ps_2_254`); it never panics
+//! on untrusted input.
 //!
 //! ```
 //! # fn main() -> Result<(), d3d9_reader::Error> {

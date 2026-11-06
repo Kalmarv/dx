@@ -92,37 +92,33 @@ impl RegisterType {
         }
     }
 
-    /// The register type of a token value in `version`, and the largest register number it has (`None` for a bank
-    /// whose size is the device's), or why the value names no register of the version.
+    /// The register type of a token value in `version` (whose stage tells `a0` from `tN`), and the largest register
+    /// number it has (`None` for a bank whose size is the device's), or why the value names no register. A type is
+    /// read in any version, as Microsoft's disassembler lists it.
     fn of(code: u32, version: Version) -> std::result::Result<(Self, Option<u32>), String> {
         use RegisterType::*;
-        let vertex = version.stage == Stage::Vertex;
-        let sm1 = version.major == 1;
-        let sm3 = version.major == 3;
-        let flow = !sm1 && (vertex || version.minor > 0 || sm3);
         Ok(match code {
             0 => (Temp, None),
             1 => (Input, None),
             2 => (Const, None),
-            3 if vertex => (Address, Some(0)),
-            3 if !sm3 => (Texture, None),
-            4 if vertex && !sm3 => (RasterizerOut, Some(2)),
-            5 if vertex && !sm3 => (AttributeOut, None),
-            6 if vertex => (Output, None),
-            7 if flow => (ConstInt, None),
-            8 if !vertex => (ColorOut, None),
-            9 if !vertex && !(sm1 && version.minor < 4) => (DepthOut, Some(0)),
-            10 if (!vertex && !sm1) || sm3 => (Sampler, None),
-            11 if vertex => (Const2, None),
-            12 if vertex => (Const3, None),
-            13 if vertex => (Const4, None),
-            14 if flow => (ConstBool, None),
-            15 if !sm1 && (vertex || sm3) => (Loop, Some(0)),
-            17 if !vertex && sm3 => (Misc, Some(1)),
-            18 if flow => (Label, None),
-            19 if !sm1 && (version.minor > 0 || sm3) => (Predicate, Some(0)),
-            16 | 20.. => return Err("is not a Direct3D 9 register type".into()),
-            _ => return Err(format!("is not a register of {version}")),
+            3 if version.stage == Stage::Vertex => (Address, Some(0)),
+            3 => (Texture, None),
+            4 => (RasterizerOut, Some(2)),
+            5 => (AttributeOut, None),
+            6 => (Output, None),
+            7 => (ConstInt, None),
+            8 => (ColorOut, None),
+            9 => (DepthOut, Some(0)),
+            10 => (Sampler, None),
+            11 => (Const2, None),
+            12 => (Const3, None),
+            13 => (Const4, None),
+            14 => (ConstBool, None),
+            15 => (Loop, Some(0)),
+            17 => (Misc, Some(1)),
+            18 => (Label, None),
+            19 => (Predicate, Some(0)),
+            _ => return Err("is not a Direct3D 9 register type".into()),
         })
     }
 }
@@ -705,7 +701,12 @@ impl Operands<'_> {
             )
         })?;
         let register = register(token & !0x2000, at, version)?;
-        if !matches!(register.kind, RegisterType::Address | RegisterType::Loop) || token & 0x2000 != 0 {
+        // type 3 is the address register `a0`, or `tN` in a pixel program, which Microsoft's disassembler lists as one
+        if !matches!(
+            register.kind,
+            RegisterType::Address | RegisterType::Texture | RegisterType::Loop
+        ) || token & 0x2000 != 0
+        {
             return Err(error(
                 at,
                 format!(
@@ -752,22 +753,15 @@ impl Operands<'_> {
         } else {
             i8::try_from(shift).unwrap_or(0)
         };
-        let pixel1 = version.stage == Stage::Pixel && version.major == 1;
-        if !(shift == 0 || (pixel1 && (-3..=3).contains(&shift))) {
+        // pixel 1.x's shifts are read in any version, as Microsoft's disassembler lists them; 4 to 12 are no shift
+        if !(-3..=3).contains(&shift) {
             return Err(error(
                 at,
-                format!(
-                    "destination {token:#010x} has result shift {shift}, where it is 0 (or -3 to 3 in pixel 1.x)"
-                ),
+                format!("destination {token:#010x} has result shift {shift}, where it is -3 to 3"),
             ));
         }
+        // relative addressing too, which in Shader Model 1 has no address token
         let relative = if token & 0x2000 != 0 {
-            if version.major == 1 {
-                return Err(error(
-                    at,
-                    "relative addressing of a destination in Shader Model 1",
-                ));
-            }
             Some(self.relative(at, "a destination")?)
         } else {
             None
@@ -795,9 +789,6 @@ impl Operands<'_> {
             )
         })?;
         let relative = if token & 0x2000 != 0 {
-            if version.major == 1 && version.stage == Stage::Pixel {
-                return Err(error(at, "relative addressing in a pixel 1.x program"));
-            }
             Some(self.relative(at, "a source")?)
         } else {
             None
@@ -877,31 +868,7 @@ impl Records<'_> {
             .ok()
             .and_then(Opcode::from_code)
             .ok_or_else(|| error(word, format!("opcode {op} is not a Direct3D 9 instruction")))?;
-        if !opcode.in_version(version) {
-            let other = Version {
-                stage: match version.stage {
-                    Stage::Vertex => Stage::Pixel,
-                    Stage::Pixel => Stage::Vertex,
-                },
-                ..version
-            };
-            let detail = if opcode.in_version(other) {
-                let stage = match other.stage {
-                    Stage::Vertex => "vertex",
-                    Stage::Pixel => "pixel",
-                };
-                format!(
-                    "{} (opcode {op}) is a {stage} instruction, not one of {version}",
-                    opcode.name()
-                )
-            } else {
-                format!(
-                    "{} (opcode {op}) is not an instruction of {version}",
-                    opcode.name()
-                )
-            };
-            return Err(error(word, detail));
-        }
+        // an opcode outside its versions is read with the operands it takes there, as Microsoft's disassembler lists it
         let sm1 = version.major == 1;
         let length = usize::from(bits(token, 24, 15));
         let shape = match (opcode, opcode.shape(version)) {
@@ -924,15 +891,8 @@ impl Records<'_> {
                 format!("instruction token {token:#010x} sets reserved bit 29 or 31"),
             ));
         }
-        if coissue && !(sm1 && version.stage == Stage::Pixel) {
-            return Err(error(word, "co-issue outside a pixel 1.x program"));
-        }
-        if predicated && (sm1 || (version.major == 2 && version.minor == 0)) {
-            return Err(error(
-                word,
-                format!("predication in {version}, which has no predicate register"),
-            ));
-        }
+        // co-issue (pixel 1.x's) and predication (2.x's and 3.0's) are read in any version, as Microsoft's
+        // disassembler lists them
         if shape == Shape::Phase && token != 0xfffd {
             return Err(error(
                 word,

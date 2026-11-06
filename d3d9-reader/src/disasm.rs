@@ -105,6 +105,8 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
     let mut depth: usize = 0;
     // the arithmetic slots before the next instruction, which the numbering writes (texture slots don't count)
     let mut slot: u32 = 0;
+    // no instruction yet
+    let mut first = true;
     for item in &program.items {
         if matches!(item, Item::Comment(_)) {
             continue;
@@ -137,18 +139,25 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
             }
             source = Some((*file, *line));
         }
-        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction, a `nop` and a `label` have none),
-        // then the offset
+        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction, a `nop` and a `label` have none,
+        // though a co-issued first instruction's slot is counted), then the offset
         let mut prefix = String::new();
         if options.numbering {
             match item {
                 Item::Instruction(i) if !i.coissue && !matches!(i.opcode, Opcode::Nop | Opcode::Label) => {
                     let colon = if options.offsets { ' ' } else { ':' };
                     let _ = write!(prefix, "{slot:>4}{colon} ");
-                    slot = slot.saturating_add(slots(i, &program).1);
+                    slot = slot.saturating_add(slots(i, false, &program).1);
+                }
+                Item::Instruction(i) => {
+                    slot = slot.saturating_add(slots(i, first, &program).1);
+                    prefix.push_str("      ");
                 }
                 _ => prefix.push_str("      "),
             }
+        }
+        if matches!(item, Item::Instruction(_)) {
+            first = false;
         }
         if options.offsets {
             let _ = write!(prefix, "0x{:08X}: ", item.word().saturating_mul(4));
@@ -160,8 +169,13 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
         };
         let line = match item {
             Item::Comment(_) => continue,
-            Item::Declaration(d) => declaration(d, &program),
-            Item::Definition(d) => definition(&d.literal, d.destination.register, &program, options),
+            // a declaration or definition inside flow control is indented as an instruction there is
+            Item::Declaration(d) => format!("{}{}", "  ".repeat(depth), declaration(d, &program)),
+            Item::Definition(d) => format!(
+                "{}{}",
+                "  ".repeat(depth),
+                definition(&d.literal, d.destination.register, &program, options)
+            ),
             Item::Instruction(i) => {
                 if matches!(
                     i.opcode,
@@ -213,7 +227,8 @@ fn variables(debug: &DebugInfo) -> Vec<Vec<String>> {
     notes
 }
 
-/// `D3DXPARAMETER_TYPE` as HLSL names it.
+/// A parameter's `D3DXPARAMETER_TYPE` as Microsoft's listing names it: the names of `D3D_SHADER_VARIABLE_TYPE`, which
+/// extends it, with `UNKNOWN` for the buffer, UAV and structured-buffer types and any number past them.
 fn type_kind(kind: u16) -> &'static str {
     match kind {
         0 => "void",
@@ -221,29 +236,59 @@ fn type_kind(kind: u16) -> &'static str {
         2 => "int",
         3 => "float",
         4 => "string",
-        5 => "texture",
-        6 => "texture1D",
-        7 => "texture2D",
-        8 => "texture3D",
-        9 => "textureCUBE",
+        5 => "Texture",
+        6 => "Texture1D",
+        7 => "Texture2D",
+        8 => "Texture3D",
+        9 => "TextureCube",
         10 => "sampler",
         11 => "sampler1D",
         12 => "sampler2D",
         13 => "sampler3D",
         14 => "samplerCUBE",
-        _ => "unknown",
+        15 => "PixelShader",
+        16 => "VertexShader",
+        17 => "pixelfragment",
+        18 => "vertexfragment",
+        19 => "uint",
+        20 => "byte",
+        21 => "GeometryShader",
+        22 => "RasterizerState",
+        23 => "DepthStencilState",
+        24 => "BlendState",
+        25 => "Buffer",
+        28 => "Texture1DArray",
+        29 => "Texture2DArray",
+        30 => "RenderTargetView",
+        31 => "DepthStencilView",
+        32 => "Texture2DMS",
+        33 => "Texture2DMSArray",
+        34 => "TextureCubeArray",
+        35 => "HullShader",
+        36 => "DomainShader",
+        37 => "interface",
+        38 => "ComputeShader",
+        39 => "double",
+        52 => "min8float",
+        53 => "min10float",
+        54 => "min16float",
+        55 => "min12int",
+        56 => "min16int",
+        57 => "min16uint",
+        _ => "UNKNOWN",
     }
 }
 
 /// A parameter's type as the Parameters list writes it before the name: `float4`, `row_major float4x4`,
-/// `sampler2D`.
+/// `sampler2D`; nothing for a class past struct.
 fn type_name(ty: &Type) -> String {
     let kind = type_kind(ty.kind);
     match ty.class {
+        0 | 4 => kind.to_owned(),
         1 => format!("{kind}{}", ty.columns),
         2 => format!("row_major {kind}{}x{}", ty.rows, ty.columns),
         3 => format!("{kind}{}x{}", ty.rows, ty.columns),
-        _ => kind.to_owned(),
+        _ => String::new(),
     }
 }
 
@@ -270,9 +315,8 @@ fn header(out: &mut String, table: &ConstantTable) {
     // a uniform with a range in two register sets is one parameter
     let mut parameters = constants.clone();
     parameters.dedup_by(|a, b| a.name == b.name);
-    for c in &parameters {
-        parameter(out, 3, &c.ty, &c.name);
-    }
+    let parameters: Vec<(&Type, &str)> = parameters.iter().map(|c| (&c.ty, c.name.as_str())).collect();
+    list(out, 3, &parameters);
     out.push_str("//\n//\n// Registers:\n//\n");
     constants.sort_by_key(|c| (c.register_set, c.register));
     // the name column is never narrower than 12
@@ -286,43 +330,45 @@ fn header(out: &mut String, table: &ConstantTable) {
     out.push_str("//\n\n");
 }
 
-/// One line of the Parameters list, `type name[elements];`, at `indent` spaces after the `//`. A struct is a block, with
-/// its members `indent + 4` in and a blank comment line before and after it (one between two structs):
+/// The Parameters list or a struct's members, `type name[elements];` at `indent` spaces after the `//`, with a blank
+/// comment line (`//` and the indent's spaces) between a struct and the item before or after it (one between two
+/// structs) but not before the first item or after the last. A struct is a block with its members `indent + 4` in:
 ///
 /// ```text
-/// //
 /// //   struct
 /// //   {
 /// //       float4 colour;
 /// //
 /// //   } lights[3];
-/// //
 /// ```
-fn parameter(out: &mut String, indent: usize, ty: &Type, name: &str) {
+fn list(out: &mut String, indent: usize, items: &[(&Type, &str)]) {
     let pad = " ".repeat(indent);
-    let array = if ty.elements > 1 {
-        format!("[{}]", ty.elements)
-    } else {
-        String::new()
-    };
-    if ty.class == 5 {
-        let blank = format!("//{pad}\n");
-        if !out.ends_with(&blank) {
-            out.push_str(&blank);
+    let mut previous: Option<&Type> = None;
+    for &(ty, name) in items {
+        if previous.is_some_and(|p| p.class == 5 || ty.class == 5) {
+            let _ = writeln!(out, "//{pad}");
         }
-        let _ = write!(out, "//{pad}struct\n//{pad}{{\n");
-        for member in &ty.members {
-            parameter(out, indent.saturating_add(4), &member.ty, &member.name);
+        previous = Some(ty);
+        let array = if ty.elements > 1 {
+            format!("[{}]", ty.elements)
+        } else {
+            String::new()
+        };
+        if ty.class == 5 {
+            let _ = write!(out, "//{pad}struct\n//{pad}{{\n");
+            let members: Vec<(&Type, &str)> = ty.members.iter().map(|m| (&m.ty, m.name.as_str())).collect();
+            list(out, indent.saturating_add(4), &members);
+            let _ = writeln!(out, "//\n//{pad}}} {name}{array};");
+        } else {
+            let _ = writeln!(out, "//{pad}{} {name}{array};", type_name(ty));
         }
-        let _ = write!(out, "//\n//{pad}}} {name}{array};\n//{pad}\n");
-    } else {
-        let _ = writeln!(out, "//{pad}{} {name}{array};", type_name(ty));
     }
 }
 
 fn register(r: Register, program: &Program) -> String {
     let n = r.number;
-    let vertex3 = program.version.stage == Stage::Vertex && program.version.major == 3;
+    // type 6 is `oTN` before 3.0 and `oN` in 3.0, in either stage
+    let sm3 = program.version.major == 3;
     let indexed = |names: &[&str]| -> String {
         usize::try_from(n)
             .ok()
@@ -340,7 +386,7 @@ fn register(r: Register, program: &Program) -> String {
         RegisterType::Address => "a0".into(),
         RegisterType::RasterizerOut => indexed(&["oPos", "oFog", "oPts"]),
         RegisterType::AttributeOut => format!("oD{n}"),
-        RegisterType::Output if vertex3 => format!("o{n}"),
+        RegisterType::Output if sm3 => format!("o{n}"),
         RegisterType::Output => format!("oT{n}"),
         RegisterType::ConstInt => format!("i{n}"),
         RegisterType::ColorOut => format!("oC{n}"),
@@ -448,7 +494,8 @@ fn suffixes(d: Option<&Destination>) -> String {
 
 fn mnemonic(i: &Instruction, program: &Program) -> String {
     let v = program.version;
-    let from14 = v.stage == Stage::Pixel && (v.major > 1 || v.minor == 4);
+    // `texld` and `texcrd` from pixel 1.4 and from 2.0 in both stages
+    let from14 = v.major > 1 || (v.stage == Stage::Pixel && v.minor == 4);
     let comparison = i.comparison().map_or("", |c| match c {
         Comparison::Greater => "_gt",
         Comparison::Equal => "_eq",
@@ -544,14 +591,8 @@ fn declaration(d: &crate::Declaration, program: &Program) -> String {
         Declared::Sampler(TextureType::D2) => "_2d".to_owned(),
         Declared::Sampler(TextureType::Cube) => "_cube".to_owned(),
         Declared::Sampler(TextureType::Volume) => "_volume".to_owned(),
-        Declared::Semantic { .. }
-            if matches!(
-                d.destination.register.kind,
-                RegisterType::Texture | RegisterType::Misc
-            ) || (program.version.stage == Stage::Pixel && program.version.major == 2) =>
-        {
-            String::new()
-        }
+        // a pixel program's input of usage 0 (position) and index 0 has no usage, whatever its register
+        Declared::Semantic { usage: 0, index: 0 } if program.version.stage == Stage::Pixel => String::new(),
         Declared::Semantic { usage, index } => {
             let index = if index == 0 {
                 String::new()
@@ -625,19 +666,19 @@ fn general(value: f32) -> String {
 /// against every footer of a vs_3_0 and ps_3_0 corpus, against `D3DAssemble`d programs of every operation alone in each
 /// version (`tests/assembled`), and of co-issue and predication. `loop`, `endloop`, `call`, `callnz` and `ret` take
 /// what Microsoft's instruction reference states, unchecked.
-fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
-    // a co-issued instruction runs in the slot of the one before it, and a `nop` takes none
-    if i.coissue || i.opcode == Opcode::Nop {
+fn slots(i: &Instruction, first: bool, program: &Program) -> (u32, u32) {
+    // a co-issued instruction runs in the slot of the one before it (the program's first takes its own), and a `nop`
+    // takes none
+    if (i.coissue && !first) || i.opcode == Opcode::Nop {
         return (0, 0);
     }
     let v = program.version;
-    let pixel = v.stage == Stage::Pixel;
-    let pixel1 = pixel && v.major == 1;
-    let vertex1 = !pixel && v.major == 1;
+    let pixel1 = v.stage == Stage::Pixel && v.major == 1;
+    let vertex1 = v.stage == Stage::Vertex && v.major == 1;
     let (texture, arithmetic): (u32, u32) = match i.opcode {
         Opcode::Tex => (1, 0),
-        // pixel 1.x's texture addressing operations, `texcrd` of 1.4 among them; `texkill`, `texdepth` and `bem` are
-        // arithmetic
+        // pixel 1.x's texture addressing operations, `texcrd` of 1.4 among them, in whatever version; `texkill`,
+        // `texdepth` and `bem` are arithmetic
         Opcode::TexCoord
         | Opcode::TexBem
         | Opcode::TexBemL
@@ -653,11 +694,7 @@ fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
         | Opcode::TexM3x3VSpec
         | Opcode::TexM3x3
         | Opcode::TexDp3
-        | Opcode::TexDp3Tex
-            if pixel1 =>
-        {
-            (1, 0)
-        }
+        | Opcode::TexDp3Tex => (1, 0),
         Opcode::TexLdl => (2, 0),
         Opcode::TexLdd => (1, 2),
         // vertex 1.1's full-precision `exp` and `log` and its `frc` are macros
@@ -679,11 +716,16 @@ fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
         | Opcode::M3x2
         | Opcode::Crs
         | Opcode::Dsx
-        | Opcode::Dsy => (0, 2),
-        Opcode::Dp2Add if pixel => (0, 2),
+        | Opcode::Dsy
+        | Opcode::Dp2Add
+        | Opcode::Bem => (0, 2),
         Opcode::Label | Opcode::Phase => (0, 0),
         _ => (0, 1),
     };
+    // a pixel 1.x instruction takes one arithmetic slot at most, even one of a later version's macros
+    if pixel1 {
+        return (texture, arithmetic.min(1));
+    }
     // a predicated instruction takes one arithmetic slot more, a predicated sample too
     let predicate = u32::from(i.predicate.is_some());
     (texture, arithmetic.saturating_add(predicate))
@@ -691,10 +733,13 @@ fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
 
 /// `// approximately N instruction slots used`, split into texture and arithmetic slots when the program samples.
 fn footer(out: &mut String, program: &Program) {
-    let (texture, arithmetic) = program.instructions().fold((0u32, 0u32), |(t, a), i| {
-        let (ti, ai) = slots(i, program);
-        (t.saturating_add(ti), a.saturating_add(ai))
-    });
+    let (texture, arithmetic) = program
+        .instructions()
+        .enumerate()
+        .fold((0u32, 0u32), |(t, a), (n, i)| {
+            let (ti, ai) = slots(i, n == 0, program);
+            (t.saturating_add(ti), a.saturating_add(ai))
+        });
     let total = texture.saturating_add(arithmetic);
     let slots = if total == 1 { "slot" } else { "slots" };
     let _ = write!(out, "// approximately {total} instruction {slots} used");

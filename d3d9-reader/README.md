@@ -24,13 +24,15 @@ and the variables each line writes (`mul r0, v0, c0  // ::o<0,1,2,3>`). `dx disa
 ## What it reads
 
 - **Versions:** `vs_1_0`, `vs_1_1`, `vs_2_0`, `vs_2_x`, `vs_3_0` and the software profiles `vs_2_sw` and `vs_3_sw`;
-  `ps_1_0` to `ps_1_4`, `ps_2_0`, `ps_2_x`, `ps_3_0` and `ps_2_sw`, `ps_3_sw`. Each program is read under its own
-  version's rules: which opcodes and register types exist, and how many operands an instruction takes where that
-  changed (`sincos`, `sgn`, `tex` and `texcoord`).
+  `ps_1_0` to `ps_1_4`, `ps_2_0`, `ps_2_x`, `ps_3_0` and `ps_2_sw`, `ps_3_sw`. The version decides how many operands an
+  instruction takes where that changed (`sincos`, `sgn`, `tex` and `texcoord`), whether type 3 is `a0` or `tN`, and
+  whether a relative address has a token of its own. An instruction, register type or flag that only another version
+  has (a pixel instruction in a vertex program, `i0` in `vs_1_1`, co-issue outside pixel 1.x, predication in 2.0) is
+  read, as Microsoft's disassembler lists it.
 - **Instructions** (`Instruction`): the opcode (every `D3DSIO` opcode, by `Opcode`), the control bits (a `texld`'s
   project and bias forms, the comparison of `if_comp`, `break_comp` and `setp_comp`), the predicate of a predicated
-  instruction, co-issue in pixel 1.x, the destination with its write mask, saturate, partial precision, centroid and
-  pixel 1.x result shift, and the sources with their swizzles and modifiers (negate, bias, sign, complement, `_x2`,
+  instruction, co-issue, the destination with its write mask, saturate, partial precision, centroid and
+  result shift, and the sources with their swizzles and modifiers (negate, bias, sign, complement, `_x2`,
   `_dz`, `_dw`, abs, not). Relative addressing keeps its address register (`a0` or the loop counter `aL`) and the
   swizzle as stored; in vertex 1.x, where the index is the implicit `a0.x`, `Relative::word` is `None`.
 - **Flow control:** `if`, `if_comp`, `else`, `endif`, `loop`, `endloop`, `rep`, `endrep`, `break`, `break_comp`,
@@ -56,10 +58,12 @@ stored.
 Whatever the stream states (a comment's or an instruction's length, an operand count, a table offset) is checked
 against the words that exist before it is read, and the reader does not index or do unchecked arithmetic (both denied
 at compile time). Every refusal is an `Error` naming the 32-bit word where it happened and what was expected there:
-an opcode or a register type the program's version does not have, reserved bits, an instruction whose stated length
-disagrees with its operands, a relative address without its address token, a definition naming another bank's
+an opcode, register type, usage or result shift with no name, a register number past its bank (`a1`, `oDepth1`), a
+version that is none of 1.0 to 3.0, reserved bits, an instruction whose stated length disagrees with its operands, a relative address without its address token, a definition naming another bank's
 register, a `CTAB` whose version is not the program's, whose ranges overlap or that names a constant twice in one
-register set, words after `END`.
+register set, words after `END`. Microsoft's disassembler lists such a malformed stream without validating it, as
+garbage (`???` for an unknown opcode, `ps_2_254` for version 0xffff02fe, a short comment's last word read as an
+instruction with its reserved bit ignored); the reader refuses it at the word that breaks it.
 
 ## What it does not do
 
@@ -75,8 +79,10 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
 and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
-fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,035 listings of 45 programs, 10 of them
-`/Zi` builds). No game files are needed for these.
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,656 listings of 72 programs, 10 of them
+`/Zi` builds; for each of the 11 versions, one with every instruction and one with every register type, `dcl` usage
+and instruction flag, whatever the version's own lists; and one whose constant table has every parameter type and
+class). No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every
 program of Shaun White Skateboarding's three SDB2 bundles (7,306) and three more of its programs; the inputs are in

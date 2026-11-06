@@ -339,7 +339,8 @@ impl Opcode {
         }
     }
 
-    /// True when the opcode is an instruction of `version`.
+    /// True when the opcode is an instruction of `version` in Microsoft's lists. A program is read and listed whatever
+    /// its opcodes' versions, as Microsoft's disassembler lists it.
     pub fn in_version(self, version: Version) -> bool {
         let (vertex, pixel) = self.versions();
         let range = match version.stage {
@@ -349,7 +350,7 @@ impl Opcode {
         range.is_some_and(|(from, to)| (from..=to).contains(&(version.major, version.minor)))
     }
 
-    /// The operands the opcode takes in `version` (which it must be an instruction of).
+    /// The operands the opcode takes in `version`, which it need not be an instruction of.
     pub(crate) fn shape(self, version: Version) -> Shape {
         use Opcode::*;
         let sm1 = version.major == 1;

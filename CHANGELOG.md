@@ -68,6 +68,27 @@
   out of range"). A resource's tags other than the element type and stride are not read, so the reorder-coherent tag
   4, whose value is `i1 true`, no longer refuses it. New fixtures `lib_unbound` (`lib_6_6`) and `lib_unbound.69`
   (`lib_6_9`, with a `reordercoherent` UAV array) and their dxc listings; both are refused by the reader before this.
+- `d3d9-reader`: four differences from Microsoft's listings, found over Wine's and vkd3d's tests, and what the probes of
+  them found. A constant table parameter's type is named as Microsoft's disassembler names it, which is the name of
+  `D3D_SHADER_VARIABLE_TYPE` (`Texture2D`, `TextureCube`, `uint`, `PixelShader`, `UNKNOWN` for 26, 27, 40 to 51 and
+  past 57; was `texture2D`, `textureCUBE`), and a class past struct has no type name. A struct in the Parameters list
+  has a blank line between it and the item before or after it, none before the first or after the last. A pixel
+  program's `dcl` of usage 0 and index 0 has no usage (`dcl v0`), on any register; any other usage is named, `t`
+  registers' and pixel 2.x's included. An instruction, register type or operand flag of another version is read and
+  listed, as Microsoft's disassembler lists it: an opcode outside its version's list (`defb` in `ps_2_0`, `cnd` in
+  `vs_1_1`, `texld` in `vs_3_0`, named `texld` and `texcrd` from 2.0 in either stage), a register type (`i0` in
+  `vs_1_1`, `s0` in `ps_1_4`, `o0` in `ps_3_0`, a pixel program's relative index `t0.x`), co-issue outside pixel 1.x,
+  predication in 1.x and 2.0, a result shift outside pixel 1.x, and relative addressing in Shader Model 1; before, each
+  was refused. Their slots are Microsoft's: texture-addressing instructions take a texture slot in every version, a
+  pixel 1.x instruction at most one arithmetic slot, `bem` and `dp2add` two elsewhere, and a co-issued first
+  instruction its own; a definition or declaration inside flow control is indented. Malformed streams are still refused
+  at the word that breaks them, where Microsoft's disassembler lists them as garbage: an unknown opcode (`???`), a
+  version that is none of 1.0 to 3.0 (`ps_2_254`), a reserved bit, an unknown register type, usage or result shift, a
+  register past its bank (`a1`); `tests/stream.rs` pins four such streams. New fixtures (`tests/disasm`): four fxc
+  builds of `ctab.hlsl` and one with its constant table's types and classes changed, and for each of the 11 versions
+  one program with every instruction and one with every register type, `dcl` usage and flag, with their 621 listings
+  (1,656 listings of 72 programs); the reader before this lists one of the 27 as Microsoft does, differs on four and
+  refuses 22.
 
 ## 0.8.0 (2026-11-06)
 
