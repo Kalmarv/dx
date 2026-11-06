@@ -2,6 +2,8 @@
 
 [![crates.io](https://img.shields.io/crates/v/dxcontainer)](https://crates.io/crates/dxcontainer) [![docs.rs](https://img.shields.io/docsrs/dxcontainer)](https://docs.rs/dxcontainer) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/dx/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/dx/actions/workflows/ci.yml)
 
+**Try it in your browser:** [kalmarv.github.io/iridia-dx-web](https://kalmarv.github.io/iridia-dx-web/)
+
 Rust libraries that read compiled shader programs and their containers: Direct3D 9, DXBC and DXIL programs, and PlayStation 3 RSX programs and texture descriptors.
 
 ## Features
