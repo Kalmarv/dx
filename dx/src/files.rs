@@ -1,15 +1,16 @@
 //! Finding programs and their listings on disk, and telling a container from a Direct3D 9 token stream.
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
-/// The extensions of listings, which a folder walk does not take for programs.
-const LISTINGS: &[&str] = &["txt", "asm", "lst", "md", "toml", "json", "hlsl"];
-
-/// `path` itself, or every file under the folder `path` that is not a listing, in name order.
-pub fn programs(path: &Path) -> Result<Vec<PathBuf>, String> {
+/// The programs at `path`: `path` itself, or every file under the folder `path` that starts as a `DXBC` container or
+/// a Direct3D 9 token stream does, in name order. Also the number of the folder's other files, which are left out.
+pub fn programs(path: &Path) -> Result<(Vec<PathBuf>, usize), String> {
     if !path.is_dir() {
-        return Ok(vec![path.to_owned()]);
+        return Ok((vec![path.to_owned()], 0));
     }
     let mut found = Vec::new();
+    let mut others = 0usize;
     let mut folders = vec![path.to_owned()];
     while let Some(folder) = folders.pop() {
         let entries = std::fs::read_dir(&folder).map_err(|e| format!("{}: {e}", folder.display()))?;
@@ -18,34 +19,51 @@ pub fn programs(path: &Path) -> Result<Vec<PathBuf>, String> {
             let p = entry.path();
             if p.is_dir() {
                 folders.push(p);
-            } else if !p
-                .extension()
-                .and_then(|e| e.to_str())
-                .is_some_and(|e| LISTINGS.contains(&e.to_ascii_lowercase().as_str()))
-            {
+            } else if starts_as_program(&p)? {
                 found.push(p);
+            } else {
+                others = others.saturating_add(1);
             }
         }
     }
     found.sort();
-    Ok(found)
+    Ok((found, others))
 }
 
-/// Microsoft's listing of `program` stored beside it: `NAME.txt`, `NAME.asm`, or the program's file name with `.asm`
-/// or `.txt` appended; with flags, `NAME.flagNN.asm` (`NN` the flags word in two hex digits).
-pub fn stored_listing(program: &Path, flags: u32) -> Option<PathBuf> {
-    if flags != 0 {
-        let listing = program.with_extension(format!("flag{flags:02x}.asm"));
-        return listing.is_file().then_some(listing);
+/// Whether the file's first four bytes are those of a `DXBC` container or a Direct3D 9 token stream (see [`kind`]).
+/// Listings never are: a version token's `0xff` byte is not text.
+fn starts_as_program(path: &Path) -> Result<bool, String> {
+    let mut head = [0u8; 4];
+    let mut file = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    match file.read_exact(&mut head) {
+        Ok(()) => Ok(kind(&head).is_ok()),
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => Ok(false),
+        Err(e) => Err(format!("{}: {e}", path.display())),
     }
-    let mut candidates = vec![program.with_extension("txt"), program.with_extension("asm")];
-    for ext in ["asm", "txt"] {
+}
+
+/// Microsoft's listing of `program` stored beside it. With no flags, the program's file name with `.asm` or `.txt`
+/// appended, or else (when `shared_stem` is false) `NAME.txt` or `NAME.asm`; with flags, the same names with
+/// `.flagNN.asm` (`NN` the flags word in two hex digits). `shared_stem` says that another program in the folder has
+/// the same name but its extension (`NAME.vpo` beside `NAME.ppo`), so that only a listing named after the whole file
+/// name is its own.
+pub fn stored_listing(program: &Path, flags: u32, shared_stem: bool) -> Option<PathBuf> {
+    let endings = if flags == 0 {
+        vec!["asm".to_owned(), "txt".to_owned()]
+    } else {
+        vec![format!("flag{flags:02x}.asm")]
+    };
+    let whole = endings.iter().map(|ending| {
         let mut name = program.as_os_str().to_owned();
         name.push(".");
-        name.push(ext);
-        candidates.push(PathBuf::from(name));
-    }
-    candidates.into_iter().find(|p| p.is_file())
+        name.push(ending);
+        PathBuf::from(name)
+    });
+    let stem = endings
+        .iter()
+        .filter(|_| !shared_stem)
+        .map(|ending| program.with_extension(ending));
+    whole.chain(stem).find(|p| p.is_file())
 }
 
 /// What a program file is.
@@ -86,6 +104,12 @@ pub fn listing(bytes: &[u8], flags: u32) -> Result<String, String> {
     }
 }
 
+/// Whether `bytes` are a `DXBC` container with an `SPDB` part, the PDB `fxc /Zi` embeds, whose annotations Microsoft's
+/// listing interleaves and this one does not.
+pub fn has_debug_part(bytes: &[u8]) -> bool {
+    dxbc_reader::parts(bytes).is_ok_and(|parts| parts.iter().any(|c| &c.kind == b"SPDB"))
+}
+
 /// The shader model and stage a program's listing names on its version line (`ps_5_0`), for grouping counts.
 pub fn target(listing: &str) -> Option<String> {
     listing
@@ -94,7 +118,7 @@ pub fn target(listing: &str) -> Option<String> {
         // after the offset and number prefixes of D3D_DISASM_ENABLE_INSTRUCTION_OFFSET and _NUMBERING
         .map(|l| {
             l.split_once(": ")
-                .filter(|(at, _)| at.starts_with("0x"))
+                .filter(|(at, _)| at.trim_start().starts_with("0x"))
                 .map_or(l, |(_, rest)| rest)
                 .trim()
         })

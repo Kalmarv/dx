@@ -21,10 +21,12 @@ struct Cli {
 enum Command {
     /// Write the listing of each program as Microsoft's disassembler does (`D3DDisassemble`, `fxc /dumpbin`).
     Disasm {
-        /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream) or a folder of them.
+        /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream) or a folder of them: every file in it
+        /// that starts as a container or token stream does.
         path: PathBuf,
-        /// Compare each program's listing with Microsoft's stored beside it (`NAME.txt`, `NAME.asm` or
-        /// `NAME.<ext>.asm`) and count identical, differing and failed programs by shader model and stage.
+        /// Compare each program's listing with Microsoft's stored beside it (`NAME.<ext>.asm`, `NAME.<ext>.txt`, or
+        /// `NAME.asm` or `NAME.txt` where no other program is NAME) and count identical, differing and failed
+        /// programs by shader model and stage. Fails when no program has a stored listing.
         #[arg(long)]
         check: bool,
         /// With --check, list every differing program with its first differing line.
@@ -32,7 +34,7 @@ enum Command {
         verbose: bool,
         /// Microsoft's `D3D_DISASM_*` flags, in hex (`0x04` numbers instructions, `0x20` writes their offsets,
         /// `0x40` leaves out the header, `0x80` writes literals in hex); with --check, compared with
-        /// `NAME.flagNN.asm`.
+        /// `NAME.<ext>.flagNN.asm` (or `NAME.flagNN.asm`, as above).
         #[arg(long, value_parser = flags, default_value = "0")]
         flags: u32,
     },
@@ -90,8 +92,11 @@ fn flags(text: &str) -> Result<u32, String> {
 
 /// The listing of every program under `path`; a folder's each after a `// FILE` line.
 fn disasm(path: &Path, flags: u32) -> Result<ExitCode, String> {
-    let paths = files::programs(path)?;
+    let (paths, _) = files::programs(path)?;
     let many = path.is_dir();
+    if many && paths.is_empty() {
+        return Err(format!("{}: no programs in the folder", path.display()));
+    }
     let mut failed = false;
     for path in paths {
         let bytes = std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -101,6 +106,13 @@ fn disasm(path: &Path, flags: u32) -> Result<ExitCode, String> {
                     println!("// {}", path.display());
                 }
                 print!("{text}");
+                if flags & 0x10 == 0 && files::has_debug_part(&bytes) {
+                    eprintln!(
+                        "dx: {}: the SPDB part's source lines and variable locations are not written (this is \
+                         Microsoft's listing with --flags 0x10)",
+                        path.display()
+                    );
+                }
             }
             Err(e) => {
                 eprintln!("dx: {}: {e}", path.display());

@@ -45,12 +45,22 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
     let mut reasons: BTreeMap<String, (usize, String)> = BTreeMap::new();
     let mut failures: BTreeMap<String, (usize, String)> = BTreeMap::new();
     let mut without = 0usize;
-    for program in files::programs(path)? {
-        let Some(stored) = files::stored_listing(&program, flags) else {
+    let (programs, others) = files::programs(path)?;
+    // the folders and names but extensions of the programs, to tell when a listing named `NAME.asm` could be either's
+    let mut stems: BTreeMap<(Option<&Path>, Option<&std::ffi::OsStr>), usize> = BTreeMap::new();
+    for program in &programs {
+        let n = stems.entry((program.parent(), program.file_stem())).or_default();
+        *n = n.saturating_add(1);
+    }
+    for program in &programs {
+        let shared_stem = stems
+            .get(&(program.parent(), program.file_stem()))
+            .is_some_and(|n| *n > 1);
+        let Some(stored) = files::stored_listing(program, flags, shared_stem) else {
             without = without.saturating_add(1);
             continue;
         };
-        let bytes = std::fs::read(&program).map_err(|e| format!("{}: {e}", program.display()))?;
+        let bytes = std::fs::read(program).map_err(|e| format!("{}: {e}", program.display()))?;
         let theirs = std::fs::read(&stored).map_err(|e| format!("{}: {e}", stored.display()))?;
         // Microsoft's disassembler writes LF and ends its blob in a NUL; fxc's /Fc and listings saved in text mode on
         // Windows end their lines in CRLF
@@ -99,7 +109,10 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
         "total", total.identical, total.differing, total.failed
     );
     if without != 0 {
-        println!("{without} files without a stored listing were skipped");
+        println!("{without} programs without a stored listing were skipped");
+    }
+    if others != 0 {
+        println!("{others} files that are not programs were skipped");
     }
     let mut sorted: Vec<_> = reasons.into_iter().collect();
     sorted.sort_by_key(|a| std::cmp::Reverse(a.1.0));
@@ -114,6 +127,16 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
     }
     for (reason, (n, example)) in failures {
         println!("{n:>6}  {reason}\n        e.g. {example}");
+    }
+    let compared = total
+        .identical
+        .saturating_add(total.differing)
+        .saturating_add(total.failed);
+    if compared == 0 {
+        return Err(format!(
+            "{}: no program with a stored listing to compare",
+            path.display()
+        ));
     }
     Ok(if total.differing == 0 && total.failed == 0 {
         ExitCode::SUCCESS
