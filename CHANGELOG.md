@@ -18,6 +18,18 @@
   vertex, geometry and pixel programs, feature level 9_1 and 9_3 pixel and vertex programs (one a `/Zi` build) and
   Shader Model 5.1 pixel and compute programs with register spaces and unbounded arrays. `generate.py` takes the
   sources to build and copies the `.hlsli` files beside them.
+- `dxil-reader`: `reflection::bindings` reads the bound resources as dxc's listing writes them in its Resource Bindings
+  table, in its order, each a `Binding` with that table's names (`class_name`, `format_name`, `dimension_name`,
+  `id_name`, `bind_name`); the listing writes the table from them. The listing's feature notes take their names from
+  `dxcontainer::feature_name`, where it kept a copy of the table.
+- `dx reflect` on a DXIL program lists its resources in dxc's order with dxc's names: `format` is `byte` or `struct`
+  for a raw or structured buffer (it was empty), `dimension` is `r/o`, `r/w` or `r/w+cnt` for one and has a
+  multisampled texture's sample count (`2dMS4`; it was the resource kind's name, `structbuf`), `NA` for a buffer or
+  sampler; `id_name` and `bind` are new. `tests/reflect.rs` compares its signatures, resources and target with
+  dxc's listings of the 129 DXIL fixtures.
+- `dx info` writes a container's `SFI0` feature flags as `dx reflect` does (`bits`, `names`, `unnamed`), where it wrote
+  the names alone and left out a set bit with no name. `tests/reflect.rs` compares the names with the features
+  Microsoft's listings note for the 34 DXBC fixtures with an `SFI0` part.
 - `dx`: `tests/cli.rs` checks `dx disasm` over corpus folders: a listing named by the whole file name, one named by the
   stem only where no other program shares it, a folder's files that are not programs left out, `--check` failing on a
   differing listing and where no program has one.

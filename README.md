@@ -82,7 +82,7 @@ dx disasm --flags 0x04 shader.cso     # with D3D_DISASM_* flags: 0x04 numbers th
 dx disasm --check shaders/            # compare with NAME.txt / NAME.asm beside each, counted by model and stage
 dx reflect --json shader.dxbc         # bindings, buffers, signatures, STAT, SFI0 and level 9 tables as JSON
 dx reflect shader.dxil                # a DXIL program's signatures, entry point, resources and buffer layouts
-dx info shader.dxbc                   # parts, offsets, sizes, digest
+dx info shader.dxbc                   # target, SFI0 feature flags, parts, offsets, sizes, digest
 ```
 
 A DXBC container and a Direct3D 9 token stream are told apart by their first bytes, and a container holding a `DXIL`

@@ -6,7 +6,7 @@ use std::fmt::Write as _;
 
 use super::layout::Layout;
 use crate::module::{Module, Type, TypeId};
-use crate::reflection::{self, FieldAnnotation, Range};
+use crate::reflection::{self, Binding, FieldAnnotation};
 use crate::{Result, error, psv, rdat};
 
 /// `left_justify`: the text, padded with spaces to `width`.
@@ -32,47 +32,8 @@ fn mask_letters(mask: u8) -> String {
 
 // ---- the container's parts ---------------------------------------------------------------------------------------
 
-const FEATURE_NAMES: [&str; 34] = [
-    "Double-precision floating point",
-    "Raw and Structured buffers",
-    "UAVs at every shader stage",
-    "64 UAV slots",
-    "Minimum-precision data types",
-    "Double-precision extensions for 11.1",
-    "Shader extensions for 11.1",
-    "Comparison filtering for feature level 9",
-    "Tiled resources",
-    "PS Output Stencil Ref",
-    "PS Inner Coverage",
-    "Typed UAV Load Additional Formats",
-    "Raster Ordered UAVs",
-    "SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer",
-    "Wave level operations",
-    "64-Bit integer",
-    "View Instancing",
-    "Barycentrics",
-    "Use native low precision",
-    "Shading Rate",
-    "Raytracing tier 1.1 features",
-    "Sampler feedback",
-    "64-bit Atomics on Typed Resources",
-    "64-bit Atomics on Group Shared",
-    "Derivatives in mesh and amplification shaders",
-    "Resource descriptor heap indexing",
-    "Sampler descriptor heap indexing",
-    "Wave Matrix",
-    "64-bit Atomics on Heap Resources",
-    "Advanced Texture Ops",
-    "Writeable MSAA Textures",
-    "SampleCmp with gradient or bias",
-    "Extended command info",
-    "Linear Algebra",
-];
-
-/// The optional feature flags, from bit 40.
-const OPTIONAL_FEATURE_NAMES: [&str; 2] = ["Function uses derivatives", "Function requires visible group"];
-
-/// `PrintFeatureInfo`: the `SFI0` part's flags.
+/// `PrintFeatureInfo`: the `SFI0` part's flags, the required ones (bits 0 to 39) and then the optional ones (from bit
+/// 40), each set bit by its name ([`dxcontainer::feature_name`]); a bit with no name is not written.
 pub(super) fn feature_info(s: &mut String, part: &[u8]) -> Result<()> {
     let flags = part
         .get(..8)
@@ -82,22 +43,21 @@ pub(super) fn feature_info(s: &mut String, part: &[u8]) -> Result<()> {
     if flags == 0 {
         return Ok(());
     }
+    let names = |bits: std::ops::Range<u32>| {
+        bits.filter(|&bit| flags >> bit & 1 != 0)
+            .filter_map(|bit| dxcontainer::feature_name(dxcontainer::Bytecode::Dxil, bit))
+    };
     s.push_str(";\n; Note: shader requires additional functionality:\n");
-    for (i, name) in FEATURE_NAMES.iter().enumerate() {
-        if flags & (1u64 << i) != 0 {
-            let _ = writeln!(s, ";       {name}");
-        }
+    for name in names(0..40) {
+        let _ = writeln!(s, ";       {name}");
     }
     s.push_str(";\n");
-    let optional = flags >> 40;
-    if optional == 0 {
+    if flags >> 40 == 0 {
         return Ok(());
     }
     s.push_str("; Note: shader has optional feature flags set:\n");
-    for (i, name) in OPTIONAL_FEATURE_NAMES.iter().enumerate() {
-        if optional & (1u64 << i) != 0 {
-            let _ = writeln!(s, ";       {name}");
-        }
+    for name in names(40..64) {
+        let _ = writeln!(s, ";       {name}");
     }
     s.push_str(";\n");
     Ok(())
@@ -390,46 +350,6 @@ pub(super) fn dxil_signatures(s: &mut String, m: &Module, kind: &str) -> Result<
     Ok(())
 }
 
-/// A resource of `dx.resources` as dxc's `DxilModule` holds it.
-struct Resource {
-    range: Range,
-    name: String,
-    /// The type its variable points to (the HLSL type).
-    ty: Option<TypeId>,
-    sample_count: u32,
-}
-
-/// The resources of a module by class, in the order dxc lists them: constant buffers, samplers, SRVs, UAVs.
-fn resources(m: &Module) -> Result<Vec<Resource>> {
-    let ranges = reflection::ranges(m)?;
-    let extras = reflection::resource_extras(m)?;
-    let mut all: Vec<Resource> = ranges
-        .into_iter()
-        .map(|(range, name, ty)| {
-            let sample_count = extras
-                .iter()
-                .find(|e| e.class == range.class && e.id == range.id)
-                .and_then(|e| e.sample_count)
-                .unwrap_or(0);
-            Resource {
-                range,
-                name,
-                ty,
-                sample_count,
-            }
-        })
-        .collect();
-    let order = |class: u8| match class {
-        2 => 0,
-        3 => 1,
-        0 => 2,
-        _ => 3,
-    };
-    // a stable sort keeps each class in the order of its list
-    all.sort_by_key(|r| order(r.range.class));
-    Ok(all)
-}
-
 /// `CompType::GetHLSLName`.
 fn component_hlsl_name(c: u32, min_precision: bool) -> &'static str {
     match (c, min_precision) {
@@ -461,53 +381,24 @@ fn component_hlsl_name(c: u32, min_precision: bool) -> &'static str {
 }
 
 /// `PrintResourceBindings`.
-fn resource_bindings(s: &mut String, resources: &[Resource]) {
+fn resource_bindings(s: &mut String, bindings: &[Binding]) {
     s.push_str(
         ";\n; Resource Bindings:\n;\n\
          ; Name                                 Type  Format         Dim      ID      HLSL Bind  Count\n\
          ; ------------------------------ ---------- ------- ----------- ------- -------------- ------\n",
     );
-    for r in resources {
-        let g = &r.range;
+    for b in bindings {
         s.push_str("; ");
-        left(s, &r.name, 31);
-        let (class, id, bind) = match g.class {
-            0 => ("texture", "T", "t"),
-            1 => ("UAV", "U", "u"),
-            2 => ("cbuffer", "CB", "cb"),
-            _ => ("sampler", "S", "s"),
-        };
-        right(s, class, 10);
-        let view = matches!(g.class, 0 | 1);
-        let format = match (view, g.extra) {
-            (false, _) => "NA",
-            (true, 11) => "byte",
-            (true, 12) => "struct",
-            (true, _) => reflection::component_name(g.element.unwrap_or(0)),
-        };
-        right(s, format, 8);
-        let dim = match (view, g.extra) {
-            (false, _) => "NA".to_owned(),
-            (true, 11 | 12) if g.class == 0 => "r/o".to_owned(),
-            (true, 11 | 12) if g.counter => "r/w+cnt".to_owned(),
-            (true, 11 | 12) => "r/w".to_owned(),
-            (true, 10) => "buf".to_owned(),
-            (true, 3 | 8) if r.sample_count != 0 => {
-                format!("{}{}", reflection::dimension_name(g.extra), r.sample_count)
-            }
-            (true, kind) => reflection::dimension_name(kind).to_owned(),
-        };
-        right(s, &dim, 12);
-        right(s, &format!("{id}{}", g.id), 8);
-        let mut binding = format!("{bind}{}", g.lower);
-        if g.space != 0 {
-            let _ = write!(binding, ",space{}", g.space);
-        }
-        right(s, &binding, 15);
-        if g.count == u32::MAX {
+        left(s, &b.name, 31);
+        right(s, b.class_name(), 10);
+        right(s, b.format_name(), 8);
+        right(s, &b.dimension_name(), 12);
+        right(s, &b.id_name(), 8);
+        right(s, &b.bind_name(), 15);
+        if b.range.count == u32::MAX {
             right(s, "unbounded", 6);
         } else {
-            right(s, &g.count.to_string(), 6);
+            right(s, &b.range.count.to_string(), 6);
         }
         s.push('\n');
     }
@@ -693,7 +584,7 @@ impl Types<'_> {
     }
 
     /// The struct a resource's variable points to, through any arrays of it.
-    fn resource_struct(&self, r: &Resource) -> Result<TypeId> {
+    fn resource_struct(&self, r: &Binding) -> Result<TypeId> {
         let mut t =
             r.ty.ok_or_else(|| error(self.m.at, format!("the resource {} has no type", r.name)))?;
         while let Some(Type::Array(_, e)) = self.m.types.get(t) {
@@ -709,7 +600,7 @@ impl Types<'_> {
     }
 
     /// `PrintCBufferDefinition` and `PrintTBufferDefinition`.
-    fn constant_buffer(&self, s: &mut String, r: &Resource, keyword: &str) -> Result<()> {
+    fn constant_buffer(&self, s: &mut String, r: &Binding, keyword: &str) -> Result<()> {
         let t = self.resource_struct(r)?;
         let _ = write!(s, "; {keyword} {}\n; {{\n;\n", r.name);
         match reflection::struct_annotation(self.m, t)? {
@@ -735,7 +626,7 @@ impl Types<'_> {
     }
 
     /// `PrintStructBufferDefinition`.
-    fn structured_buffer(&self, s: &mut String, r: &Resource) -> Result<()> {
+    fn structured_buffer(&self, s: &mut String, r: &Binding) -> Result<()> {
         let _ = write!(s, "; Resource bind info for {}\n; {{\n;\n", r.name);
         let outer = self.resource_struct(r)?;
         let element = match self.m.types.get(outer) {
@@ -797,7 +688,7 @@ pub(super) fn reflection_sections(s: &mut String, m: &Module) -> Result<()> {
         // without native low precision (shader flag 23) the 16-bit types are the minimum-precision ones
         min_precision: flags & (1 << 23) == 0,
     };
-    let resources = resources(m)?;
+    let resources = reflection::bindings(m)?;
     s.push_str(";\n; Buffer Definitions:\n;\n");
     for r in resources.iter().filter(|r| r.range.class == 2) {
         types.constant_buffer(s, r, "cbuffer")?;

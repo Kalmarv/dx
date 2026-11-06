@@ -861,6 +861,122 @@ pub fn resource_extras(m: &Module) -> Result<Vec<ResourceExtras>> {
     Ok(out)
 }
 
+/// A bound resource as dxc's listing writes it in its Resource Bindings table (`PrintResourceBindings`): its range,
+/// its variable's name and type, and its sample count, with the table's names for them.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Binding {
+    /// The range, as [`ranges`] reads it.
+    pub range: Range,
+    /// The resource's variable's name.
+    pub name: String,
+    /// The type its variable points to (the resource's handle type).
+    pub ty: Option<TypeId>,
+    /// A shader resource view's sample count: 0 for a single-sampled view and for a binding of another class.
+    pub sample_count: u32,
+}
+
+impl Binding {
+    /// Whether the binding is a view (an SRV or a UAV), which has a format and a shape.
+    fn view(&self) -> bool {
+        matches!(self.range.class, 0 | 1)
+    }
+
+    /// The Type column: `texture` (any SRV), `UAV`, `cbuffer` or `sampler`.
+    pub fn class_name(&self) -> &'static str {
+        match self.range.class {
+            0 => "texture",
+            1 => "UAV",
+            2 => "cbuffer",
+            _ => "sampler",
+        }
+    }
+
+    /// The Format column: a view's element type ([`component_name`]), `byte` for a raw buffer and `struct` for a
+    /// structured one; `NA` for a constant buffer or sampler.
+    pub fn format_name(&self) -> &'static str {
+        match (self.view(), self.range.extra) {
+            (false, _) => "NA",
+            (true, 11) => "byte",
+            (true, 12) => "struct",
+            (true, _) => component_name(self.range.element.unwrap_or(0)),
+        }
+    }
+
+    /// The Dim column: a view's shape ([`dimension_name`]) with a multisampled texture's sample count (`2dMS4`), and
+    /// for a raw or structured buffer how it is accessed (`r/o`, `r/w`, `r/w+cnt` with a hidden counter); `NA` for a
+    /// constant buffer or sampler.
+    pub fn dimension_name(&self) -> String {
+        let r = &self.range;
+        match (self.view(), r.extra) {
+            (false, _) => "NA".to_owned(),
+            (true, 11 | 12) if r.class == 0 => "r/o".to_owned(),
+            (true, 11 | 12) if r.counter => "r/w+cnt".to_owned(),
+            (true, 11 | 12) => "r/w".to_owned(),
+            (true, 3 | 8) if self.sample_count != 0 => {
+                format!("{}{}", dimension_name(r.extra), self.sample_count)
+            }
+            (true, kind) => dimension_name(kind).to_owned(),
+        }
+    }
+
+    /// The ID column: the class's letter and the range id (`T0`, `U1`, `CB0`, `S2`).
+    pub fn id_name(&self) -> String {
+        let letter = match self.range.class {
+            0 => "T",
+            1 => "U",
+            2 => "CB",
+            _ => "S",
+        };
+        format!("{letter}{}", self.range.id)
+    }
+
+    /// The HLSL Bind column: the register's letter and number, and its space where not 0 (`t0`, `u2,space1`).
+    pub fn bind_name(&self) -> String {
+        let letter = match self.range.class {
+            0 => "t",
+            1 => "u",
+            2 => "cb",
+            _ => "s",
+        };
+        if self.range.space == 0 {
+            format!("{letter}{}", self.range.lower)
+        } else {
+            format!("{letter}{},space{}", self.range.lower, self.range.space)
+        }
+    }
+}
+
+/// The bound resources of `dx.resources` in the order dxc's listing writes them: constant buffers, samplers, SRVs, then
+/// UAVs, each class in the order of its list.
+pub fn bindings(m: &Module) -> Result<Vec<Binding>> {
+    let extras = resource_extras(m)?;
+    let mut all: Vec<Binding> = ranges(m)?
+        .into_iter()
+        .map(|(range, name, ty)| {
+            let sample_count = extras
+                .iter()
+                .find(|e| e.class == range.class && e.id == range.id)
+                .and_then(|e| e.sample_count)
+                .unwrap_or(0);
+            Binding {
+                range,
+                name,
+                ty,
+                sample_count,
+            }
+        })
+        .collect();
+    let order = |class: u8| match class {
+        2 => 0,
+        3 => 1,
+        0 => 2,
+        _ => 3,
+    };
+    // a stable sort keeps each class in the order of its list
+    all.sort_by_key(|b| order(b.range.class));
+    Ok(all)
+}
+
 /// One field of a struct type, as its annotation in `dx.typeAnnotations` states it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldAnnotation {

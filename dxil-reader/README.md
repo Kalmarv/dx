@@ -50,7 +50,9 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
 - **Reflection records** (`reflection`): the entry point and what its properties state (`num_threads`, `geometry_state`,
   `mesh_state`, `hull_state`, `domain_state`; a library's `library_kind`); signature elements and their packing
   (`elements`, `patch_elements`); the bound resource ranges of `dx.resources` (`ranges`: class, range id, register, count,
-  shape, space, element type and stride tags, counter); the struct annotations of `dx.typeAnnotations` (`struct_annotation`:
+  shape, space, element type and stride tags, counter), and the same as dxc's listing writes them in its Resource
+  Bindings table (`bindings`, in its order, each `Binding` with that table's type, format, dimension, id and binding
+  names); the struct annotations of `dx.typeAnnotations` (`struct_annotation`:
   the size and each field; `fields`), the shader model (`shader_model`), the serialised view-id state (`view_id_state`); and the
   rows of an `ISG1`/`OSG1`/`PSG1` part (`signature`, with the names dxc's listing gives their system values and formats);
   the entry properties' shader flags (`shader_flags`; the module's, as dxc reads them for a library too,

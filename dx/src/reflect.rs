@@ -43,6 +43,20 @@ fn dxbc_target(bytes: &[u8]) -> Result<(ProgramType, String), String> {
     ))
 }
 
+/// The shader feature flags of a container's `SFI0` part: the bits as stored, the names of those set and the set bits
+/// with no name; `null` for a container with no `SFI0` part.
+fn features(bytes: &[u8]) -> Result<Value, String> {
+    Ok(dxcontainer::feature_flags(bytes)
+        .map_err(|e| e.to_string())?
+        .map_or(Value::Null, |f| {
+            json!({
+                "bits": format!("0x{:016x}", f.bits),
+                "names": f.names(),
+                "unnamed": format!("0x{:x}", f.unnamed()),
+            })
+        }))
+}
+
 fn rdef_type(ty: &RdefType) -> Value {
     json!({
         "name": ty.type_name(),
@@ -216,15 +230,6 @@ fn dxbc(bytes: &[u8]) -> Result<Value, String> {
             "words": s.words,
         })
     });
-    let features = dxcontainer::feature_flags(bytes)
-        .map_err(|e| e.to_string())?
-        .map(|f| {
-            json!({
-                "bits": format!("0x{:016x}", f.bits),
-                "names": f.names(),
-                "unnamed": format!("0x{:x}", f.unnamed()),
-            })
-        });
     let level9 = dxbc_reader::level9(bytes).map_err(fail)?.map(|l| {
         let scalars = |rows: &[dxbc_reader::ScalarMapping]| {
             rows.iter()
@@ -268,7 +273,7 @@ fn dxbc(bytes: &[u8]) -> Result<Value, String> {
         "rdef": dxbc_reader::reflection::rdef(bytes).map_err(fail)?.as_ref().map(rdef),
         "signatures": signatures,
         "statistics": statistics,
-        "features": features,
+        "features": features(bytes)?,
         "level9": level9,
         "interfaces": dxbc_reader::interfaces(bytes).map_err(fail)?.as_ref().map(interfaces),
     }))
@@ -384,37 +389,34 @@ fn dxil(bytes: &[u8]) -> Result<Value, String> {
             reflection::num_threads(&module).map_err(fail)?,
         )
     };
-    let extras = reflection::resource_extras(m).map_err(fail)?;
     let mut buffers = Vec::new();
     let mut resources = Vec::new();
-    for (range, name, ty) in reflection::ranges(m).map_err(fail)? {
+    // in the order of dxc's Resource Bindings table, with its names
+    for binding in reflection::bindings(m).map_err(fail)? {
+        let range = &binding.range;
         let view = matches!(range.class, 0 | 1);
-        let extra = extras.iter().find(|e| e.class == range.class && e.id == range.id);
-        let class_name = match range.class {
-            0 => "texture",
-            1 => "UAV",
-            2 => "cbuffer",
-            _ => "sampler",
-        };
         resources.push(json!({
-            "name": name,
+            "name": binding.name,
             "class": range.class,
-            "class_name": class_name,
+            "class_name": binding.class_name(),
             "id": range.id,
+            "id_name": binding.id_name(),
+            "bind": binding.bind_name(),
             "space": range.space,
             "register": range.lower,
             "count": (range.count != u32::MAX).then_some(range.count),
             "kind": view.then_some(range.extra),
-            "dimension": view.then(|| reflection::dimension_name(range.extra)),
+            "dimension": binding.dimension_name(),
             "element_type": range.element,
-            "format": range.element.map(reflection::component_name),
+            "format": binding.format_name(),
             "stride": range.stride,
             "counter": range.counter,
-            "sample_count": extra.and_then(|e| e.sample_count),
+            "sample_count": (range.class == 0).then_some(binding.sample_count),
             "size": (range.class == 2).then_some(range.extra),
         }));
         // a constant buffer's layout, from the annotation of the struct its variable points to (through an array)
         if range.class == 2 {
+            let (name, ty) = (&binding.name, binding.ty);
             let mut t = ty;
             while let Some(dxil_reader::module::Type::Array(_, e)) = t.and_then(|t| m.types.get(t)) {
                 t = Some(*e);
@@ -439,15 +441,6 @@ fn dxil(bytes: &[u8]) -> Result<Value, String> {
             }));
         }
     }
-    let features = dxcontainer::feature_flags(bytes)
-        .map_err(|e| e.to_string())?
-        .map(|f| {
-            json!({
-                "bits": format!("0x{:016x}", f.bits),
-                "names": f.names(),
-                "unnamed": format!("0x{:x}", f.unnamed()),
-            })
-        });
     Ok(json!({
         "format": "dxil",
         "target": part.target(),
@@ -458,7 +451,7 @@ fn dxil(bytes: &[u8]) -> Result<Value, String> {
         "signatures": signatures,
         "resources": resources,
         "buffers": buffers,
-        "features": features,
+        "features": features(bytes)?,
     }))
 }
 
@@ -489,15 +482,12 @@ pub fn info(bytes: &[u8]) -> Result<Value, String> {
                 Some(part) => part.target(),
                 None => dxbc_target(bytes).map(|(_, t)| t).ok(),
             };
-            let features = dxcontainer::feature_flags(bytes)
-                .map_err(|e| e.to_string())?
-                .map(|f| f.names());
             Ok(json!({
                 "format": if dxil.is_some() { "dxil" } else { "dxbc" },
                 "size": bytes.len(),
                 "target": target,
                 "program_version": dxil.map(|p| format!("0x{:08x}", p.program_version)),
-                "features": features,
+                "features": features(bytes)?,
                 "digest": stored,
                 "digest_matches": stored.is_some() && stored == computed,
                 "parts": directory.iter().map(|c| json!({

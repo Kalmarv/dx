@@ -46,7 +46,7 @@ enum Command {
     /// mappings of a DXBC container; a DXIL container's signature parts, entry point, resources and constant-buffer
     /// layouts from its metadata; the constant table of a Direct3D 9 program. Each record has D3D's numbers and the names Microsoft's disassembler gives them.
     Reflect {
-        /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream).
+        /// A compiled program (.cso, .dxbc, .dxil, .fxc, a raw Direct3D 9 token stream).
         path: PathBuf,
         /// Write JSON rather than indented text.
         #[arg(long)]
@@ -54,10 +54,11 @@ enum Command {
     },
     /// Write a program file's container: its parts, sizes and digest.
     ///
-    /// For a DXBC container its parts with their offsets and sizes, its digest and whether it matches, its target;
-    /// for a Direct3D 9 program, its version and its counts of records.
+    /// For a DXBC or DXIL container its target, its shader feature flags (`SFI0`) with their names, its parts with their
+    /// offsets and sizes, its digest and whether it matches; for a Direct3D 9 program, its version and its counts of
+    /// records.
     Info {
-        /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream).
+        /// A compiled program (.cso, .dxbc, .dxil, .fxc, a raw Direct3D 9 token stream).
         path: PathBuf,
         /// Write JSON rather than indented text.
         #[arg(long)]
