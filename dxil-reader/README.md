@@ -75,7 +75,7 @@ header (the `SFI0` feature flags, the signature parts, the debug name and hash, 
 entry point's signatures with their interpolation modes, the buffer layouts, resource bindings and view-id state of the
 reflection module, a library's `RDAT` subobjects), then the module as LLVM 3.7 prints it, with dxc's comment after each
 `dx.op` call. The operation table is generated from dxc's own operation database at v1.9.2609
-(`src/disasm/generate_ops.py`). A program it can't list is an error, never a listing that differs from dxc's.
+(`cargo xtask dxil-ops`, which reads the tables from the C++ dxc generates from it). A program it can't list is an error, never a listing that differs from dxc's.
 
 ```rust
 let container = std::fs::read("shader.dxil")?;

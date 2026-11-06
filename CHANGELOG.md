@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `dxil-reader`: `ops.rs` is written by `cargo xtask dxil-ops` (a Rust task in the workspace) from the operation tables
+  dxc 1.9.2609 commits in C++ (`DxilOperations.cpp`, `DxilInstructions.h`, `DxilConstants.h`), where `generate_ops.py`
+  ran dxc's Python database and rustfmt. The tables are the same; the file is marked `@generated`, rustfmt leaves it
+  alone, and `cargo test -p xtask` fails when it was edited by hand.
+
 ## 0.5.2 (2026-11-06)
 
 - `d3d9-reader`: Shader Model 1 and 2 listings match `D3DDisassemble` in the places they did not:

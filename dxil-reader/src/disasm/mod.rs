@@ -16,6 +16,7 @@ mod annotate;
 mod asm;
 mod header;
 mod layout;
+#[rustfmt::skip] // written by `cargo xtask dxil-ops`, as it is
 mod ops;
 
 use crate::{Module, Result, error, psv, rdat};

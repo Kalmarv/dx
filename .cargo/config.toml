@@ -1,0 +1,3 @@
+[alias]
+# The workspace's own tasks (generators of committed code): `cargo xtask --help`.
+xtask = "run --quiet --package xtask --"

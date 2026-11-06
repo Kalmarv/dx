@@ -20,6 +20,13 @@ The library crates read byte slices and nothing else: no file, environment or pr
 refusal or record needs a test with hand-built bytes; a new format feature needs a fixture or a hand-laid example, with the
 source it was compiled from (the HLSL beside the shader fixtures).
 
+## Generated code
+
+`dxil-reader/src/disasm/ops.rs` is written by `cargo xtask dxil-ops --source <DirectXShaderCompiler checkout at
+v1.9.2609>` (the `xtask` package) and starts with an `@generated` header recording the hash of its inputs and of its
+text; do not edit it. `cargo test -p xtask` fails when the file is not what the task wrote, and `--check` regenerates
+and compares instead of writing.
+
 ## Releasing
 
 1. Raise the version in the workspace and in the crates' dependencies on each other (a patch, 0.x.Y, for fixes and data
