@@ -218,7 +218,7 @@ fn dxil_reflection_is_dxcs() {
         differing.len(),
         differing.join("\n")
     );
-    assert_eq!(programs.len(), 151);
+    assert_eq!(programs.len(), 152);
 }
 
 /// The target a dxc listing names in its `!dx.shaderModel` metadata: `!{!"ps", i32 6, i32 0}` is `ps_6_0`.

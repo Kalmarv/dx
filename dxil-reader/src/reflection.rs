@@ -786,7 +786,8 @@ pub struct ResourceExtras {
     pub class: u8,
     /// The range id, as in [`Range::id`].
     pub id: u32,
-    /// A shader resource view's sample count (operand 7): 0 for a single-sampled view, 4 for a `Texture2DMS<_, 4>`.
+    /// A shader resource view's sample count (operand 7): 0 for a single-sampled view, 4 for a `Texture2DMS<_, 4>`,
+    /// 4294967295 for a `Texture2DMS<_, -1>`.
     pub sample_count: Option<u32>,
     /// An unordered-access view declared `globallycoherent` (operand 7).
     pub globally_coherent: bool,
@@ -841,7 +842,8 @@ pub fn resource_extras(m: &Module) -> Result<Vec<ResourceExtras>> {
                 class,
                 id: r.number(0, "resource id")?,
                 sample_count: match (class, r.maybe(7)) {
-                    (0, Some(_)) => Some(r.number(7, "sample count")?),
+                    // a `Texture2DMS<_, -1>` keeps the -1, which dxc lists as 4294967295
+                    (0, Some(_)) => Some(r.bits32(7, "sample count")?),
                     _ => None,
                 },
                 globally_coherent: class == 1 && r.maybe(7).is_some() && r.int(7, "globally coherent")? != 0,

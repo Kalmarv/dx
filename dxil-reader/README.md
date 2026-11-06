@@ -106,7 +106,7 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (151 `.dxil` files, all but `matrix_lib15` and
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (152 `.dxil` files, all but `matrix_lib15` and
 `debug_nodes` compiled by dxc 1.9.2609 from the HLSL beside each (`matrix_lib15` by dxc 1.5.2010; `debug_nodes`
 assembled from its `.ll` by `tests/disasm/assemble.py`), with the command in each file; `.od` files with `-Od`) is read,
 control-flow and memory fixtures are checked in detail, and `RDAT` data laid out by hand exercises every subobject kind

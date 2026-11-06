@@ -68,6 +68,10 @@
   out of range"). A resource's tags other than the element type and stride are not read, so the reorder-coherent tag
   4, whose value is `i1 true`, no longer refuses it. New fixtures `lib_unbound` (`lib_6_6`) and `lib_unbound.69`
   (`lib_6_9`, with a `reordercoherent` UAV array) and their dxc listings; both are refused by the reader before this.
+- `dxil-reader`: a multisampled texture declared with a sample count of -1 (`Texture2DMS<float4, -1>`, as in dxc's
+  `texture2dms.hlsl` test) reads, its sample count 4294967295 as dxc lists it (`2dMS4294967295`); before, the module was
+  refused ("sample count: -1 is out of range"). New fixture `ms_unsized`, with counts of none, -1 (a `Texture2DMS` and a
+  `Texture2DMSArray`) and 8, and its dxc listing; the reader before this refuses it.
 - `d3d9-reader`: four differences from Microsoft's listings, found over Wine's and vkd3d's tests, and what the probes of
   them found. A constant table parameter's type is named as Microsoft's disassembler names it, which is the name of
   `D3D_SHADER_VARIABLE_TYPE` (`Texture2D`, `TextureCube`, `uint`, `PixelShader`, `UNKNOWN` for 26, 27, 40 to 51 and
