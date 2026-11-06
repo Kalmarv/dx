@@ -126,6 +126,14 @@ impl<'a> Node<'a> {
     fn number<T: TryFrom<i64>>(&self, i: usize, what: &str) -> Result<T> {
         self.number_of(self.op(i)?, what)
     }
+    /// A 32-bit operand as its bits: dxc writes a library's unbound register and space as -1 and an unbounded range's
+    /// size as -1, which it lists as 4294967295.
+    fn bits32(&self, i: usize, what: &str) -> Result<u32> {
+        let v = self.int(i, what)?;
+        u32::try_from(v)
+            .or_else(|_| i32::try_from(v).map(i32::cast_unsigned))
+            .map_err(|_| self.fail(format!("{what}: {v} is out of range")))
+    }
     /// The string an operand names: empty where it names none; an error where it is not UTF-8.
     fn string_of(&self, id: Option<MetadataId>, what: &str) -> Result<String> {
         match id.and_then(|i| self.m.metadata.get(i)) {
@@ -697,11 +705,11 @@ fn tags(resource: Node<'_>, list: Option<MetadataId>) -> Result<(Option<u32>, Op
         return Err(ops.fail("a tag without its value"));
     }
     let (mut element, mut stride) = (None, None);
+    // the other tags' values are not read: a tag's value can be an `i1` (`true` is -1)
     for [tag, value] in pairs {
-        let value = ops.number_of(*value, "tag value")?;
         match ops.int_of(*tag, "tag")? {
-            0 => element = Some(value),
-            1 => stride = Some(value),
+            0 => element = Some(ops.number_of(*value, "tag value")?),
+            1 => stride = Some(ops.number_of(*value, "tag value")?),
             _ => {}
         }
     }
@@ -753,16 +761,10 @@ pub fn ranges(m: &Module) -> Result<Vec<(Range, String, Option<TypeId>)>> {
                 Range {
                     class,
                     id: r.number(0, "resource id")?,
-                    lower: r.number(4, "lower bound")?,
-                    // an unbounded range is written -1 (all ones in 32 bits)
-                    count: {
-                        let v = r.int(5, "range size")?;
-                        u32::try_from(v)
-                            .or_else(|_| i32::try_from(v).map(|v| u32::from_ne_bytes(v.to_ne_bytes())))
-                            .map_err(|_| r.fail(format!("range size {v} is out of range")))?
-                    },
+                    lower: r.bits32(4, "lower bound")?,
+                    count: r.bits32(5, "range size")?,
                     extra,
-                    space: r.number(3, "register space")?,
+                    space: r.bits32(3, "register space")?,
                     element,
                     stride,
                     // a UAV's record states whether it has a counter after the shape and the coherence

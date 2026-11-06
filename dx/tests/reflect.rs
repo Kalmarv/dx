@@ -27,8 +27,10 @@ fn dx(command: &str, path: &Path) -> Value {
 }
 
 /// The rows of the table after the line `; {title}` of a dxc listing, each cut into its columns where the table's
-/// dashed line has its runs of dashes (the last column to the line's end, as a right-aligned value wider than its
-/// column runs on); none where its one row is `; no parameters`; `None` where the listing has no such table.
+/// dashed line has its runs of dashes: the first column left-aligned in its run, each other right-aligned in the slot
+/// from the end of the column before to the end of its own run, the last to the line's end. A right-aligned value wider
+/// than its slot fills it from its first character and runs on past its end, pushing the columns after it as far;
+/// none where its one row is `; no parameters`; `None` where the listing has no such table.
 fn table(listing: &str, title: &str) -> Option<Vec<Vec<String>>> {
     let mut lines = listing.lines().skip_while(|l| *l != format!("; {title}"));
     lines.next()?;
@@ -54,17 +56,28 @@ fn table(listing: &str, title: &str) -> Option<Vec<Vec<String>>> {
             .take_while(|l| *l != ";")
             .map(|l| {
                 let last = columns.len().saturating_sub(1);
+                let at = |i: usize| l.as_bytes().get(i).copied();
+                let mut shift = 0;
                 columns
                     .iter()
                     .enumerate()
                     .map(|(n, &(s, e))| {
-                        let s = if n == last {
-                            columns.get(n.wrapping_sub(1)).map_or(s, |c| c.1)
-                        } else {
+                        let s = if n == 0 {
                             s
-                        };
-                        let e = if n == last { l.len() } else { e.min(l.len()) };
-                        l.get(s..e).unwrap_or("").trim().to_owned()
+                        } else {
+                            columns.get(n - 1).map_or(s, |c| c.1)
+                        } + shift;
+                        let mut e = if n == last { l.len() } else { e + shift };
+                        if n > 0
+                            && n < last
+                            && at(s).is_some_and(|c| c != b' ')
+                            && at(e).is_some_and(|c| c != b' ')
+                        {
+                            let wider = l.get(e..).and_then(|t| t.find(' ')).unwrap_or(l.len() - e);
+                            e += wider;
+                            shift += wider;
+                        }
+                        l.get(s..e.min(l.len())).unwrap_or("").trim().to_owned()
                     })
                     .collect()
             })
@@ -205,7 +218,7 @@ fn dxil_reflection_is_dxcs() {
         differing.len(),
         differing.join("\n")
     );
-    assert_eq!(programs.len(), 149);
+    assert_eq!(programs.len(), 151);
 }
 
 /// The target a dxc listing names in its `!dx.shaderModel` metadata: `!{!"ps", i32 6, i32 0}` is `ps_6_0`.

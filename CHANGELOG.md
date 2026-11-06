@@ -63,6 +63,11 @@
   parts are listed after the level 9 program as the `Aon9` part is (its tables, then its program), as "XNA Prepass
   shader bytecode" and "XNA shader bytecode", in that order whatever the container's; before, dx listed neither. Four
   patched fixtures (`examples/patched_fixtures.rs`) and their 92 listings, which the listing before this differs from.
+- `dxil-reader`: a library's resources bound to no register, which dxc writes with lower bound and space -1, read and
+  list as dxc 1.9.2609 lists them (`U0u4294967295,space4294967295`); before, the module was refused ("lower bound: -1 is
+  out of range"). A resource's tags other than the element type and stride are not read, so the reorder-coherent tag
+  4, whose value is `i1 true`, no longer refuses it. New fixtures `lib_unbound` (`lib_6_6`) and `lib_unbound.69`
+  (`lib_6_9`, with a `reordercoherent` UAV array) and their dxc listings; both are refused by the reader before this.
 
 ## 0.8.0 (2026-11-06)
 

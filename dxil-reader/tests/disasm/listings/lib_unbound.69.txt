@@ -1,0 +1,116 @@
+;
+; Note: shader requires additional functionality:
+;       64 UAV slots
+;
+; shader hash: 480047c08c1dd053990096fea93353ed
+;
+; Buffer Definitions:
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; unbound_srv                       texture     f32          2d      T0t4294967295,space4294967295     1
+; unbound_uav                           UAV     u32         buf      U0u4294967295,space4294967295     1
+; bound                                 UAV     f32         buf      U1             u1     1
+; coherent                              UAV     f32          2d      U2             u2    12
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResourceProperties = type { i32, i32 }
+%dx.types.ResRet.f32 = type { float, float, float, float, i32 }
+%"class.Texture2D<vector<float, 4> >" = type { <4 x float>, %"class.Texture2D<vector<float, 4> >::mips_type" }
+%"class.Texture2D<vector<float, 4> >::mips_type" = type { i32 }
+%"class.RWBuffer<unsigned int>" = type { i32 }
+%"class.RWBuffer<float>" = type { float }
+%"class.RWTexture2D<float>" = type { float }
+
+@"\01?unbound_uav@@3V?$RWBuffer@I@@A" = external constant %dx.types.Handle, align 4
+@"\01?unbound_srv@@3V?$Texture2D@V?$vector@M$03@@@@A" = external constant %dx.types.Handle, align 4
+@"\01?bound@@3V?$RWBuffer@M@@A" = external constant %dx.types.Handle, align 4
+@"\01?coherent@@3PAV?$RWTexture2D@M@@A" = external constant [12 x %dx.types.Handle], align 4
+
+define void @main() {
+  %1 = load %dx.types.Handle, %dx.types.Handle* @"\01?unbound_srv@@3V?$Texture2D@V?$vector@M$03@@@@A", align 4
+  %2 = load %dx.types.Handle, %dx.types.Handle* @"\01?bound@@3V?$RWBuffer@M@@A", align 4
+  %3 = load %dx.types.Handle, %dx.types.Handle* @"\01?unbound_uav@@3V?$RWBuffer@I@@A", align 4
+  %4 = call i32 @dx.op.threadId.i32(i32 93, i32 0)  ; ThreadId(component)
+  %5 = call %dx.types.Handle @dx.op.createHandleForLib.dx.types.Handle(i32 160, %dx.types.Handle %1)  ; CreateHandleForLib(Resource)
+  %6 = call %dx.types.Handle @dx.op.annotateHandle(i32 216, %dx.types.Handle %5, %dx.types.ResourceProperties { i32 2, i32 1033 })  ; AnnotateHandle(res,props)  resource: Texture2D<4xF32>
+  %7 = call %dx.types.ResRet.f32 @dx.op.textureLoad.f32(i32 66, %dx.types.Handle %6, i32 0, i32 %4, i32 0, i32 undef, i32 undef, i32 undef, i32 undef)  ; TextureLoad(srv,mipLevelOrSampleCount,coord0,coord1,coord2,offset0,offset1,offset2)
+  %8 = extractvalue %dx.types.ResRet.f32 %7, 0
+  %9 = urem i32 %4, 12
+  %10 = getelementptr inbounds [12 x %dx.types.Handle], [12 x %dx.types.Handle]* @"\01?coherent@@3PAV?$RWTexture2D@M@@A", i32 0, i32 %9
+  %11 = load %dx.types.Handle, %dx.types.Handle* %10, align 4
+  %12 = call %dx.types.Handle @dx.op.createHandleForLib.dx.types.Handle(i32 160, %dx.types.Handle %11)  ; CreateHandleForLib(Resource)
+  %13 = call %dx.types.Handle @dx.op.annotateHandle(i32 216, %dx.types.Handle %12, %dx.types.ResourceProperties { i32 69634, i32 265 })  ; AnnotateHandle(res,props)  resource: reordercoherent RWTexture2D<F32>
+  %14 = call %dx.types.ResRet.f32 @dx.op.textureLoad.f32(i32 66, %dx.types.Handle %13, i32 undef, i32 %4, i32 0, i32 undef, i32 undef, i32 undef, i32 undef)  ; TextureLoad(srv,mipLevelOrSampleCount,coord0,coord1,coord2,offset0,offset1,offset2)
+  %15 = extractvalue %dx.types.ResRet.f32 %14, 0
+  %16 = fadd fast float %15, %8
+  %17 = fptoui float %16 to i32
+  %18 = call %dx.types.Handle @dx.op.createHandleForLib.dx.types.Handle(i32 160, %dx.types.Handle %3)  ; CreateHandleForLib(Resource)
+  %19 = call %dx.types.Handle @dx.op.annotateHandle(i32 216, %dx.types.Handle %18, %dx.types.ResourceProperties { i32 4106, i32 261 })  ; AnnotateHandle(res,props)  resource: RWTypedBuffer<U32>
+  call void @dx.op.bufferStore.i32(i32 69, %dx.types.Handle %19, i32 %4, i32 undef, i32 %17, i32 %17, i32 %17, i32 %17, i8 15)  ; BufferStore(uav,coord0,coord1,value0,value1,value2,value3,mask)
+  %20 = call %dx.types.Handle @dx.op.createHandleForLib.dx.types.Handle(i32 160, %dx.types.Handle %2)  ; CreateHandleForLib(Resource)
+  %21 = call %dx.types.Handle @dx.op.annotateHandle(i32 216, %dx.types.Handle %20, %dx.types.ResourceProperties { i32 4106, i32 265 })  ; AnnotateHandle(res,props)  resource: RWTypedBuffer<F32>
+  call void @dx.op.bufferStore.f32(i32 69, %dx.types.Handle %21, i32 %4, i32 undef, float %16, float %16, float %16, float %16, i8 15)  ; BufferStore(uav,coord0,coord1,value0,value1,value2,value3,mask)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.f32 @dx.op.textureLoad.f32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i32) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8) #2
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.f32(i32, %dx.types.Handle, i32, i32, float, float, float, float, i8) #2
+
+; Function Attrs: nounwind readnone
+declare %dx.types.Handle @dx.op.annotateHandle(i32, %dx.types.Handle, %dx.types.ResourceProperties) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandleForLib.dx.types.Handle(i32, %dx.types.Handle) #1
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!1}
+!dx.shaderModel = !{!2}
+!dx.resources = !{!3}
+!dx.typeAnnotations = !{!13}
+!dx.entryPoints = !{!17, !19}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 9}
+!2 = !{!"lib", i32 6, i32 9}
+!3 = !{!4, !7, null, null}
+!4 = !{!5}
+!5 = !{i32 0, %"class.Texture2D<vector<float, 4> >"* bitcast (%dx.types.Handle* @"\01?unbound_srv@@3V?$Texture2D@V?$vector@M$03@@@@A" to %"class.Texture2D<vector<float, 4> >"*), !"unbound_srv", i32 -1, i32 -1, i32 1, i32 2, i32 0, !6}
+!6 = !{i32 0, i32 9}
+!7 = !{!8, !10, !11}
+!8 = !{i32 0, %"class.RWBuffer<unsigned int>"* bitcast (%dx.types.Handle* @"\01?unbound_uav@@3V?$RWBuffer@I@@A" to %"class.RWBuffer<unsigned int>"*), !"unbound_uav", i32 -1, i32 -1, i32 1, i32 10, i1 false, i1 false, i1 false, !9}
+!9 = !{i32 0, i32 5}
+!10 = !{i32 1, %"class.RWBuffer<float>"* bitcast (%dx.types.Handle* @"\01?bound@@3V?$RWBuffer@M@@A" to %"class.RWBuffer<float>"*), !"bound", i32 0, i32 1, i32 1, i32 10, i1 false, i1 false, i1 false, !6}
+!11 = !{i32 2, [12 x %"class.RWTexture2D<float>"]* bitcast ([12 x %dx.types.Handle]* @"\01?coherent@@3PAV?$RWTexture2D@M@@A" to [12 x %"class.RWTexture2D<float>"]*), !"coherent", i32 0, i32 2, i32 12, i32 2, i1 false, i1 false, i1 false, !12}
+!12 = !{i32 0, i32 9, i32 4, i1 true}
+!13 = !{i32 1, void ()* @main, !14}
+!14 = !{!15}
+!15 = !{i32 0, !16, !16}
+!16 = !{}
+!17 = !{null, !"", null, !3, !18}
+!18 = !{i32 0, i64 8589967360}
+!19 = !{void ()* @main, !"main", null, null, !20}
+!20 = !{i32 8, i32 5, i32 4, !21, i32 5, !22}
+!21 = !{i32 4, i32 1, i32 1}
+!22 = !{i32 0}
+
