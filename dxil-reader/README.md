@@ -103,7 +103,7 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (129 `.dxil` files compiled by dxc 1.9.2609 from the
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (132 `.dxil` files compiled by dxc 1.9.2609 from the
 HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
 in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. `tests/disasm.rs` compares the
 listing of every fixture (every stage, ray tracing libraries included) with dxc's own in `tests/disasm/listings`, which

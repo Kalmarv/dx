@@ -1,0 +1,332 @@
+;
+; Input signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; NORMAL                   0   xyz         0     NONE   float   xyz 
+;
+;
+; Output signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; SV_Target                0   xyzw        0   TARGET   float   xyzw
+;
+; shader hash: 0d207b9e97b35d47c22bc8a7b4eb3e20
+;
+; Pipeline Runtime Information: 
+;
+;PSVRuntimeInfo:
+; Pixel Shader
+; DepthOutput=0
+; SampleFrequency=0
+; MinimumExpectedWaveLaneCount: 0
+; MaximumExpectedWaveLaneCount: 4294967295
+; UsesViewID: false
+; SigInputElements: 1
+; SigOutputElements: 1
+; SigPatchConstOrPrimElements: 0
+; SigInputVectors: 1
+; SigOutputVectors[0]: 1
+; SigOutputVectors[1]: 0
+; SigOutputVectors[2]: 0
+; SigOutputVectors[3]: 0
+; EntryFunctionName: main
+;
+;
+; Input signature:
+;
+; Name                 Index             InterpMode DynIdx
+; -------------------- ----- ---------------------- ------
+; NORMAL                   0                 linear       
+;
+; Output signature:
+;
+; Name                 Index             InterpMode DynIdx
+; -------------------- ----- ---------------------- ------
+; SV_Target                0                              
+;
+; Buffer Definitions:
+;
+; cbuffer Frame
+; {
+;
+;   struct Frame
+;   {
+;
+;       float4 tint;                                  ; Offset:    0
+;       uint pick;                                    ; Offset:   16
+;   
+;   } Frame;                                          ; Offset:    0 Size:    20
+;
+; }
+;
+; tbuffer Material
+; {
+;
+;   struct Material
+;   {
+;
+;       float4 albedo;                                ; Offset:    0
+;       float4 params[3];                             ; Offset:   16
+;   
+;   } Material;                                       ; Offset:    0 Size:    64
+;
+; }
+;
+; tbuffer sun
+; {
+;
+;   struct sun
+;   {
+;
+;       struct struct.Light
+;       {
+;
+;           float4 colour;                            ; Offset:    0
+;           float3 dir;                               ; Offset:   16
+;           float range;                              ; Offset:   28
+;       
+;       } sun;                                        ; Offset:    0
+;
+;   
+;   } sun;                                            ; Offset:    0 Size:    32
+;
+; }
+;
+; tbuffer lamps
+; {
+;
+;   struct lamps
+;   {
+;
+;       struct struct.Light
+;       {
+;
+;           float4 colour;                            ; Offset:    0
+;           float3 dir;                               ; Offset:   16
+;           float range;                              ; Offset:   28
+;       
+;       } lamps;                                      ; Offset:    0
+;
+;   
+;   } lamps;                                          ; Offset:    0 Size:    32
+;
+; }
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; Frame                             cbuffer      NA          NA     CB0            cb0     1
+; Material                          texture     u32     tbuffer      T0             t0     1
+; sun                               texture     u32     tbuffer      T1      t2,space1     1
+; lamps                             texture     u32     tbuffer      T2             t4     2
+;
+;
+; ViewId state:
+;
+; Number of inputs: 3, outputs: 4
+; Outputs dependent on ViewId: {  }
+; Inputs contributing to computation of Outputs:
+;   output 0 depends on inputs: { 0, 1, 2 }
+;   output 1 depends on inputs: { 0, 1, 2 }
+;   output 2 depends on inputs: { 0, 1, 2 }
+;   output 3 depends on inputs: { 0, 1, 2 }
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.i32 = type { i32, i32, i32, i32, i32 }
+%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }
+%dx.types.CBufRet.f32 = type { float, float, float, float }
+%Material = type { <4 x float>, [3 x <4 x float>] }
+%sun = type { %struct.Light }
+%struct.Light = type { <4 x float>, <3 x float>, float }
+%lamps = type { %struct.Light }
+%Frame = type { <4 x float>, i32 }
+
+@dx.nothing.a = internal constant [1 x i32] zeroinitializer
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 1, i32 2, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 undef)  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %5 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 undef)  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %6 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 undef)  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %7 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 1, i32 undef)  ; BufferLoad(srv,index,wot)
+  %8 = extractvalue %dx.types.ResRet.i32 %7, 0
+  %9 = bitcast i32 %8 to float
+  %10 = extractvalue %dx.types.ResRet.i32 %7, 1
+  %11 = bitcast i32 %10 to float
+  %12 = extractvalue %dx.types.ResRet.i32 %7, 2
+  %13 = bitcast i32 %12 to float
+  %14 = call float @dx.op.dot3.f32(i32 55, float %4, float %5, float %6, float %9, float %11, float %13)  ; Dot3(ax,ay,az,bx,by,bz)
+  %15 = call float @dx.op.unary.f32(i32 7, float %14)  ; Saturate(value)
+  %16 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 1, i32 undef)  ; BufferLoad(srv,index,wot)
+  %17 = extractvalue %dx.types.ResRet.i32 %16, 3
+  %18 = bitcast i32 %17 to float
+  %19 = fmul fast float %15, %18
+  %20 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  %21 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %2, i32 0, i32 undef)  ; BufferLoad(srv,index,wot)
+  %22 = extractvalue %dx.types.ResRet.i32 %21, 0
+  %23 = bitcast i32 %22 to float
+  %24 = extractvalue %dx.types.ResRet.i32 %21, 1
+  %25 = bitcast i32 %24 to float
+  %26 = extractvalue %dx.types.ResRet.i32 %21, 2
+  %27 = bitcast i32 %26 to float
+  %28 = extractvalue %dx.types.ResRet.i32 %21, 3
+  %29 = bitcast i32 %28 to float
+  %30 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %3, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %31 = extractvalue %dx.types.CBufRet.i32 %30, 0
+  %32 = urem i32 %31, 3
+  %33 = mul i32 %32, 1
+  %34 = add i32 1, %33
+  %35 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %2, i32 %34, i32 undef)  ; BufferLoad(srv,index,wot)
+  %36 = extractvalue %dx.types.ResRet.i32 %35, 0
+  %37 = bitcast i32 %36 to float
+  %38 = extractvalue %dx.types.ResRet.i32 %35, 1
+  %39 = bitcast i32 %38 to float
+  %40 = extractvalue %dx.types.ResRet.i32 %35, 2
+  %41 = bitcast i32 %40 to float
+  %42 = extractvalue %dx.types.ResRet.i32 %35, 3
+  %43 = bitcast i32 %42 to float
+  %44 = fmul fast float %23, %37
+  %45 = fmul fast float %25, %39
+  %46 = fmul fast float %27, %41
+  %47 = fmul fast float %29, %43
+  %48 = fmul fast float %44, %19
+  %49 = fmul fast float %45, %19
+  %50 = fmul fast float %46, %19
+  %51 = fmul fast float %47, %19
+  %52 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %1, i32 0, i32 undef)  ; BufferLoad(srv,index,wot)
+  %53 = extractvalue %dx.types.ResRet.i32 %52, 0
+  %54 = bitcast i32 %53 to float
+  %55 = extractvalue %dx.types.ResRet.i32 %52, 1
+  %56 = bitcast i32 %55 to float
+  %57 = extractvalue %dx.types.ResRet.i32 %52, 2
+  %58 = bitcast i32 %57 to float
+  %59 = extractvalue %dx.types.ResRet.i32 %52, 3
+  %60 = bitcast i32 %59 to float
+  %61 = fadd fast float %48, %54
+  %62 = fadd fast float %49, %56
+  %63 = fadd fast float %50, %58
+  %64 = fadd fast float %51, %60
+  %65 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  %66 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %3, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %67 = extractvalue %dx.types.CBufRet.i32 %66, 0
+  %68 = and i32 %67, 1
+  %69 = add i32 %68, 4
+  %70 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 2, i32 %69, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %71 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %70, i32 0, i32 undef)  ; BufferLoad(srv,index,wot)
+  %72 = extractvalue %dx.types.ResRet.i32 %71, 0
+  %73 = bitcast i32 %72 to float
+  %74 = extractvalue %dx.types.ResRet.i32 %71, 1
+  %75 = bitcast i32 %74 to float
+  %76 = extractvalue %dx.types.ResRet.i32 %71, 2
+  %77 = bitcast i32 %76 to float
+  %78 = extractvalue %dx.types.ResRet.i32 %71, 3
+  %79 = bitcast i32 %78 to float
+  %80 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %3, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %81 = extractvalue %dx.types.CBufRet.i32 %80, 0
+  %82 = and i32 %81, 1
+  %83 = add i32 %82, 4
+  %84 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 2, i32 %83, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %85 = call %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32 68, %dx.types.Handle %84, i32 1, i32 undef)  ; BufferLoad(srv,index,wot)
+  %86 = extractvalue %dx.types.ResRet.i32 %85, 0
+  %87 = bitcast i32 %86 to float
+  %88 = extractvalue %dx.types.ResRet.i32 %85, 1
+  %89 = bitcast i32 %88 to float
+  %90 = extractvalue %dx.types.ResRet.i32 %85, 2
+  %91 = bitcast i32 %90 to float
+  %92 = call float @dx.op.dot3.f32(i32 55, float %4, float %5, float %6, float %87, float %89, float %91)  ; Dot3(ax,ay,az,bx,by,bz)
+  %93 = call float @dx.op.unary.f32(i32 7, float %92)  ; Saturate(value)
+  %94 = fmul fast float %73, %93
+  %95 = fmul fast float %75, %93
+  %96 = fmul fast float %77, %93
+  %97 = fmul fast float %79, %93
+  %98 = fadd fast float %61, %94
+  %99 = fadd fast float %62, %95
+  %100 = fadd fast float %63, %96
+  %101 = fadd fast float %64, %97
+  %102 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  %103 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
+  %104 = extractvalue %dx.types.CBufRet.f32 %103, 0
+  %105 = extractvalue %dx.types.CBufRet.f32 %103, 1
+  %106 = extractvalue %dx.types.CBufRet.f32 %103, 2
+  %107 = extractvalue %dx.types.CBufRet.f32 %103, 3
+  %108 = fmul fast float %98, %104
+  %109 = fmul fast float %99, %105
+  %110 = fmul fast float %100, %106
+  %111 = fmul fast float %101, %107
+  %112 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %108)  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %109)  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %110)  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %111)  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.loadInput.f32(i32, i32, i32, i8, i32) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.unary.f32(i32, float) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32, %dx.types.Handle, i32) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32, %dx.types.Handle, i32) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.i32 @dx.op.bufferLoad.i32(i32, %dx.types.Handle, i32, i32) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind readonly }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.viewIdState = !{!12}
+!dx.entryPoints = !{!13}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 9}
+!3 = !{!"ps", i32 6, i32 0}
+!4 = !{!5, null, !10, null}
+!5 = !{!6, !8, !9}
+!6 = !{i32 0, %Material* undef, !"", i32 0, i32 0, i32 1, i32 15, i32 0, !7}
+!7 = !{i32 0, i32 5}
+!8 = !{i32 1, %sun* undef, !"", i32 1, i32 2, i32 1, i32 15, i32 0, !7}
+!9 = !{i32 2, [2 x %lamps]* undef, !"", i32 0, i32 4, i32 2, i32 15, i32 0, !7}
+!10 = !{!11}
+!11 = !{i32 0, %Frame* undef, !"", i32 0, i32 0, i32 1, i32 20, null}
+!12 = !{[5 x i32] [i32 3, i32 4, i32 15, i32 15, i32 15]}
+!13 = !{void ()* @main, !"main", !14, !4, !22}
+!14 = !{!15, !19, null}
+!15 = !{!16}
+!16 = !{i32 0, !"NORMAL", i8 9, i8 0, !17, i8 2, i32 1, i8 3, i32 0, i8 0, !18}
+!17 = !{i32 0}
+!18 = !{i32 3, i32 7}
+!19 = !{!20}
+!20 = !{i32 0, !"SV_Target", i8 9, i8 16, !17, i8 0, i32 1, i8 4, i32 0, i8 0, !21}
+!21 = !{i32 3, i32 15}
+!22 = !{i32 0, i64 1}
+
