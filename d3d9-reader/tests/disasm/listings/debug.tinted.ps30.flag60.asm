@@ -1,0 +1,12 @@
+    ps_3_0
+0x000001FC:     dcl_texcoord v0.xy  // uv<0,1>
+0x00000208:     dcl_2d s0
+
+#line 21 "C:\dx9-fixtures\debug.hlsl"
+0x00000214:     texld r0, v0, s0
+
+#line 24
+0x00000224:     mov r1, c0  // ::k<0,1,2,3>
+0x00000230:     mad oC0, r0, r1, c1  // ::tinted<0,1,2,3>
+
+// approximately 3 instruction slots used (1 texture, 2 arithmetic)

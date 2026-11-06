@@ -1,0 +1,26 @@
+    vs_3_0
+    def c4, 0x00000000, 0x00000000, 0x3f800000, 0x00000000
+    defi i0, 255, 0, 0, 0
+    dcl_position v0  // p<0,1,2,3>
+    dcl_position o0
+
+#line 67 "C:\dx9-fixtures\debug.hlsl"
+    mov r0, v0  // ::o<0,1,2,3>
+    mov r1.x, c4.x  // ::i<0>
+    mov r2, r0  // ::o<0,1,2,3>
+    mov r1.y, r1.x  // ::i<0>
+    rep i0
+      slt r1.z, r1.y, c3.x
+      mov r1.w, -r1.z
+      sge r1.z, r1.w, r1.z
+      break_ne r1.z, -r1.z
+      mul r3, r1.y, c2
+      add r2, r2, r3  // ::o<0,1,2,3>
+      add r1.y, r1.y, c4.z  // ::i<0>
+    endrep
+    if b0
+      mov r2, -r2  // ::o<0,1,2,3>
+    endif
+    mov o0, r2  // ::looped<0,1,2,3>
+
+// approximately 24 instruction slots used

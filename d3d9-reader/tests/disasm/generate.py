@@ -6,18 +6,25 @@ and its listings to `listings/`: `<name>.asm` with no flags and `<name>.flag<hex
 FLAGS; `../disasm.rs` compares the disassembler with them. fxc no longer compiles Shader Model 1, so the programs of
 SM1 are written from the tokens in HAND_BUILT.
 
+Sources are compiled from copies in `C:\\dx9-fixtures` (see STAGE), with the `.hlsli` files they include.
+
     python -I generate.py --fxc PATH --dll PATH
 
 Give the fxc and d3dcompiler_47 builds the listings were made with (10.0.26100.4654); under Wine as Wine paths
 (Z:\\...), in a pseudo-terminal, since Windows Python needs a console there
 (`script -qec "wine python.exe generate.py ..." /dev/null`).
 """
-import argparse, ctypes, glob, hashlib, itertools, os, re, shlex, struct, subprocess, sys
+import argparse, ctypes, glob, hashlib, itertools, os, re, shlex, shutil, struct, subprocess, sys
 
 # No flags, and the D3D_DISASM flags that change the text alone, in pairs and all together (0x01, an HTML listing,
 # and 0x08, which the disassembler refuses, left out).
 TEXT_FLAGS = [0x2, 0x4, 0x10, 0x20, 0x40, 0x80]
 FLAGS = sorted({0, *TEXT_FLAGS, *(a | b for a, b in itertools.combinations(TEXT_FLAGS, 2)), sum(TEXT_FLAGS)})
+
+# fxc /Zi stores the source's absolute path in the program (and the listing prints it), so every source is compiled
+# from a copy in this folder: the stored path is the same on every machine, under Wine too (the prefix's drive_c),
+# and names no user.
+STAGE = r"C:\dx9-fixtures"
 
 
 # Shader Model 1 programs, as their tokens (the assembly they are in the comments).
@@ -91,8 +98,13 @@ def main():
     print(f"fxc {a.fxc} {sha256(a.fxc)}")
     print(f"dll {a.dll} {sha256(a.dll)}")
     built, failed = [], 0
-    for src in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
-        for line in open(src, encoding="utf-8"):
+    os.makedirs(STAGE, exist_ok=True)
+    for include in sorted(glob.glob(os.path.join(here, "*.hlsli"))):
+        shutil.copyfile(include, os.path.join(STAGE, os.path.basename(include)))
+    for original in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
+        src = os.path.join(STAGE, os.path.basename(original))
+        shutil.copyfile(original, src)
+        for line in open(original, encoding="utf-8"):
             m = re.match(r"//\s*fxc:\s*(.*)", line)
             if not m:
                 continue

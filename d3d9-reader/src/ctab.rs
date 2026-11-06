@@ -70,83 +70,95 @@ pub struct ConstantTable {
     pub constants: Vec<Constant>,
 }
 
-struct Reader<'a> {
-    data: &'a [u8],
-    word: usize,
+/// Bounds-checked reads of a comment's bytes after its FourCC, shared by the `CTAB` and `DBUG` readers: errors name
+/// the word of the program and start with the FourCC.
+pub(crate) struct Reader<'a> {
+    pub(crate) data: &'a [u8],
+    /// The word of the program that byte 0 lies in.
+    pub(crate) word: usize,
+    /// The FourCC, for errors.
+    pub(crate) tag: &'static str,
 }
 impl Reader<'_> {
     /// The word of the program that byte `at` of the table lies in, for an error.
-    fn word_of(&self, at: usize) -> usize {
+    pub(crate) fn word_of(&self, at: usize) -> usize {
         self.word.saturating_add(at / 4)
     }
     /// `at + by`, an error naming `at` when it does not fit.
-    fn plus(&self, at: usize, by: usize) -> Result<usize> {
+    pub(crate) fn plus(&self, at: usize, by: usize) -> Result<usize> {
         at.checked_add(by).ok_or_else(|| {
             error(
                 self.word_of(at),
-                format!("CTAB offset {at}+{by} is past the largest offset"),
+                format!("{} offset {at}+{by} is past the largest offset", self.tag),
             )
         })
     }
     /// `count * size` bytes, an error naming `at` when it does not fit.
-    fn bytes(&self, at: usize, count: usize, size: usize) -> Result<usize> {
+    pub(crate) fn bytes(&self, at: usize, count: usize, size: usize) -> Result<usize> {
         count.checked_mul(size).ok_or_else(|| {
             error(
                 self.word_of(at),
-                format!("CTAB {count} entries of {size} bytes do not fit"),
+                format!("{} {count} entries of {size} bytes do not fit", self.tag),
             )
         })
     }
-    fn range(&self, at: usize, len: usize) -> Result<&[u8]> {
+    pub(crate) fn range(&self, at: usize, len: usize) -> Result<&[u8]> {
         at.checked_add(len)
             .and_then(|end| self.data.get(at..end))
             .ok_or_else(|| {
                 error(
                     self.word_of(at),
                     format!(
-                        "CTAB range {at}+{len} outside the comment's {} bytes",
+                        "{} range {at}+{len} outside the comment's {} bytes",
+                        self.tag,
                         self.data.len()
                     ),
                 )
             })
     }
-    fn u16(&self, at: usize) -> Result<u16> {
+    pub(crate) fn u16(&self, at: usize) -> Result<u16> {
         match self.range(at, 2)? {
             &[a, b] => Ok(u16::from_le_bytes([a, b])),
-            _ => Err(error(self.word_of(at), "CTAB u16 outside comment")),
+            _ => Err(error(
+                self.word_of(at),
+                format!("{} u16 outside comment", self.tag),
+            )),
         }
     }
-    fn u32(&self, at: usize) -> Result<u32> {
+    pub(crate) fn u32(&self, at: usize) -> Result<u32> {
         match self.range(at, 4)? {
             &[a, b, c, d] => Ok(u32::from_le_bytes([a, b, c, d])),
-            _ => Err(error(self.word_of(at), "CTAB u32 outside comment")),
+            _ => Err(error(
+                self.word_of(at),
+                format!("{} u32 outside comment", self.tag),
+            )),
         }
     }
-    fn offset(&self, at: usize) -> Result<usize> {
+    pub(crate) fn offset(&self, at: usize) -> Result<usize> {
         let offset = self.u32(at)?;
         usize::try_from(offset).map_err(|_| {
             error(
                 self.word_of(at),
-                format!("CTAB offset {offset} does not fit an address"),
+                format!("{} offset {offset} does not fit an address", self.tag),
             )
         })
     }
-    fn string(&self, at: usize) -> Result<String> {
+    pub(crate) fn string(&self, at: usize) -> Result<String> {
         let bytes = self.range(at, self.data.len().saturating_sub(at))?;
         let end = bytes
             .iter()
             .position(|&b| b == 0)
-            .ok_or_else(|| error(self.word_of(at), "CTAB string has no NUL"))?;
+            .ok_or_else(|| error(self.word_of(at), format!("{} string has no NUL", self.tag)))?;
         let text = bytes.get(..end).unwrap_or_default();
         std::str::from_utf8(text)
             .map(str::to_owned)
-            .map_err(|_| error(self.word_of(at), "CTAB string is not UTF-8"))
+            .map_err(|_| error(self.word_of(at), format!("{} string is not UTF-8", self.tag)))
     }
-    fn ty(&self, at: usize, depth: usize, budget: &mut usize) -> Result<Type> {
+    pub(crate) fn ty(&self, at: usize, depth: usize, budget: &mut usize) -> Result<Type> {
         if depth > 32 || *budget == 0 {
             return Err(error(
                 self.word_of(at),
-                "CTAB type nesting/cycle or 4096-node limit",
+                format!("{} type nesting/cycle or 4096-node limit", self.tag),
             ));
         }
         *budget = budget.saturating_sub(1);
@@ -178,7 +190,11 @@ impl Reader<'_> {
 }
 
 pub(crate) fn read(data: &[u8], word: usize, expected_version: u32) -> Result<ConstantTable> {
-    let r = Reader { data, word };
+    let r = Reader {
+        data,
+        word,
+        tag: "CTAB",
+    };
     if r.u32(0)? != 28 {
         return Err(error(word, "CTAB header size is not 28"));
     }

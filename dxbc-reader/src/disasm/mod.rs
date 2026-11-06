@@ -25,6 +25,9 @@ pub struct Options {
     pub offsets: bool,
     /// Every 32-bit value as eight hex digits, `l(0x3f800000)` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80).
     pub hex_literals: bool,
+    /// A `/Zi` build's source lines and variable locations, where the listing writes them: in a feature level 9
+    /// container's Direct3D 9 program (cleared by `D3D_DISASM_DISABLE_DEBUG_INFO`, 0x10).
+    pub debug_info: bool,
 }
 
 impl Default for Options {
@@ -34,14 +37,14 @@ impl Default for Options {
             numbering: false,
             offsets: false,
             hex_literals: false,
+            debug_info: true,
         }
     }
 }
 
 impl Options {
     /// The options of a `D3D_DISASM_*` flags word. `D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS` (0x02) changes nothing
-    /// (the default values are written either way) and `D3D_DISASM_DISABLE_DEBUG_INFO` (0x10) nothing for a program
-    /// without debug information, which is the only kind this disassembler writes. Refuses
+    /// (the default values are written either way). Refuses
     /// `D3D_DISASM_ENABLE_COLOR_CODE` (0x01, an HTML listing), `D3D_DISASM_ENABLE_INSTRUCTION_CYCLE` (0x08, which
     /// Microsoft's disassembler refuses too) and bits it does not define, naming the bit.
     pub fn from_flags(flags: u32) -> Result<Self> {
@@ -71,6 +74,7 @@ impl Options {
             numbering: flags & 0x04 != 0,
             offsets: flags & 0x20 != 0,
             hex_literals: flags & 0x80 != 0,
+            debug_info: flags & 0x10 == 0,
         })
     }
 }

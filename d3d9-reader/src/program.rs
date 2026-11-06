@@ -13,7 +13,7 @@
 //! is always `a0.x` and no token follows.
 
 use crate::opcodes::Shape;
-use crate::{ConstantTable, Opcode, Result, Stage, Version, error};
+use crate::{ConstantTable, DebugInfo, Opcode, Result, Stage, Version, error};
 
 /// The most words a program may have, END included.
 const MAX_WORDS: usize = 1_048_576;
@@ -417,7 +417,7 @@ impl Item {
     }
 }
 
-/// A program read: its version, its records in stream order and its constant table.
+/// A program read: its version, its records in stream order, its constant table and its debug information.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Program {
     /// The version token.
@@ -428,6 +428,8 @@ pub struct Program {
     pub end: usize,
     /// The `CTAB` comment decoded; `None` when the program has none.
     pub constants: Option<ConstantTable>,
+    /// The `DBUG` comment decoded (a `/Zi` build's); `None` when the program has none.
+    pub debug: Option<DebugInfo>,
 }
 
 impl Program {
@@ -514,6 +516,7 @@ fn start(bytes: &[u8], whole: bool) -> Result<Records<'_>> {
         end: None,
         done: false,
         constants: None,
+        debug: None,
     })
 }
 
@@ -527,6 +530,7 @@ fn collect(mut records: Records<'_>) -> Result<Program> {
         items,
         end: records.end.unwrap_or(0),
         constants: records.constants,
+        debug: records.debug,
     })
 }
 
@@ -542,6 +546,7 @@ pub struct Records<'a> {
     end: Option<usize>,
     done: bool,
     constants: Option<ConstantTable>,
+    debug: Option<DebugInfo>,
 }
 
 impl Records<'_> {
@@ -552,6 +557,10 @@ impl Records<'_> {
     /// The constant table, once the `CTAB` comment has been read.
     pub fn constants(&self) -> Option<&ConstantTable> {
         self.constants.as_ref()
+    }
+    /// The debug information, once the `DBUG` comment has been read.
+    pub fn debug(&self) -> Option<&DebugInfo> {
+        self.debug.as_ref()
     }
     /// The word of `END`, once it has been read.
     pub fn end(&self) -> Option<usize> {
@@ -843,18 +852,23 @@ impl Records<'_> {
                     ),
                 ));
             }
-            if let Some((&tag, rest)) = data.split_first()
-                && tag == u32::from_le_bytes(*b"CTAB")
-            {
-                if self.constants.is_some() {
-                    return Err(error(word, "duplicate CTAB"));
+            if let Some((&tag, rest)) = data.split_first() {
+                let bytes = || -> Vec<u8> { rest.iter().flat_map(|w| w.to_le_bytes()).collect() };
+                if tag == u32::from_le_bytes(*b"CTAB") {
+                    if self.constants.is_some() {
+                        return Err(error(word, "duplicate CTAB"));
+                    }
+                    self.constants = Some(crate::ctab::read(
+                        &bytes(),
+                        word.saturating_add(2),
+                        version.token(),
+                    )?);
+                } else if tag == u32::from_le_bytes(*b"DBUG") {
+                    if self.debug.is_some() {
+                        return Err(error(word, "duplicate DBUG"));
+                    }
+                    self.debug = Some(crate::debug::read(&bytes(), word.saturating_add(2))?);
                 }
-                let table: Vec<u8> = rest.iter().flat_map(|w| w.to_le_bytes()).collect();
-                self.constants = Some(crate::ctab::read(
-                    &table,
-                    word.saturating_add(2),
-                    version.token(),
-                )?);
             }
             self.at = end;
             return Ok(Some(Item::Comment(Comment { word, data })));

@@ -1,0 +1,22 @@
+    ps_2_0
+      0x000002A4:     def c4, 0x00000000, 0x3f800000, 0x00000000, 0x00000000
+      0x000002BC:     dcl t0.xy
+      0x000002C8:     dcl_2d s0
+   0  0x000002D4:     texld r0, t0, s0
+   0  0x000002E4:     mul r0, r0, c0.x
+   1  0x000002F4:     mov r1.w, -r0.y
+   2  0x00000300:     add r1.x, r1.w, c1.y
+   3  0x00000310:     cmp r1, r1.x, c4.x, c4.y
+   4  0x00000324:     mul r2, r0, c2
+   5  0x00000334:     add r2, r2, c3
+   6  0x00000344:     mov r3, -c1
+   7  0x00000350:     add r0, r0, r3
+   8  0x00000360:     mov r3, -r1
+   9  0x0000036C:     mov r1, -r1
+  10  0x00000378:     add r1, r1, r3
+  11  0x00000388:     cmp r1, r1, c4.x, c4.y
+  12  0x0000039C:     mov r1, -r1
+  13  0x000003A8:     cmp r0, r1, r0, r2
+  14  0x000003BC:     mov oC0, r0
+
+// approximately 16 instruction slots used (1 texture, 15 arithmetic)

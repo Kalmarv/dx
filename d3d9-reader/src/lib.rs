@@ -5,7 +5,7 @@
 //! declaration (`dcl`), every literal definition (`def`, `defi`, `defb`) and every instruction with its opcode, control
 //! bits, co-issue and predicate, destination (register, write mask, saturate, partial precision, centroid, the pixel 1.x
 //! result shift) and sources (register, swizzle, modifier, relative address). The `CTAB` comment D3DX writes is decoded
-//! as well ([`ConstantTable`]). [`frame`] reads the first program of a buffer that holds more after it.
+//! as well ([`ConstantTable`]), and so is the `DBUG` comment of a `/Zi` build ([`DebugInfo`]). [`frame`] reads the first program of a buffer that holds more after it.
 //!
 //! It reads and checks bytes and never interprets them for an API: registers are Direct3D's register types and numbers,
 //! modifiers and usages Direct3D's own values. Whatever the format does not define (an opcode outside the instruction
@@ -39,11 +39,13 @@
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 
 mod ctab;
+mod debug;
 mod disasm;
 mod opcodes;
 mod program;
 
 pub use ctab::{Constant, ConstantTable, Type, TypeMember};
+pub use debug::{DebugInfo, Location, SourceLine, Variable};
 pub use disasm::{Options, disassemble, disassemble_with};
 pub use opcodes::Opcode;
 pub use program::{

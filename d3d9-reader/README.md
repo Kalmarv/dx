@@ -18,7 +18,8 @@ if let Some(table) = &program.constants {
 ```
 
 `disassemble` writes a program's listing as Microsoft's disassembler does with no flags, byte for byte: the constant
-table's parameters and registers, the program, and the instruction slot count. `dx disasm` runs it over files.
+table's parameters and registers, the program, and the instruction slot count; for a `/Zi` build, the `#line` lines
+and the variables each line writes (`mul r0, v0, c0  // ::o<0,1,2,3>`). `dx disasm` runs it over files.
 
 ## What it reads
 
@@ -40,6 +41,8 @@ table's parameters and registers, the program, and the instruction slot count. `
 - **Definitions** (`Definition`): `def`, `defi` and `defb`, with the literal as stored (float bits, integers, a bool word).
 - **Comments** (`Comment`) with their words, and the `CTAB` comment read as a `ConstantTable`: the creator, target,
   flags and each constant's name, register set, register range, type tree and default value, with the word of its record.
+  The `DBUG` comment of an `fxc /Zi` build is read as a `DebugInfo`: the source files, each record's source line and
+  byte offset, and each variable's scope, name, type and the components each instruction writes.
 - **Framing** (`frame`): a program at the start of a larger buffer, read to its `END` (found by reading, so an
   `END`-shaped word inside a comment or a literal is not taken for it), and the bytes it spans.
 - **One record at a time** (`records`): the same reading as an iterator, so a caller can act on each record in order
@@ -71,7 +74,8 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
 and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
-fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words. No game files are needed for these.
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,012 listings of 44 programs, 10 of them
+`/Zi` builds). No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every
 program of Shaun White Skateboarding's three SDB2 bundles (7,306) and three more of its programs; the inputs are in

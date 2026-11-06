@@ -1,0 +1,40 @@
+    vs_2_0
+          dcl_position v0  // p<0,1,2,3>
+
+#line 33 "C:\dx9-fixtures\debug.hlsl"
+   0:     mul r0, v0.yzwx, c0.yzwx  // ::o<1,2,3,0>
+          nop
+   1:     mov r0, r0  // h2::v<1,2,3,0>
+
+#line 30
+   2:     add r0, r0, c3  // ::h2<1,2,3,0>
+
+#line 34
+   3:     mov r0, r0  // ::o<1,2,3,0>
+          nop
+   4:     mov r0, r0  // h1::v<1,2,3,0>
+
+#line 28
+   5:     mul r0, r0, c2.zwxy  // ::h1<1,2,3,0>
+
+#line 35
+   6:     mov r0, r0  // ::o<1,2,3,0>
+   7:     add r0, r0, c1.yzwx  // ::o<1,2,3,0>
+   8:     mul r0, r0, c1.zwxy  // ::o<1,2,3,0>
+
+#line 42
+   9:     mov r1, -c0.wxyz
+  10:     add r0, r0, r1  // ::o<1,2,3,0>
+          nop
+  11:     mov r0, r0  // twist::v<1,2,3,0>
+
+#line 4 "C:\dx9-fixtures\debug.hlsli"
+  12:     mul r0, r0.wxyz, r0  // ::twist<0,1,2,3>
+
+#line 43 "C:\dx9-fixtures\debug.hlsl"
+  13:     mov r0, r0  // ::o<0,1,2,3>
+  14:     mul r0, r0, c2  // ::o<0,1,2,3>
+  15:     add r0, r0, c3  // ::o<0,1,2,3>
+  16:     mov oPos, r0  // ::stepped<0,1,2,3>
+
+// approximately 17 instruction slots used

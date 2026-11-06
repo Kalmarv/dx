@@ -73,11 +73,12 @@ pub(super) fn write(out: &mut String, part: &Level9, options: &super::Options) -
         out.push_str("//\n");
     }
     out.push_str("//\n// Level9 shader bytecode:\n//\n");
-    // the program's lines take the container listing's numbering, offsets and hex literals
+    // the program's lines take the container listing's numbering, offsets, hex literals and debug information
     let mut d3d9 = d3d9_reader::Options::default();
     d3d9.numbering = options.numbering;
     d3d9.offsets = options.offsets;
     d3d9.hex_literals = options.hex_literals;
+    d3d9.debug_info = options.debug_info;
     let listing = d3d9_reader::disassemble_with(&part.program, &d3d9).map_err(|e| {
         let word = usize::try_from(part.program_offset / 4).unwrap_or(usize::MAX);
         error(

@@ -1,10 +1,12 @@
 //! A text listing of a Direct3D 9 program in the dialect of Microsoft's disassembler (`D3DDisassemble`): the
 //! constant table as comments, the program's lines indented four spaces, and the instruction slots it uses.
+use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use crate::{
-    Comparison, Constant, ConstantTable, Declared, Destination, Error, Instruction, Item, Literal, Modifier,
-    Opcode, Program, Register, RegisterType, Relative, Result, Source, Stage, TextureType, Type, read,
+    Comparison, Constant, ConstantTable, DebugInfo, Declared, Destination, Error, Instruction, Item, Literal,
+    Modifier, Opcode, Program, Register, RegisterType, Relative, Result, Source, SourceLine, Stage,
+    TextureType, Type, read,
 };
 
 /// What the listing writes, as the `D3D_DISASM_*` flags of Microsoft's disassembler choose it.
@@ -15,7 +17,7 @@ pub struct Options {
     /// either way).
     pub header: bool,
     /// The arithmetic slots before each instruction, `%4u: ` (texture slots not counted; `%4u  ` before an offset),
-    /// and six spaces before a co-issued instruction and the other lines but the version
+    /// and six spaces before a co-issued instruction, a `nop` and the other lines but the version
     /// (`D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING`, 0x04).
     pub numbering: bool,
     /// Each line's byte offset from the version token, `0x%08X: `, before every line but the version
@@ -23,6 +25,9 @@ pub struct Options {
     pub offsets: bool,
     /// A `def`'s floats as their bits, `0x%08x` (`D3D_DISASM_PRINT_HEX_LITERALS`, 0x80); `defi` stays decimal.
     pub hex_literals: bool,
+    /// What a `/Zi` build's `DBUG` comment says: a `#line` before an instruction whose source line moved, and after a
+    /// line the variables it writes (cleared by `D3D_DISASM_DISABLE_DEBUG_INFO`, 0x10).
+    pub debug_info: bool,
 }
 
 impl Default for Options {
@@ -32,12 +37,13 @@ impl Default for Options {
             numbering: false,
             offsets: false,
             hex_literals: false,
+            debug_info: true,
         }
     }
 }
 
 impl Options {
-    /// The options of a `D3D_DISASM_*` flags word. 0x02 and 0x10 change nothing. Refuses 0x01 (an HTML listing), 0x08
+    /// The options of a `D3D_DISASM_*` flags word. 0x02 changes nothing. Refuses 0x01 (an HTML listing), 0x08
     /// (which Microsoft's disassembler refuses too) and bits it does not define, naming the bit.
     pub fn from_flags(flags: u32) -> Result<Self> {
         let refuse = |detail: String| Error { word: 0, detail };
@@ -65,6 +71,7 @@ impl Options {
             numbering: flags & 0x04 != 0,
             offsets: flags & 0x20 != 0,
             hex_literals: flags & 0x80 != 0,
+            debug_info: flags & 0x10 == 0,
         })
     }
 }
@@ -87,15 +94,54 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
         header(&mut out, table);
     }
     let _ = writeln!(out, "    {}", program.version);
+    let debug = program.debug.as_ref().filter(|_| options.debug_info);
+    let notes = debug.map(variables).unwrap_or_default();
+    // the line record of each record, by its byte offset
+    let records: BTreeMap<u32, usize> = debug
+        .map(|d| d.lines.iter().enumerate().map(|(n, l)| (l.offset, n)).collect())
+        .unwrap_or_default();
+    // the file and line of the last record that had one
+    let mut source: Option<(u16, u16)> = None;
     let mut depth: usize = 0;
     // the arithmetic slots before the next instruction, which the numbering writes (texture slots don't count)
     let mut slot: u32 = 0;
     for item in &program.items {
-        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction has none), then the offset
+        if matches!(item, Item::Comment(_)) {
+            continue;
+        }
+        let record = u32::try_from(item.word().saturating_mul(4))
+            .ok()
+            .and_then(|offset| records.get(&offset))
+            .copied();
+        // a `#line` where the file changes or the line moves by more than 2, after a blank line and before the prefix
+        let line = record.and_then(|n| debug.and_then(|d| d.lines.get(n)));
+        if let (
+            Some(d),
+            Some(SourceLine {
+                line,
+                file: Some(file),
+                ..
+            }),
+        ) = (debug, line)
+        {
+            match source {
+                Some((f, l)) if f == *file => {
+                    if line.abs_diff(l) > 2 {
+                        let _ = writeln!(out, "\n#line {line}");
+                    }
+                }
+                _ => {
+                    let path = d.files.get(usize::from(*file)).map_or("", String::as_str);
+                    let _ = writeln!(out, "\n#line {line} \"{path}\"");
+                }
+            }
+            source = Some((*file, *line));
+        }
+        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction and a `nop` have none), then the offset
         let mut prefix = String::new();
         if options.numbering {
             match item {
-                Item::Instruction(i) if !i.coissue => {
+                Item::Instruction(i) if !i.coissue && i.opcode != Opcode::Nop => {
                     let colon = if options.offsets { ' ' } else { ':' };
                     let _ = write!(prefix, "{slot:>4}{colon} ");
                     slot = slot.saturating_add(slots(i, &program).1);
@@ -133,11 +179,37 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
                 line
             }
         };
-        let _ = writeln!(out, "{prefix}{indent}{}", line.trim_end());
+        let _ = write!(out, "{prefix}{indent}{}", line.trim_end());
+        if let Some(written) = record.and_then(|n| notes.get(n)).filter(|w| !w.is_empty()) {
+            let _ = write!(out, "  // {}", written.join(", "));
+        }
+        out.push('\n');
     }
     out.push('\n');
     footer(&mut out, &program);
     Ok(out)
+}
+
+/// What each line record's instruction writes, by the record's place: `name<components>` for each location of each
+/// variable, in the variable table's order. A variable of the entry point's parameters is its bare name, one of another
+/// function or a constant buffer `scope::name`, and a local or a function's return value `::name`; the components are
+/// those of the lanes that hold one, in lane order.
+fn variables(debug: &DebugInfo) -> Vec<Vec<String>> {
+    let mut notes = vec![Vec::new(); debug.lines.len()];
+    for v in &debug.variables {
+        let name = match &v.scope {
+            Some(scope) if *scope == debug.entry => v.name.clone(),
+            Some(scope) => format!("{scope}::{}", v.name),
+            None => format!("::{}", v.name),
+        };
+        for l in &v.locations {
+            let components: Vec<String> = l.components.iter().flatten().map(u16::to_string).collect();
+            if let Some(n) = usize::try_from(l.instruction).ok().and_then(|n| notes.get_mut(n)) {
+                n.push(format!("{name}<{}>", components.join(",")));
+            }
+        }
+    }
+    notes
 }
 
 /// `D3DXPARAMETER_TYPE` as HLSL names it.
@@ -518,8 +590,8 @@ fn general(value: f32) -> String {
 /// against every footer of a vs_3_0 and ps_3_0 corpus and against fixtures of one operation each, and of co-issue. `loop`, `endloop`,
 /// `call`, `callnz`, `ret`, `break`, `breakp` and `setp` take what Microsoft's instruction reference states, unchecked.
 fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
-    // a co-issued instruction runs in the slot of the one before it
-    if i.coissue {
+    // a co-issued instruction runs in the slot of the one before it, and a `nop` takes none
+    if i.coissue || i.opcode == Opcode::Nop {
         return (0, 0);
     }
     let pixel = program.version.stage == Stage::Pixel;

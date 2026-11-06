@@ -19,7 +19,7 @@
   resource bindings, signatures, functionality notes, tessellation tables), the program and its slot count.
   `Options::from_flags` takes Microsoft's flags word: `0x40` leaves out the header, `0x04` numbers the instructions,
   `0x20` writes their offsets (after the number, `   3  0x00000024: `, with both), `0x80` writes literals in hex
-  (`0x02` and `0x10` change nothing in the text); it
+  (`0x02` changes nothing in the text, `0x10` leaves out a level 9 program's debug information); it
   refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's disassembler refuses too. The listings are identical to
   Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 432 of Sekiro's under each of 23 flag
   words, and for 1,817 listings of 79 fixture programs under the same 23 (no flags, and the flags that change the text
@@ -53,15 +53,21 @@
   (`ps_4_0_level_9_1` and the like): the Direct3D 9 program and the tables that map constant buffers, samplers and
   resources onto its registers (`Level9`, `ConstantMapping`, `ScalarMapping`, `SamplerMapping`, `RuntimeConstant`).
   The listing writes them and the program, as Microsoft's does. `dxbc-reader` now depends on `d3d9-reader`.
+- `d3d9-reader`: the `DBUG` comment of an `fxc /Zi` build is read (`Program::debug`, a `DebugInfo`: source files,
+  each record's line, each variable's locations), and the listing writes it as Microsoft's does: a `#line N "file"`
+  where the file changes and `#line N` where the line moves by more than 2, each after a blank line, and after a line
+  the variables it writes, `  // p<0,1>, ::o<1,2,3,0>, C::k<0>`; `0x10` leaves them out (`Options::debug_info`). A
+  feature level 9 container's Direct3D 9 program gets them the same way: its section of the listing is identical to
+  Microsoft's for 16 `/Zi` programs under each flag word. `Program` has a new field.
 - `dxbc-reader`: the names the listing gives reflection records are methods, so a caller can print the same ones:
   `RdefBinding::type_name`, `format_name`, `dimension_name` and `register_prefix`; `RdefType::type_name` and
   `scalar_name`; `SignatureElement::system_value_for` (a pixel program's outputs store no system value; theirs is the one
   the semantic names), `system_value_name` and `format_name`.
 - `d3d9-reader`: `disassemble_with(&[u8], &Options)` and `Options::from_flags`, the same flags as `dxbc-reader`'s. The
   listings are identical to Microsoft's for all 7,306 programs of Shaun White Skateboarding (6,207 `ps_3_0`, 1,099
-  `vs_3_0`) and 782 listings of 34 fixture programs (`vs_1_1` and `ps_1_1` to `ps_3_0`) under the 23 flag words,
-  struct parameters, co-issue (`  + mov r0.w, v0`, which takes no slot and no number) and the texture and arithmetic
-  slot split included. The Shader Model 1 fixtures are written from their tokens, which fxc no longer compiles.
+  `vs_3_0`) and 1,012 listings of 44 fixture programs (`vs_1_1` and `ps_1_1` to `ps_3_0`) under the 23 flag words,
+  struct parameters, co-issue (`  + mov r0.w, v0`, which takes no slot and no number), `nop` (no slot and no number
+  either; it was counted as one arithmetic slot) and the texture and arithmetic slot split included. The Shader Model 1 fixtures are written from their tokens, which fxc no longer compiles.
 - `dxbc-reader`: `decode` refuses an instruction whose trailing words decode as more operands than its opcode's
   format has, naming the count, where it took the first operands before. A change for code that relied on it.
 

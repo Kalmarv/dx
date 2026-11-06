@@ -1,0 +1,20 @@
+    ps_2_0
+0x00000270:     def c3, 0, 1, 0, 0
+0x00000288:     dcl t0.xy  // uv<0,1>
+0x00000294:     dcl_2d s0
+
+#line 75 "C:\dx9-fixtures\debug.hlsl"
+0x000002A0:     texld r0, t0, s0
+0x000002B0:     mov r0.x, -r0.x
+0x000002BC:     add r0.x, r0.x, c0.x
+0x000002CC:     cmp r0, r0.x, c3.x, c3.y
+0x000002E0:     mov r1, -r0
+0x000002EC:     mov r0, -r0
+0x000002F8:     add r0, r0, r1
+0x00000308:     cmp r0, r0, c3.x, c3.y
+0x0000031C:     mov r0, -r0
+0x00000328:     mov r1, c2  // ::n<0,1,2,3>
+0x00000334:     cmp r0, r0, r1, c1  // ::near1<0,1,2,3>
+0x00000348:     mov oC0, r0  // ::near1<0,1,2,3>
+
+// approximately 12 instruction slots used (1 texture, 11 arithmetic)
