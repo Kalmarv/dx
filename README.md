@@ -1,5 +1,7 @@
 # dx
 
+[![crates.io: dxbc-reader](https://img.shields.io/crates/v/dxbc-reader?label=dxbc-reader)](https://crates.io/crates/dxbc-reader) [![crates.io: dxil-reader](https://img.shields.io/crates/v/dxil-reader?label=dxil-reader)](https://crates.io/crates/dxil-reader) [![crates.io: dxcontainer](https://img.shields.io/crates/v/dxcontainer?label=dxcontainer)](https://crates.io/crates/dxcontainer) [![crates.io: rsx-reader](https://img.shields.io/crates/v/rsx-reader?label=rsx-reader)](https://crates.io/crates/rsx-reader) [![docs.rs](https://img.shields.io/docsrs/dxbc-reader)](https://docs.rs/dxbc-reader) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/dx/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/dx/actions/workflows/ci.yml) [![release](https://img.shields.io/github/v/release/Kalmarv/dx)](https://github.com/Kalmarv/dx/releases/latest)
+
 Rust libraries that read compiled shader programs and their containers: Direct3D 9, DXBC and DXIL programs, and PlayStation 3 RSX programs and texture descriptors.
 
 ## Features
@@ -47,6 +49,13 @@ For either, depend on the repository:
 ```toml
 d3d9-reader = { git = "https://github.com/Kalmarv/dx" }
 dxbc-reader = { git = "https://github.com/Kalmarv/dx" }
+```
+
+The `dx` command-line tool is not on crates.io. Download it for Windows or Linux (x86_64) from the
+[latest release](https://github.com/Kalmarv/dx/releases/latest), or build it from the repository:
+
+```sh
+cargo install --git https://github.com/Kalmarv/dx dx
 ```
 
 ### Usage
