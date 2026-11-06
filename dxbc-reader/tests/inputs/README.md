@@ -28,3 +28,8 @@ input is not configured skips with a line naming its key.
 | `oracles.d3d-disassembler.sledding/corpus-unity` | live | yes | the 4,854 Shader Model 4.0 and 5.0 programs of Sledding Game's Unity player (`NNNNN.dxbc`), each with Microsoft's listing with no flags (`NNNNN.dxbc.asm`); 16 carry an SPDB part; tests/corpora.rs | independent: d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (primase-oracles tools/wine/d3d_disassemble.py) over the programs of the user's own Sledding Game install; programs and listings stay outside the repository |
 
 <!-- end of real-data inputs -->
+
+`fxc_sweep.py` makes the `/Zi` sweep's programs and listings: it compiles the HLSL of four outside corpora
+(DirectXShaderCompiler's tests, vkd3d's and vkd3d-proton's shader tests, MiniEngine) with fxc `/Zi` and `/Zi /Od`, and
+lists each program with Microsoft's D3DDisassemble under the 23 flag words the fixtures use (`python -I fxc_sweep.py
+CORPUS OUT FXC_DIR`; its docstring names the corpus layout).

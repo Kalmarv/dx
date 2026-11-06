@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.7.0 (2026-11-06)
+
+- `dxbc-reader`: listings are Microsoft's where a sweep of outside programs found them refused or different outside
+  the `/Zi` variable names. The sweep is fxc 10.0.26100.4654's builds of the HLSL in dxc's tests, vkd3d's and
+  vkd3d-proton's shader tests and MiniEngine: 4,304 programs, each built with `/Zi` and with `/Zi /Od`, listed under
+  the 23 flag words. None is refused now, and under every flag word that leaves out the variable names (those with
+  0x10) all 8,608 listings are Microsoft's; the names are the next release's (95 `/Zi` and 189 `/Zi /Od` listings
+  still differ under the others). What changed:
+  - the residency-status forms (`sample_l_s`, `ld_s`, `gather4_c_s`, ...) write their operands in the number styles of
+    the plain forms, and a gather with programmable offsets (`gather4_po`, `gather4_po_c` and their `_s` forms) writes
+    every operand as an integer, its address and reference value too;
+  - the word fxc leaves after the operands of `sample_d_cl_s` (0x2000) is skipped, as after `samplepos` and
+    `sample_cl_s`, where the program was refused;
+  - no `{x as y}` precision is written on an instruction with a resource operand;
+  - shader messages (`customdata` class 4) are read: `printf` and `errorf` with their text, escaped as Microsoft does
+    (`\b \t \n \r \\`, other bytes outside 0x20 to 0x7f as `.`), and their operands, other ids and formats as
+    `<unknown>`, numbered and indented as instructions. `Declared::ShaderMessage` is new, and `Declared` is
+    `#[non_exhaustive]`;
+  - the note `SHADER WILL ONLY WORK WITH THE DEBUG SDK LAYER ENABLED` is written where the container's digest is not
+    the one `dxcontainer::checksum` computes: fxc stores another for a program with `printf`, `errorf` or `abort`;
+  - a subroutine's label is `label0` (it was `l0`), a geometry program's patch input `patch2` (it was
+    `2_control_point_patch`);
+  - the reflection header writes an empty struct with no inner line, a blank line before a struct member and before
+    the member after an empty struct, default values four words to a line, and an output's Used column as the
+    complement of its never-written mask (all four lanes for an `SV_ClipDistance` of three);
+  - with hex literals (0x80) a 64-bit immediate is written as its four words; a one-component 64-bit immediate is read
+    as one word, as Microsoft's disassembler reads it;
+  - a `/Zi` listing with no initial locations has a blank line before its first `#line`;
+  - `/Zi` programs whose types fxc records as classes, typedefs, base classes and interfaces, static members, methods
+    or forward references are read, where they were refused.
+- `dxbc-reader`: 13 new fixture programs and their 299 listings (`tests/disasm`; 4,807 listings of 209 programs, 106
+  of them `/Zi` builds), each failing before its change: `ps_feedback`, `min16_resources`, `messages`,
+  `header_layout`, `ps_calls`, `gs_patch`, `ps_doubles`, `zi_compute`, `zi_types`, and in `tests/fixtures` two builds
+  edited into programs fxc does not write (`<unknown>` messages and a repaired digest, a one-word 64-bit immediate),
+  which `examples/patched_fixtures.rs` makes. `tests/inputs/fxc_sweep.py` makes the sweep's programs and listings.
+- `dxil-reader`: three fixtures of texture buffers beside a constant buffer (`tbuffers`, `ps_6_0`, `/Od` and `ps_6_6`):
+  a `tbuffer` block and `TextureBuffer<T>` views, one in a register space and one an array, in the Buffer Definitions
+  and Resource Bindings tables.
+
 ## 0.6.0 (2026-11-06)
 
 - `dxbc-reader`: `/Zi` listings are Microsoft's where three new kinds of program made them differ:

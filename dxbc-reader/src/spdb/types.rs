@@ -12,12 +12,30 @@ const LANES: [char; 4] = ['x', 'y', 'z', 'w'];
 
 /// `LF_MODIFIER`: the modified type at 0.
 const MODIFIER: u16 = 0x1518;
-/// `LF_STRUCTURE`: the field list at 4.
+/// `LF_ALIAS`: a `typedef`, the type it names at 0.
+const ALIAS: u16 = 0x150a;
+/// `LF_CLASS`: as `LF_STRUCTURE`.
+const CLASS: u16 = 0x1504;
+/// `LF_STRUCTURE`: the member count at 0, the properties at 2 (bit 7 a forward reference, whose field list is 0), the
+/// field list at 4, the size (a numeric leaf) at 16, then the name.
 const STRUCTURE: u16 = 0x1505;
-/// `LF_FIELDLIST`: member records back to back.
+/// `LF_FIELDLIST`: member records back to back, each padded with bytes 0xf1 to 0xff.
 const FIELD_LIST: u16 = 0x1203;
 /// `LF_MEMBER`: attributes, the member's type at 2, its offset (a numeric leaf) at 6, then its name.
 const MEMBER: u16 = 0x150d;
+/// `LF_BCLASS`: a base class, as `LF_MEMBER` with no name; its members are the class's own.
+const BASE_CLASS: u16 = 0x1400;
+/// `LF_BINTERFACE`: an interface the class implements, as `LF_BCLASS`; it holds no data.
+const BASE_INTERFACE: u16 = 0x151a;
+/// `LF_STMEMBER`: a static member, attributes, its type at 2, then its name; no data in the struct.
+const STATIC_MEMBER: u16 = 0x150e;
+/// `LF_METHOD`: overloaded methods, their count, their method list at 2, then their name.
+const METHOD: u16 = 0x150f;
+/// `LF_NESTTYPE`: a type declared inside the struct, its index at 2, then its name.
+const NESTED_TYPE: u16 = 0x1510;
+/// `LF_ONEMETHOD`: a method, attributes (bits 2 to 4 its kind: 4 and 6 introduce a virtual one, followed by its
+/// offset in the virtual table), its type at 2, then its name.
+const ONE_METHOD: u16 = 0x1511;
 /// `LF_STRIDED_ARRAY`: the element type at 0, the stride at 8.
 const STRIDED_ARRAY: u16 = 0x1516;
 /// `LF_HLSL`: an HLSL object type; the kind at 4, `0x200` an interface pointer (four words).
@@ -87,7 +105,7 @@ impl<'a> Types<'a> {
                 .get(&index)
                 .ok_or_else(|| s.fail(0, format!("type index {index:#x} has no record")))?;
             match kind {
-                MODIFIER => index = s.u32(at)?,
+                MODIFIER | ALIAS => index = s.u32(at)?,
                 VECTOR => {
                     let count = s.u32(s.plus(at, 4)?)?;
                     let (size, _) = self.numeric(s.plus(at, 8)?)?;
@@ -104,11 +122,18 @@ impl<'a> Types<'a> {
                     }
                     return Ok(out);
                 }
-                STRUCTURE => {
+                STRUCTURE | CLASS => {
                     let list = s.u32(s.plus(at, 4)?)?;
+                    let list = match s.u16(s.plus(at, 2)?)? & 0x80 != 0 {
+                        true => self.definition(index, kind, at)?,
+                        false => list,
+                    };
                     let (member, ty, start) = self.member(list, offset)?;
-                    out.push('.');
-                    out.push_str(&member);
+                    // a base class's members are the struct's own
+                    if let Some(member) = member {
+                        out.push('.');
+                        out.push_str(&member);
+                    }
                     index = ty;
                     offset = offset.saturating_sub(start);
                 }
@@ -151,9 +176,30 @@ impl<'a> Types<'a> {
             .fail(0, format!("type {index:#x} nests more than 64 deep")))
     }
 
-    /// The member of field list `list` that byte `offset` falls in: the last that starts at or before it, its type and
-    /// its offset.
-    fn member(&self, list: u32, offset: u32) -> Result<(String, u32, u32)> {
+    /// The field list of the struct or class a forward reference (type `index` of `kind`, its data at `at`) names: that
+    /// of the record of the same kind and name that is not one.
+    fn definition(&self, index: u32, kind: u16, at: usize) -> Result<u32> {
+        let s = self.stream;
+        let name = |at: usize| -> Result<String> {
+            let (_, name_at) = self.numeric(s.plus(at, 16)?)?;
+            Ok(s.string(name_at)?.0)
+        };
+        let wanted = name(at)?;
+        for &(other, data, _) in self.records.values() {
+            if other == kind && s.u16(s.plus(data, 2)?)? & 0x80 == 0 && name(data)? == wanted {
+                return s.u32(s.plus(data, 4)?);
+            }
+        }
+        Err(s.fail(
+            at,
+            format!("type {index:#x} is a forward reference to {wanted}, which no record defines"),
+        ))
+    }
+
+    /// The data member of field list `list` that byte `offset` falls in: the last that starts at or before it, its name
+    /// (none for a base class), its type and its offset. Static members, methods, nested types and interfaces hold no
+    /// data.
+    fn member(&self, list: u32, offset: u32) -> Result<(Option<String>, u32, u32)> {
         let s = self.stream;
         let &(kind, mut at, end) = self
             .records
@@ -168,21 +214,40 @@ impl<'a> Types<'a> {
         let mut best = None;
         while at < end {
             let leaf = s.u16(at)?;
-            if leaf != MEMBER {
-                return Err(s.fail(
-                    at,
-                    format!("field list member of kind {leaf:#06x}, where 0x150d is the one known"),
-                ));
-            }
             let ty = s.u32(s.plus(at, 4)?)?;
-            let (start, name_at) = self.numeric(s.plus(at, 8)?)?;
-            let (name, mut next) = s.string(name_at)?;
+            let mut next = match leaf {
+                MEMBER | BASE_CLASS | BASE_INTERFACE => {
+                    let (start, after) = self.numeric(s.plus(at, 8)?)?;
+                    let (name, after) = match leaf {
+                        MEMBER => {
+                            let (name, after) = s.string(after)?;
+                            (Some(name), after)
+                        }
+                        _ => (None, after),
+                    };
+                    if leaf != BASE_INTERFACE && start <= offset {
+                        best = Some((name, ty, start));
+                    }
+                    after
+                }
+                STATIC_MEMBER | METHOD | NESTED_TYPE => s.string(s.plus(at, 8)?)?.1,
+                ONE_METHOD => {
+                    let virtual_offset = matches!((s.u16(s.plus(at, 2)?)? >> 2) & 7, 4 | 6);
+                    s.string(s.plus(at, if virtual_offset { 12 } else { 8 })?)?.1
+                }
+                _ => {
+                    return Err(s.fail(
+                        at,
+                        format!(
+                            "field list member of kind {leaf:#06x}, where 0x1400, 0x150d to 0x1511 and 0x151a are the \
+                             ones known"
+                        ),
+                    ));
+                }
+            };
             // padding bytes 0xf1 to 0xff up to the next member
             while next < end && s.u8(next)? >= 0xf0 {
                 next = next.saturating_add(1);
-            }
-            if start <= offset {
-                best = Some((name, ty, start));
             }
             at = next;
         }

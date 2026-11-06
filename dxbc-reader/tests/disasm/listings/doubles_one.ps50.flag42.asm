@@ -1,0 +1,14 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed | enableDoublePrecisionFloatOps | enable11_1DoubleExtensions
+dcl_constantbuffer CB0[1], immediateIndexed
+dcl_output o0.xyzw
+dcl_temps 2
+dmul r0.xy, cb0[0].zwzw, d(0.000000)
+dadd r0.xy, r0.xyxy, d(0.125000l, 0.000000l)
+dtof r0.y, r0.xyxy
+ddiv r1.xy, cb0[0].xyxy, d(3.000000l, 0.000000l)
+dmul r1.zw, r1.xyxy, d(0.000000l, -2.500000l)
+dtof r0.xz, r1.xyzw
+mov r0.w, l(1.000000)
+mov o0.xyzw, r0.xyzw
+ret 

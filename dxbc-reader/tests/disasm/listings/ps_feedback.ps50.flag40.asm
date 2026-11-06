@@ -1,0 +1,89 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer CB0[3], immediateIndexed
+dcl_sampler s0, mode_default
+dcl_sampler s1, mode_comparison
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_resource_texture2dms(0) (float,float,float,float) t1
+dcl_resource_raw t2
+dcl_resource_structured t3, 4
+dcl_uav_typed_texture2d (float,float,float,float) u1
+dcl_input_ps linear v0.xy
+dcl_output o0.xyzw
+dcl_temps 15
+sample_cl_s_indexable(texture2d)(float,float,float,float) r0.xyzw, r1.x, l(0.250000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(1.500000)
+check_access_fully_mapped r1.x, r1.x
+sample_b_cl_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.250000, 0.750000, 0.000000, 0.000000), t0.xyzw, s0, l(0.500000), l(2.500000)
+check_access_fully_mapped r1.y, r3.x
+add r0.xyzw, r0.xyzw, r2.xyzw
+and r1.x, r1.y, r1.x
+sample_d_cl_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.125000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(0.500000, 1.000000, 0.000000, 0.000000), l(1.000000, 2.000000, 0.000000, 0.000000), l(3.500000)
+check_access_fully_mapped r1.y, r3.x
+add r0.xyzw, r0.xyzw, r2.xyzw
+and r1.x, r1.y, r1.x
+sample_l_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.375000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(2.000000)
+check_access_fully_mapped r1.y, r3.x
+and r1.x, r1.y, r1.x
+sample_c_cl_s_indexable(texture2d)(float,float,float,float) r3.x, r4.x, l(0.625000, 0.500000, 0.000000, 0.000000), t0.xxxx, s1, l(0.500000), l(1.250000)
+check_access_fully_mapped r1.y, r4.x
+and r1.x, r1.y, r1.x
+sample_c_lz_s_indexable(texture2d)(float,float,float,float) r4.x, r5.x, l(0.875000, 0.500000, 0.000000, 0.000000), t0.xxxx, s1, l(0.750000)
+check_access_fully_mapped r1.y, r5.x
+and r1.x, r1.y, r1.x
+gather4_s_indexable(texture2d)(float,float,float,float) r5.xyzw, r6.x, l(0.250000, 0.250000, 0.000000, 0.000000), t0.xyzw, s0.x
+check_access_fully_mapped r1.y, r6.x
+and r1.x, r1.y, r1.x
+gather4_c_s_indexable(texture2d)(float,float,float,float) r6.xyzw, r7.x, l(0.250000, 0.125000, 0.000000, 0.000000), t0.xyzw, s1.x, l(0.500000)
+check_access_fully_mapped r1.y, r7.x
+and r1.x, r1.y, r1.x
+gather4_po_s_indexable(texture2d)(float,float,float,float) r7.xyzw, r8.x, l(0x3f000000, 0x3e800000, 0, 0), cb0[0].yzyy, t0.xyzw, s0.x
+check_access_fully_mapped r1.y, r8.x
+and r1.x, r1.y, r1.x
+gather4_po_c_s_indexable(texture2d)(float,float,float,float) r8.xyzw, r9.x, l(0x3f000000, 0x3e000000, 0, 0), cb0[0].yzyy, t0.xyzw, s1.x, l(0x3f000000)
+check_access_fully_mapped r1.y, r9.x
+and r1.x, r1.y, r1.x
+ld_s_indexable(texture2d)(float,float,float,float) r9.xyzw, r10.x, l(3, 4, 0, 0), t0.xyzw
+check_access_fully_mapped r1.y, r10.x
+and r1.x, r1.y, r1.x
+ldms_s_indexable(texture2dms)(float,float,float,float) r10.xyzw, r11.x, l(5, 6, 0, 0), t1.xyzw, l(1)
+check_access_fully_mapped r1.y, r11.x
+and r1.x, r1.y, r1.x
+ld_raw_s_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r11.x, r12.x, l(16), t2.xxxx
+check_access_fully_mapped r1.y, r12.x
+utof r1.z, r11.x
+and r1.x, r1.y, r1.x
+ld_structured_s_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.x, r12.x, l(7), l(0), t3.xxxx
+check_access_fully_mapped r1.y, r12.x
+and r1.x, r1.y, r1.x
+ld_uav_typed_s_indexable(texture2d)(float,float,float,float) r12.xyzw, r13.x, l(8, 9, 9, 9), u1.xyzw
+check_access_fully_mapped r1.y, r13.x
+and r1.x, r1.y, r1.x
+sample_d_cl_s_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r13.xyzw, r14.x, v0.xyxx, t0.xyzw, s0, cb0[2].xyxx, cb0[2].zwzz, cb0[2].y
+check_access_fully_mapped r1.y, r14.x
+add r0.xyzw, r0.xyzw, r13.xyzw
+add r0.xyzw, r2.xyzw, r0.xyzw
+add r0.xyzw, r3.xxxx, r0.xyzw
+add r0.xyzw, r4.xxxx, r0.xyzw
+add r0.xyzw, r5.xyzw, r0.xyzw
+add r0.xyzw, r6.xyzw, r0.xyzw
+add r0.xyzw, r7.xyzw, r0.xyzw
+add r0.xyzw, r8.xyzw, r0.xyzw
+add r0.xyzw, r9.xyzw, r0.xyzw
+add r0.xyzw, r10.xyzw, r0.xyzw
+add r0.xyzw, r1.zzzz, r0.xyzw
+add r0.xyzw, r11.xxxx, r0.xyzw
+add r0.xyzw, r12.xyzw, r0.xyzw
+and r1.x, r1.y, r1.x
+movc r1.x, r1.x, l(1.000000), l(0)
+gather4_po_indexable(texture2d)(float,float,float,float) r2.xyzw, l(0x3e800000, 0x3f000000, 0, 0), cb0[0].yzyy, t0.xyzw, s0.x
+gather4_po_c_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, cb0[0].yzyy, t0.xyzw, s1.x, l(0x3f000000)
+add r2.xyzw, r2.xyzw, r3.xyzw
+gather4_po_c_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, l(-11, 1, 0, 0), t0.xyzw, s1.x, cb0[1].z
+add r2.xyzw, r2.xyzw, r3.xyzw
+gather4_po_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, l(9, 8, 0, 0), t0.xyzw, s0.x
+add r2.xyzw, r2.xyzw, r3.xyzw
+sample_cl_s_aoffimmi_indexable(1,2,0)(texture2d)(float,float,float,float) r3.xyzw, null, v0.xyxx, t0.xyzw, s0, l(0.250000)
+add r2.xyzw, r2.xyzw, r3.xyzw
+add r0.xyzw, r0.xyzw, r2.xyzw
+add o0.xyzw, r1.xxxx, r0.xyzw
+ret 

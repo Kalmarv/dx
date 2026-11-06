@@ -54,8 +54,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 196 programs, 104 of them fxc /Zi builds with an SPDB part, each with 23 listings
-    assert_eq!(compared, 4508);
+    // 209 programs, 106 of them fxc /Zi builds with an SPDB part, each with 23 listings
+    assert_eq!(compared, 4807);
 }
 
 /// The programs of another disassembler's tests (`tests/third-party/t7_dxbc`, see its README), against the listings

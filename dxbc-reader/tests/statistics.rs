@@ -107,9 +107,15 @@ fn the_counters_of_the_compilers_own_output_equal_the_decoders_counts() {
             .map(|d| if let Declared::Temps(n) = d.kind { n } else { 0 })
             .max()
             .unwrap_or(0);
+        // fxc counts a shader message (`printf`, `errorf`) as an instruction, as its listing's slot count does
+        let messages = program
+            .declarations
+            .iter()
+            .filter(|d| matches!(d.kind, Declared::ShaderMessage { .. }))
+            .count();
         assert_eq!(
             stat.instructions(),
-            Some(program.instructions.len() as u32),
+            Some((program.instructions.len() + messages) as u32),
             "{name}"
         );
         assert_eq!(stat.temp_registers(), Some(temps), "{name}");

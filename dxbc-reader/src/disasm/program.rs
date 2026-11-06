@@ -45,15 +45,75 @@ fn mnemonic(opcode: u16) -> &'static str {
 /// How the immediates of an instruction's operands are written.
 fn style(opcode: u16) -> Style {
     match crate::opcode_name(opcode) {
-        "add" | "div" | "dp2" | "dp3" | "dp4" | "eq" | "exp" | "frc" | "ge" | "lt" | "log" | "mad"
-        | "max" | "min" | "mul" | "ne" | "round_ne" | "round_ni" | "round_pi" | "round_z" | "rsq"
-        | "sqrt" | "sincos" | "rcp" | "deriv_rtx" | "deriv_rty" | "deriv_rtx_coarse" | "deriv_rtx_fine"
-        | "deriv_rty_coarse" | "deriv_rty_fine" | "ftoi" | "ftou" | "ftod" | "f32tof16" | "sample"
-        | "sample_c" | "sample_c_lz" | "sample_l" | "sample_d" | "sample_b" | "gather4" | "gather4_c"
-        | "gather4_po" | "gather4_po_c" | "lod" | "dadd" | "dmax" | "dmin" | "dmul" | "deq" | "dge"
-        | "dlt" | "dne" | "dmov" | "dmovc" | "dtof" | "ddiv" | "dfma" | "drcp" | "dtoi" | "dtou" => {
-            Style::Float
-        }
+        "add"
+        | "div"
+        | "dp2"
+        | "dp3"
+        | "dp4"
+        | "eq"
+        | "exp"
+        | "frc"
+        | "ge"
+        | "lt"
+        | "log"
+        | "mad"
+        | "max"
+        | "min"
+        | "mul"
+        | "ne"
+        | "round_ne"
+        | "round_ni"
+        | "round_pi"
+        | "round_z"
+        | "rsq"
+        | "sqrt"
+        | "sincos"
+        | "rcp"
+        | "deriv_rtx"
+        | "deriv_rty"
+        | "deriv_rtx_coarse"
+        | "deriv_rtx_fine"
+        | "deriv_rty_coarse"
+        | "deriv_rty_fine"
+        | "ftoi"
+        | "ftou"
+        | "ftod"
+        | "f32tof16"
+        | "sample"
+        | "sample_c"
+        | "sample_c_lz"
+        | "sample_l"
+        | "sample_d"
+        | "sample_b"
+        | "gather4"
+        | "gather4_c"
+        | "lod"
+        | "dadd"
+        | "dmax"
+        | "dmin"
+        | "dmul"
+        | "deq"
+        | "dge"
+        | "dlt"
+        | "dne"
+        | "dmov"
+        | "dmovc"
+        | "dtof"
+        | "ddiv"
+        | "dfma"
+        | "drcp"
+        | "dtoi"
+        | "dtou"
+        | "sample_l_feedback"
+        | "sample_c_lz_feedback"
+        | "sample_clamp_feedback"
+        | "sample_b_clamp_feedback"
+        | "sample_d_clamp_feedback"
+        | "sample_c_clamp_feedback"
+        | "gather4_feedback"
+        | "gather4_c_feedback" => Style::Float,
+        // a gather with programmable offsets writes even its address and reference value as integers
+        "gather4_po" | "gather4_po_c" | "gather4_po_feedback" | "gather4_po_c_feedback" => Style::Integer,
         "iadd"
         | "ieq"
         | "ige"
@@ -72,6 +132,9 @@ fn style(opcode: u16) -> Style {
         | "ld"
         | "ld_ms"
         | "ld_uav_typed"
+        | "ld_feedback"
+        | "ld_ms_feedback"
+        | "ld_uav_typed_feedback"
         | "eval_snapped"
         | "atomic_and"
         | "atomic_or"
@@ -168,7 +231,7 @@ fn register_name(register: Register, sm51: bool) -> (&'static str, bool) {
         Register::InputDomainPoint => ("vDomain", false),
         Register::Stream => ("m", true),
         Register::GsInstanceId => ("vGSInstanceID", false),
-        Register::Label => ("l", true),
+        Register::Label => ("label", true),
         Register::FunctionBody => ("fb", true),
         Register::FunctionTable => ("ft", true),
         Register::Interface => ("fp", true),
@@ -248,10 +311,13 @@ impl Writer {
                 let _ = write!(out, "l({})", values.join(separator));
                 return;
             }
+            // two doubles, or with hex literals their four words; a one-component one is a single word, a float
             Register::Immediate64 => {
                 let [a, b, c, d] = o.immediate;
                 let values = if o.components == 1 {
-                    number::double(a, b)
+                    self.value(a, Style::Float)
+                } else if self.hex {
+                    [a, b, c, d].map(|w| self.value(w, Style::Float)).join(", ")
                 } else {
                     format!("{}, {}", number::double(a, b), number::double(c, d))
                 };
@@ -687,6 +753,23 @@ impl Writer {
                     tables.join(", ")
                 );
             }
+            Declared::ShaderMessage {
+                id,
+                format,
+                text,
+                operands,
+            } => {
+                let name = match (id, format) {
+                    (0x0020_0102, 1) => "printf",
+                    (0x0020_0103, 1) => "errorf",
+                    _ => "<unknown>",
+                };
+                let _ = write!(out, "{name} \"{}\"", message_text(text));
+                for o in operands {
+                    out.push_str(", ");
+                    self.operand(out, o, Style::Typeless);
+                }
+            }
             Declared::CustomData { class } => {
                 let _ = write!(out, "customdata {class}");
             }
@@ -761,7 +844,7 @@ impl Writer {
                 let primitives = ["", "point", "line", "triangle", "", "", "lineadj", "triangleadj"];
                 let value = control & 63;
                 let name = if (8..=39).contains(&value) {
-                    format!("{}_control_point_patch", value.saturating_sub(7))
+                    format!("patch{}", value.saturating_sub(7))
                 } else {
                     named(&primitives, value)
                 };
@@ -901,8 +984,9 @@ impl Writer {
 
 /// Whether source `source` of an instruction is read at the precision of its result, so that the listing writes a
 /// source of another precision as `{def32 as min16f}`: a source of the first destination's type (a conversion's
-/// source, a load's address and a resource are not), except a comparison's (its result is a mask, not a value of the
-/// sources' type) and a shift's amount. Checked against Microsoft's listings of fixtures that mix the precisions in each.
+/// source is not), except a comparison's (its result is a mask, not a value of the sources' type), a shift's amount
+/// and any source of an instruction with a resource operand (a sample's or a load's address, a `lod`'s, an atomic's
+/// value). Checked against Microsoft's listings of fixtures that mix the precisions in each.
 fn takes_result_precision(opcode: u16, format: OperandFormat, source: usize) -> bool {
     let (Some(result), Some(class)) = (format.destinations.first(), format.sources.get(source)) else {
         return false;
@@ -910,10 +994,12 @@ fn takes_result_precision(opcode: u16, format: OperandFormat, source: usize) -> 
     let name = crate::opcode_name(opcode);
     let comparison = matches!(name, "ieq" | "ine" | "ige" | "ilt" | "uge" | "ult");
     let shift_amount = matches!(name, "ishl" | "ishr" | "ushr") && source == 1;
-    result == class
-        && !matches!(class, OperandClass::Resource | OperandClass::Varies)
-        && !comparison
-        && !shift_amount
+    let resource = format
+        .destinations
+        .iter()
+        .chain(format.sources)
+        .any(|&c| c == OperandClass::Resource);
+    result == class && *class != OperandClass::Varies && !resource && !comparison && !shift_amount
 }
 
 /// How an instruction moves the indentation: before it is written and after.
@@ -927,10 +1013,28 @@ fn indentation(opcode: u16) -> (i32, i32) {
 }
 
 /// Whether a declaration's line is numbered like an instruction's: the phase markers of a hull program but its
-/// `hs_decls`.
-fn numbered(opcode: u16) -> bool {
+/// `hs_decls`, and shader messages.
+fn numbered(d: &Declaration) -> bool {
     // hs_control_point_phase, hs_fork_phase, hs_join_phase
-    matches!(opcode, 114..=116)
+    matches!(d.opcode, 114..=116) || matches!(d.kind, Declared::ShaderMessage { .. })
+}
+
+/// A shader message's characters as the listing quotes them: `\b`, `\t`, `\n`, `\r` and `\\` escaped, the other
+/// characters from a space to 0x7f as they are (a quote too), a dot for the rest.
+fn message_text(text: &[u8]) -> String {
+    let mut out = String::new();
+    for &b in text {
+        match b {
+            8 => out.push_str("\\b"),
+            9 => out.push_str("\\t"),
+            10 => out.push_str("\\n"),
+            13 => out.push_str("\\r"),
+            b'\\' => out.push_str("\\\\"),
+            0x20..=0x7f => out.push(char::from(b)),
+            _ => out.push('.'),
+        }
+    }
+    out
 }
 
 /// A line of the program: the version, a declaration or an instruction.
@@ -1006,8 +1110,12 @@ pub(super) fn write(
                 false
             }
             Row::Declaration(d) => {
+                // a shader message stands among the instructions, indented as they are
+                if matches!(d.kind, Declared::ShaderMessage { .. }) {
+                    text.push_str(&" ".repeat(usize::try_from(depth).unwrap_or(0).saturating_mul(2)));
+                }
                 writer.declaration(&mut text, d);
-                numbered(d.opcode)
+                numbered(d)
             }
             Row::Instruction(i) => {
                 let (before, after) = indentation(i.opcode);
@@ -1028,11 +1136,15 @@ pub(super) fn write(
                 }
                 out.push_str("//\n");
             }
-            // a `#line` where the line or the file changes: the path with the first, a new file and a label
+            // a `#line` where the line or the file changes: the path with the first, a new file and a label; an empty
+            // line before each but the first after the initial locations
             if let Some((path, line)) = a.sources.get(&at)
                 && source != Some((path.as_str(), *line))
             {
                 match source {
+                    None if a.initial.is_empty() => {
+                        let _ = writeln!(out, "\n#line {line} \"{path}\"");
+                    }
                     None => {
                         let _ = writeln!(out, "#line {line} \"{path}\"");
                     }

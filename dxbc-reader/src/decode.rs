@@ -220,7 +220,9 @@ pub struct Operand {
     pub components: u8,
     /// Its index dimensions, outermost first: none for an immediate, one for `r3`, two for `cb2[5]`.
     pub indices: Vec<Index>,
-    /// The values of an immediate operand (one lane repeated, or four); zero for other registers.
+    /// The values of an immediate operand (one lane repeated, or four); zero for other registers. A 64-bit immediate's
+    /// four words are two doubles, low word first; one of one component is a single word repeated, as Microsoft's
+    /// disassembler reads it (fxc writes none).
     pub immediate: [u32; 4],
     /// 0 none, 1 negate, 2 absolute, 3 negated absolute (float sources); 4 two's-complement negate (an integer
     /// instruction's negate; the encoding has no such value, so a caller that knows the instruction reads integers sets it).
@@ -337,6 +339,7 @@ pub struct Declaration {
 
 /// A declaration, typed where this reader knows its layout.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum Declared {
     /// `dcl_temps`.
     Temps(u32),
@@ -488,7 +491,21 @@ pub enum Declared {
     Stream(Operand),
     /// `dcl_immediateConstantBuffer`.
     ImmediateBuffer(Vec<[u32; 4]>),
-    /// Custom data that is not an immediate constant buffer (a comment, debug information, ...) by its class.
+    /// A message the debug layer reports when the program runs (custom data of class 4,
+    /// `D3D11_SB_CUSTOMDATA_SHADER_MESSAGE`), which fxc writes for `printf` and `errorf`: the message and the operands
+    /// its format string formats.
+    ShaderMessage {
+        /// `D3D11_SB_SHADER_MESSAGE_ID`, the debug layer's message id: 0x200102 for `printf`, 0x200103 for `errorf`.
+        id: u32,
+        /// `D3D11_SB_SHADER_MESSAGE_FORMAT`: 0 text, 1 a `printf` format string.
+        format: u32,
+        /// The message's characters as stored, without the terminating zero.
+        text: Vec<u8>,
+        /// The operands the format string formats, in order.
+        operands: Vec<Operand>,
+    },
+    /// Custom data that is not an immediate constant buffer or a shader message (a comment, debug information, ...) by
+    /// its class.
     CustomData {
         /// The custom data class.
         class: u32,
@@ -702,16 +719,13 @@ impl Cursor<'_> {
         }
         let mut immediate = [0; 4];
         match (register, components) {
-            (Register::Immediate, 1) => immediate = [self.take()?; 4],
+            // one word even for a 64-bit immediate, as Microsoft's disassembler reads it
+            (Register::Immediate | Register::Immediate64, 1) => immediate = [self.take()?; 4],
             // four 32-bit values, or two 64-bit values of two words each
             (Register::Immediate | Register::Immediate64, 2) => {
                 for x in &mut immediate {
                     *x = self.take()?;
                 }
-            }
-            (Register::Immediate64, 1) => {
-                let (low, high) = (self.take()?, self.take()?);
-                immediate = [low, high, low, high];
             }
             (Register::Immediate | Register::Immediate64, _) => {
                 return Err(error(pos, "immediate requires one or four components"));
@@ -746,6 +760,76 @@ fn return_codes(token: u32) -> ReturnCodes {
 /// 143-162 of Direct3D 10 and 11, the hull phases 113-116 and `dcl_gs_instance_count` (206).
 fn is_declaration(opcode: u16) -> bool {
     matches!(opcode, 88..=106 | 113..=116 | 143..=162 | 206)
+}
+
+/// A shader message's custom data after its two header words, `origin` the word of the stream it starts at: the
+/// message id, the format, the number of characters, the number of operands and of their words, the operands, then the
+/// characters (a terminating zero and padding after them).
+fn shader_message(body: &[u32], origin: usize, kind: ProgramType, sm51: bool) -> Result<Declared> {
+    let [id, format, characters, count, operand_words, ..] = *body else {
+        return Err(error(
+            origin,
+            format!(
+                "a shader message of {} words, shorter than its 5-word header",
+                body.len()
+            ),
+        ));
+    };
+    let start = 5usize;
+    let end = usize::try_from(operand_words)
+        .ok()
+        .and_then(|n| start.checked_add(n));
+    let Some(words) = end.and_then(|end| body.get(start..end)) else {
+        return Err(error(
+            origin.saturating_add(4),
+            format!(
+                "a shader message's {operand_words} words of operands do not fit its {} words",
+                body.len()
+            ),
+        ));
+    };
+    let mut c = Cursor {
+        words,
+        at: 0,
+        origin: origin.saturating_add(start),
+        kind,
+        sm51,
+        declaration: false,
+    };
+    let mut operands = Vec::new();
+    while c.at < c.words.len() {
+        operands.push(c.operand(0)?);
+    }
+    if operands.len() != usize::try_from(count).unwrap_or(usize::MAX) {
+        return Err(error(
+            origin.saturating_add(3),
+            format!(
+                "a shader message of {count} operands whose {operand_words} words hold {}",
+                operands.len()
+            ),
+        ));
+    }
+    let bytes: Vec<u8> = body
+        .get(start.saturating_add(words.len())..)
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|w| w.to_le_bytes())
+        .collect();
+    let Some(text) = usize::try_from(characters).ok().and_then(|n| bytes.get(..n)) else {
+        return Err(error(
+            origin.saturating_add(2),
+            format!(
+                "a shader message of {characters} characters, more than the {} bytes after its operands",
+                bytes.len()
+            ),
+        ));
+    };
+    Ok(Declared::ShaderMessage {
+        id,
+        format,
+        text: text.to_vec(),
+        operands,
+    })
 }
 
 /// Decode a complete token stream: version token, length, then declarations and instructions to its end.
@@ -817,6 +901,8 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                     ));
                 }
                 Declared::ImmediateBuffer(rows.to_vec())
+            } else if class == 4 {
+                shader_message(body, at.saturating_add(2), kind, sm51)?
             } else {
                 Declared::CustomData { class }
             };
@@ -884,23 +970,18 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
             while c.at < c.words.len() && format.is_none_or(|f| operands.len() < f.operands()) {
                 operands.push(c.operand(0)?);
             }
-            // fxc pads some instructions (`samplepos`, `sample_cl_s`) with zero words after their operands; words that
-            // read as further operands are an instruction with another operand count than its format's
-            if let Some(nonzero) = c
-                .words
-                .get(c.at..)
-                .unwrap_or_default()
-                .iter()
-                .position(|&w| w != 0)
+            // fxc leaves words after the operands of some instructions, which Microsoft's disassembler skips: zeros after
+            // `samplepos` and `sample_cl_s`, 0x2000 after `sample_d_cl_s`. Words that read as whole further operands are
+            // instead an instruction with another operand count than its format's.
+            if let Some(format) = format
+                && c.words.get(c.at..).unwrap_or_default().iter().any(|&w| w != 0)
             {
                 let mut extra = c.clone();
                 let mut count = operands.len();
                 while extra.at < extra.words.len() && extra.operand(0).is_ok() {
                     count = count.saturating_add(1);
                 }
-                if let Some(format) = format
-                    && extra.at == extra.words.len()
-                {
+                if count > operands.len() && extra.at == extra.words.len() {
                     return Err(error(
                         at,
                         format!(
@@ -911,14 +992,6 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                         ),
                     ));
                 }
-                return Err(error(
-                    c.position().saturating_add(nonzero),
-                    format!(
-                        "a nonzero word after the {} operands of {}",
-                        operands.len(),
-                        opcode_name(opcode)
-                    ),
-                ));
             }
             if let Some(format) = format
                 && operands.len() != format.operands()

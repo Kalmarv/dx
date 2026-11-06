@@ -1,0 +1,89 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_constantbuffer CB0[3], immediateIndexed
+      dcl_sampler s0, mode_default
+      dcl_sampler s1, mode_comparison
+      dcl_resource_texture2d (float,float,float,float) t0
+      dcl_resource_texture2dms(0) (float,float,float,float) t1
+      dcl_resource_raw t2
+      dcl_resource_structured t3, 4
+      dcl_uav_typed_texture2d (float,float,float,float) u1
+      dcl_input_ps linear v0.xy
+      dcl_output o0.xyzw
+      dcl_temps 15
+   0: sample_cl_s_indexable(texture2d)(float,float,float,float) r0.xyzw, r1.x, l(0.250000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(1.500000)
+   1: check_access_fully_mapped r1.x, r1.x
+   2: sample_b_cl_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.250000, 0.750000, 0.000000, 0.000000), t0.xyzw, s0, l(0.500000), l(2.500000)
+   3: check_access_fully_mapped r1.y, r3.x
+   4: add r0.xyzw, r0.xyzw, r2.xyzw
+   5: and r1.x, r1.y, r1.x
+   6: sample_d_cl_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.125000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(0.500000, 1.000000, 0.000000, 0.000000), l(1.000000, 2.000000, 0.000000, 0.000000), l(3.500000)
+   7: check_access_fully_mapped r1.y, r3.x
+   8: add r0.xyzw, r0.xyzw, r2.xyzw
+   9: and r1.x, r1.y, r1.x
+  10: sample_l_s_indexable(texture2d)(float,float,float,float) r2.xyzw, r3.x, l(0.375000, 0.500000, 0.000000, 0.000000), t0.xyzw, s0, l(2.000000)
+  11: check_access_fully_mapped r1.y, r3.x
+  12: and r1.x, r1.y, r1.x
+  13: sample_c_cl_s_indexable(texture2d)(float,float,float,float) r3.x, r4.x, l(0.625000, 0.500000, 0.000000, 0.000000), t0.xxxx, s1, l(0.500000), l(1.250000)
+  14: check_access_fully_mapped r1.y, r4.x
+  15: and r1.x, r1.y, r1.x
+  16: sample_c_lz_s_indexable(texture2d)(float,float,float,float) r4.x, r5.x, l(0.875000, 0.500000, 0.000000, 0.000000), t0.xxxx, s1, l(0.750000)
+  17: check_access_fully_mapped r1.y, r5.x
+  18: and r1.x, r1.y, r1.x
+  19: gather4_s_indexable(texture2d)(float,float,float,float) r5.xyzw, r6.x, l(0.250000, 0.250000, 0.000000, 0.000000), t0.xyzw, s0.x
+  20: check_access_fully_mapped r1.y, r6.x
+  21: and r1.x, r1.y, r1.x
+  22: gather4_c_s_indexable(texture2d)(float,float,float,float) r6.xyzw, r7.x, l(0.250000, 0.125000, 0.000000, 0.000000), t0.xyzw, s1.x, l(0.500000)
+  23: check_access_fully_mapped r1.y, r7.x
+  24: and r1.x, r1.y, r1.x
+  25: gather4_po_s_indexable(texture2d)(float,float,float,float) r7.xyzw, r8.x, l(0x3f000000, 0x3e800000, 0, 0), cb0[0].yzyy, t0.xyzw, s0.x
+  26: check_access_fully_mapped r1.y, r8.x
+  27: and r1.x, r1.y, r1.x
+  28: gather4_po_c_s_indexable(texture2d)(float,float,float,float) r8.xyzw, r9.x, l(0x3f000000, 0x3e000000, 0, 0), cb0[0].yzyy, t0.xyzw, s1.x, l(0x3f000000)
+  29: check_access_fully_mapped r1.y, r9.x
+  30: and r1.x, r1.y, r1.x
+  31: ld_s_indexable(texture2d)(float,float,float,float) r9.xyzw, r10.x, l(3, 4, 0, 0), t0.xyzw
+  32: check_access_fully_mapped r1.y, r10.x
+  33: and r1.x, r1.y, r1.x
+  34: ldms_s_indexable(texture2dms)(float,float,float,float) r10.xyzw, r11.x, l(5, 6, 0, 0), t1.xyzw, l(1)
+  35: check_access_fully_mapped r1.y, r11.x
+  36: and r1.x, r1.y, r1.x
+  37: ld_raw_s_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r11.x, r12.x, l(16), t2.xxxx
+  38: check_access_fully_mapped r1.y, r12.x
+  39: utof r1.z, r11.x
+  40: and r1.x, r1.y, r1.x
+  41: ld_structured_s_indexable(structured_buffer, stride=4)(mixed,mixed,mixed,mixed) r11.x, r12.x, l(7), l(0), t3.xxxx
+  42: check_access_fully_mapped r1.y, r12.x
+  43: and r1.x, r1.y, r1.x
+  44: ld_uav_typed_s_indexable(texture2d)(float,float,float,float) r12.xyzw, r13.x, l(8, 9, 9, 9), u1.xyzw
+  45: check_access_fully_mapped r1.y, r13.x
+  46: and r1.x, r1.y, r1.x
+  47: sample_d_cl_s_aoffimmi_indexable(1,-1,0)(texture2d)(float,float,float,float) r13.xyzw, r14.x, v0.xyxx, t0.xyzw, s0, cb0[2].xyxx, cb0[2].zwzz, cb0[2].y
+  48: check_access_fully_mapped r1.y, r14.x
+  49: add r0.xyzw, r0.xyzw, r13.xyzw
+  50: add r0.xyzw, r2.xyzw, r0.xyzw
+  51: add r0.xyzw, r3.xxxx, r0.xyzw
+  52: add r0.xyzw, r4.xxxx, r0.xyzw
+  53: add r0.xyzw, r5.xyzw, r0.xyzw
+  54: add r0.xyzw, r6.xyzw, r0.xyzw
+  55: add r0.xyzw, r7.xyzw, r0.xyzw
+  56: add r0.xyzw, r8.xyzw, r0.xyzw
+  57: add r0.xyzw, r9.xyzw, r0.xyzw
+  58: add r0.xyzw, r10.xyzw, r0.xyzw
+  59: add r0.xyzw, r1.zzzz, r0.xyzw
+  60: add r0.xyzw, r11.xxxx, r0.xyzw
+  61: add r0.xyzw, r12.xyzw, r0.xyzw
+  62: and r1.x, r1.y, r1.x
+  63: movc r1.x, r1.x, l(1.000000), l(0)
+  64: gather4_po_indexable(texture2d)(float,float,float,float) r2.xyzw, l(0x3e800000, 0x3f000000, 0, 0), cb0[0].yzyy, t0.xyzw, s0.x
+  65: gather4_po_c_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, cb0[0].yzyy, t0.xyzw, s1.x, l(0x3f000000)
+  66: add r2.xyzw, r2.xyzw, r3.xyzw
+  67: gather4_po_c_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, l(-11, 1, 0, 0), t0.xyzw, s1.x, cb0[1].z
+  68: add r2.xyzw, r2.xyzw, r3.xyzw
+  69: gather4_po_indexable(texture2d)(float,float,float,float) r3.xyzw, v0.xyxx, l(9, 8, 0, 0), t0.xyzw, s0.x
+  70: add r2.xyzw, r2.xyzw, r3.xyzw
+  71: sample_cl_s_aoffimmi_indexable(1,2,0)(texture2d)(float,float,float,float) r3.xyzw, null, v0.xyxx, t0.xyzw, s0, l(0.250000)
+  72: add r2.xyzw, r2.xyzw, r3.xyzw
+  73: add r0.xyzw, r0.xyzw, r2.xyzw
+  74: add o0.xyzw, r1.xxxx, r0.xyzw
+  75: ret 

@@ -125,6 +125,8 @@ pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
                 outputs: elements(&outputs),
                 patch: elements(&patch),
                 interfaces: crate::interfaces(container)?.as_ref(),
+                debug_layer: dxcontainer::checksum(container).as_ref().map(|d| &d[..])
+                    != container.get(4..20),
             },
         );
         if let Some(part) = crate::level9(container)? {
