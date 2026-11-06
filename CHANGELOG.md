@@ -14,6 +14,18 @@
   refused ("a buffer field of an HLSL matrix type is not supported"). A matrix-annotated field of a struct that is not
   a matrix is still refused, naming the field and the struct. New fixture `matrix_lib15`, a `lib_6_3` library built by
   dxc 1.5.2010.
+- Breaking, `dxil-reader`: a program built with debug information in its module (`-Zi -Qembed_debug`, or a debug
+  module's `ILDB` part) reads and lists as dxc 1.9.2609 lists it; before, it was refused ("debug information is not
+  supported"). The module keeps every LLVM 3.7 debug node as `Metadata::Debug` (`debug_info::DebugNode`: locations,
+  types, scopes, variables, expressions and the rest, read as dxc's bitcode reader reads their records), each
+  instruction's `debug_loc`, a body's own metadata (`Function::metadata`, from `Function::first_metadata`) and the
+  metadata a call passes to a `metadata` parameter as a body value, `Value::Metadata` (new variants: matches on
+  `Value` and `Metadata` need them). The listing prints the nodes, the `!dbg` locations (uniqued as `DILocation::get`
+  does) and dxc's `; line:` and `; var:` comments. Ten new fixtures: `debug_info.*` (every stage and a library,
+  optimized and `-Od`) and `debug_nodes`, assembled with dxcompiler's `IDxcAssembler` from IR holding the debug nodes
+  no HLSL compiler writes (generic, lexical block file, module, Objective-C property, imported entity, and invalid
+  expressions); 128 more programs built with dxc 1.4.1907, 1.5.2010, 1.6.2112 and 1.9.2609 (`-Zi -Qembed_debug`, with
+  `-Od` and `-Zss`, six stages and two libraries) list as dxc 1.9.2609 lists them.
 
 ## 0.8.0 (2026-11-06)
 

@@ -1,11 +1,14 @@
 //! LLVM 3.7 IR as DXIL stores it, read from the bitstream tree: the type table, module values (globals, functions,
 //! constants), metadata, value names and function bodies. Only what DXIL programs use is decoded; any other record in a
-//! function body is refused by name. The blocks of a function body that say nothing a reader of the program's behaviour needs (its metadata and its
-//! use-list order) are the only things skipped. The metadata attached to an instruction or a function is kept as the
-//! pairs the file stores ([`Instruction::attachments`], [`Function::attachments`], with the kind names in
+//! function body is refused by name. A program built with debug information (`-Zi`) keeps it as debug metadata nodes
+//! ([`Metadata::Debug`], [`crate::debug_info`]), each instruction's source location ([`Instruction::debug_loc`]), a
+//! body's own metadata ([`Function::metadata`]) and the metadata its debug intrinsics are passed ([`Value::Metadata`]).
+//! The use-list orders of a body's values are skipped. The metadata attached to an instruction or a function is kept as
+//! the pairs the file stores ([`Instruction::attachments`], [`Function::attachments`], with the kind names in
 //! [`Module::kinds`]), `dx.precise` also as [`Instruction::precise`]; the attribute groups and lists are kept as stored
 //! ([`Module::attribute_groups`], [`Module::attribute_lists`]) and each function value names its list.
 use crate::bitstream::{Block, Record};
+pub use crate::debug_info::{DebugLoc, DebugNode};
 use crate::{Result, error};
 
 const MODULE: u64 = 8;
@@ -224,6 +227,10 @@ pub enum Value {
     Constant(Constant),
     /// A function argument or an instruction's result.
     Local,
+    /// Metadata a call passes to a parameter of type `metadata` (LLVM's `MetadataAsValue`: the debug intrinsics'
+    /// variables, expressions and the values they describe). These are a function body's own, after its other values:
+    /// they have no place in the bitcode's value numbering.
+    Metadata(MetadataId),
 }
 
 /// A metadata record.
@@ -243,14 +250,22 @@ pub enum Metadata {
     /// A node of its own, never merged with a node of the same operands (`METADATA_DISTINCT_NODE`: the loop
     /// identifiers `llvm.loop` names, whose first operand is the node itself).
     Distinct(Vec<Option<MetadataId>>),
+    /// A debug-information node (a program built with `-Zi`), and whether it is distinct.
+    Debug {
+        /// The node is distinct (never merged with one of the same fields).
+        distinct: bool,
+        /// The node.
+        node: DebugNode,
+    },
 }
 
 impl Metadata {
-    /// The operands of a node, distinct or not; `None` for a string or a value.
+    /// The operands of a node of generic operands, distinct or not; `None` for a string, a value or a debug node (whose
+    /// operands [`DebugNode::operands`] gives).
     pub fn operands(&self) -> Option<&[Option<MetadataId>]> {
         match self {
             Metadata::Node(ops) | Metadata::Distinct(ops) => Some(ops),
-            Metadata::String(_) | Metadata::Value { .. } => None,
+            Metadata::String(_) | Metadata::Value { .. } | Metadata::Debug { .. } => None,
         }
     }
 }
@@ -634,6 +649,8 @@ pub struct Instruction {
     pub precise: bool,
     /// The metadata attached to the instruction, in the order the file stores the pairs (`dx.precise` among them).
     pub attachments: Vec<Attachment>,
+    /// The instruction's source location, in a program with debug information.
+    pub debug_loc: Option<DebugLoc>,
 }
 
 /// A metadata node attached to an instruction or a function: the kind (the id [`Module::kinds`] names) and the node.
@@ -707,6 +724,11 @@ pub struct Function {
     pub local_types: Vec<TypeId>,
     /// The metadata attached to the function itself (the attachment records of the body that name no instruction).
     pub attachments: Vec<Attachment>,
+    /// The body's own metadata (in a program with debug information, the values its debug intrinsics describe, each a
+    /// [`Metadata::Value`] of one of its values): their ids continue the module's, from `first_metadata`.
+    pub metadata: Vec<Metadata>,
+    /// The id of the body's first own metadata: the module's metadata count.
+    pub first_metadata: MetadataId,
     /// The body's symbol table: the names of its values (arguments and instruction results, by absolute id).
     pub names: Vec<(ValueId, String)>,
     /// The names of its basic blocks that have one.
@@ -1068,13 +1090,10 @@ impl Module {
                         .push((id, String::from_utf8_lossy(&bytes).into_owned()));
                 }
                 7 | 12..=32 => {
-                    return Err(error(
-                        r.at,
-                        format!(
-                            "metadata record {other}: debug information is not supported",
-                            other = r.code
-                        ),
-                    ));
+                    let code = u32::try_from(r.code).unwrap_or(u32::MAX);
+                    let (distinct, node) = crate::debug_info::read(code, &r.operands, r.at)?;
+                    self.metadata.push(Metadata::Debug { distinct, node });
+                    self.metadata_at.push(r.at);
                 }
                 other => return Err(error(r.at, format!("metadata record {other}"))),
             }
@@ -1489,8 +1508,12 @@ impl Module {
             block: 0,
             blocks: 0,
         };
-        let mut instructions = Vec::new();
+        let mut instructions: Vec<Instruction> = Vec::new();
         let mut function_attachments = Vec::new();
+        let mut local_metadata = Vec::new();
+        // the metadata each call passes (instruction, argument, metadata id), and the last debug location
+        let mut metadata_args: Vec<(usize, usize, MetadataId)> = Vec::new();
+        let mut last_loc: Option<DebugLoc> = None;
         let (mut names, mut block_names, mut block_use_orders) = (Vec::new(), Vec::new(), Vec::new());
         for e in &block.elements {
             let r = match e {
@@ -1508,12 +1531,19 @@ impl Module {
                             &mut instructions,
                             &mut function_attachments,
                         )?,
+                        // function-local metadata: values of the body as metadata, `[type, absolute value id]`
                         METADATA => {
-                            if let Some(r) = b.records().next() {
-                                return Err(error(
-                                    r.at,
-                                    "metadata of a function body (function-local metadata) is not supported",
-                                ));
+                            for r in b.records() {
+                                if r.code != 2 {
+                                    return Err(error(
+                                        r.at,
+                                        format!("metadata record {} in a function body", r.code),
+                                    ));
+                                }
+                                let ty = body.m.ty(op(r, 0)?, r.at)?;
+                                let value =
+                                    usize::try_from(op(r, 1)?).map_err(|_| error(r.at, "value id"))?;
+                                local_metadata.push(Metadata::Value { ty, value });
                             }
                         }
                         // the use-list orders: of basic blocks [position..., block] (they order its predecessors),
@@ -1551,8 +1581,36 @@ impl Module {
                         .ok_or_else(|| error(r.at, "basic block count"))?;
                     continue;
                 }
-                33 | 35 => {
-                    return Err(error(r.at, "debug locations are not supported"));
+                // DEBUG_LOC: [line, column, scope id + 1 or 0, inlined-at id + 1 or 0], of the last instruction
+                35 => {
+                    let node = |i: usize| -> Result<Option<MetadataId>> {
+                        match op(r, i)? {
+                            0 => Ok(None),
+                            v => usize::try_from(v.saturating_sub(1))
+                                .map(Some)
+                                .map_err(|_| error(r.at, "metadata id")),
+                        }
+                    };
+                    let loc = DebugLoc {
+                        line: crate::debug_info::unsigned(op(r, 0)?),
+                        column: crate::debug_info::column(crate::debug_info::unsigned(op(r, 1)?)),
+                        scope: node(2)?,
+                        inlined_at: node(3)?,
+                    };
+                    let last = instructions
+                        .last_mut()
+                        .ok_or_else(|| error(r.at, "a debug location before any instruction"))?;
+                    last.debug_loc = Some(loc);
+                    last_loc = Some(loc);
+                    continue;
+                }
+                // DEBUG_LOC_AGAIN: the last instruction is where the last located one is
+                33 => {
+                    let last = instructions
+                        .last_mut()
+                        .ok_or_else(|| error(r.at, "a debug location before any instruction"))?;
+                    last.debug_loc = last_loc;
+                    continue;
                 }
                 // BINOP: [lhs with its type, rhs, opcode, flags?]
                 2 => {
@@ -1702,9 +1760,16 @@ impl Module {
                         return Err(error(r.at, "vararg call"));
                     }
                     let mut args = Vec::with_capacity(params.len());
-                    for p in &params {
+                    for (n, p) in params.iter().enumerate() {
                         // a fixed parameter carries no type, even for a value defined later in the layout
                         let a = body.value(r, &mut i)?;
+                        // a `metadata` parameter's operand is a metadata id, relative as a value's is; the argument is
+                        // given its value once the body is read
+                        if *body.m.type_at(*p, r.at)? == Type::Metadata {
+                            metadata_args.push((instructions.len(), n, a));
+                            args.push(usize::MAX);
+                            continue;
+                        }
                         if a < body.next() && body.m.value_types.get(a) != Some(p) {
                             return Err(error(r.at, "call argument type"));
                         }
@@ -2048,6 +2113,7 @@ impl Module {
                 flags,
                 precise: false,
                 attachments: Vec::new(),
+                debug_loc: None,
             });
             if terminator {
                 body.block = body.block.saturating_add(1);
@@ -2058,13 +2124,45 @@ impl Module {
         }
         let end = body.next();
         let blocks = body.blocks;
+        // each metadata a call passes is a value of the body, after its others, once per metadata id
+        let metadata_type = self.intern(Type::Metadata);
+        let first_metadata = self.metadata.len();
+        let mut metadata_values: Vec<(MetadataId, ValueId)> = Vec::new();
+        for (inst, arg, md) in metadata_args {
+            let at = instructions.get(inst).map_or(block.at, |i| i.at);
+            if md >= first_metadata.saturating_add(local_metadata.len()) {
+                return Err(error(
+                    at,
+                    format!("a call passes metadata {md}, which the module lacks"),
+                ));
+            }
+            let value = match metadata_values.iter().find(|(m, _)| *m == md) {
+                Some((_, v)) => *v,
+                None => {
+                    let v = self.push(Value::Metadata(md), metadata_type, at)?;
+                    metadata_values.push((md, v));
+                    v
+                }
+            };
+            if let Some(Op::Call { args, .. }) = instructions.get_mut(inst).map(|i| &mut i.op)
+                && let Some(a) = args.get_mut(arg)
+            {
+                *a = value;
+            }
+        }
+        let metadata_value = |v: ValueId| metadata_values.iter().any(|(_, m)| *m == v);
         // everything an instruction names is something the function has: a value (an earlier one, or a later one a phi
         // or a loop reads), a basic block, and a callee taking the arguments it is given
         for inst in &instructions {
             if inst.block >= blocks {
                 return Err(error(inst.at, "an instruction after the last terminator"));
             }
-            if let Some(v) = inst.op.operands().into_iter().find(|v| *v >= end) {
+            if let Some(v) = inst
+                .op
+                .operands()
+                .into_iter()
+                .find(|v| *v >= end && !metadata_value(*v))
+            {
                 return Err(error(inst.at, format!("value {v} of {end} values")));
             }
             if let Some(b) = inst.op.blocks().into_iter().find(|b| *b >= blocks) {
@@ -2103,6 +2201,8 @@ impl Module {
             locals,
             local_types,
             attachments: function_attachments,
+            metadata: local_metadata,
+            first_metadata,
             names,
             block_names,
             block_use_orders,
