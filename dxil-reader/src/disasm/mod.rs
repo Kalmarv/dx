@@ -50,7 +50,9 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
         .ok_or_else(|| error(0, "the container has no DXIL part"))?;
     let program = crate::program(program)?;
     if let Some(part) = find(b"PSV0") {
-        header::psv_runtime(&mut s, &psv::read(part)?)?;
+        // the shader kind is the high half of the program header's version word; dxc passes its low byte
+        let kind = u8::try_from(program.program_version >> 16 & 0xFF).unwrap_or(u8::MAX);
+        header::psv_runtime(&mut s, &psv::read(part)?, kind)?;
     }
     let module = read(program.bitcode)?;
     // the STAT part's module holds the reflection the program part's may be stripped of; dxc ignores one whose header

@@ -46,13 +46,11 @@ fn part() -> Vec<u8> {
 fn a_part_is_read_field_by_field() {
     let mut bytes = part();
     let p = psv::read(&bytes).unwrap();
-    assert_eq!(p.runtime.stage, 5);
-    assert_eq!(p.runtime.stage_data, 0x0102);
-    assert_eq!(p.runtime.element_counts, [1, 1, 0]);
-    assert_eq!(
-        (p.runtime.input_vectors, p.runtime.output_vectors),
-        (3, [2, 0, 0, 0])
-    );
+    let g = p.runtime.signature.unwrap();
+    assert_eq!(g.stage, 5);
+    assert_eq!(g.stage_data, 0x0102);
+    assert_eq!(g.element_counts, [1, 1, 0]);
+    assert_eq!((g.input_vectors, g.output_vectors), (3, [2, 0, 0, 0]));
     assert_eq!(p.runtime.num_threads, Some([8, 4, 1]));
     assert_eq!(
         (p.runtime.min_wave_lanes, p.runtime.max_wave_lanes),
@@ -124,6 +122,38 @@ fn a_part_is_read_field_by_field() {
     );
     assert_eq!((p.runtime.num_threads, p.runtime.entry_name), (None, None));
 
+    // the 24-byte runtime info validator 1.0 writes: the stage union and the wave lane counts, then the resource records
+    // end the part
+    let mut v0 = words(&[24]);
+    v0.extend(words(&[1, 0, 0, 0, 0, u32::MAX]));
+    v0.extend(words(&[1, 16, 2, 0, 0, 0]));
+    let p = psv::read(&v0).unwrap();
+    assert_eq!(p.runtime.signature, None);
+    assert_eq!(
+        (p.runtime.size, p.runtime.stage_words[0], p.runtime.max_wave_lanes),
+        (24, 1, u32::MAX)
+    );
+    assert_eq!(
+        p.resources,
+        [Resource {
+            resource_type: 2,
+            space: 0,
+            lower: 0,
+            upper: 0,
+            kind: None,
+            flags: None
+        }]
+    );
+    assert!(p.strings.is_empty() && p.inputs.is_empty() && p.dependencies.is_empty());
+    // nothing follows the records of a version-0 part
+    v0.extend(words(&[0]));
+    assert!(
+        psv::read(&v0)
+            .unwrap_err()
+            .to_string()
+            .contains("4 bytes after the resource records of a 24-byte runtime info")
+    );
+
     // one byte more than a whole number of words
     bytes.push(0);
     assert!(
@@ -147,10 +177,10 @@ fn a_part_of_another_layout_or_cut_short_is_refused() {
         b
     };
     assert!(
-        psv::read(&set(0, 24))
+        psv::read(&set(0, 40))
             .unwrap_err()
             .to_string()
-            .contains("only 36, 48, 52 and 56")
+            .contains("only 24, 36, 48, 52 and 56")
     );
     // the resource record size is the word after the count that follows the 52 bytes of runtime info
     assert!(
@@ -220,26 +250,20 @@ fn the_part_agrees_with_the_metadata_on_every_fixture() {
             continue;
         };
         let program = dxil_reader::part(&bytes).unwrap();
-        let info_size = if p.runtime.entry_name.is_some() {
-            52
-        } else if p.runtime.num_threads.is_some() {
-            48
-        } else {
-            36
-        };
-        *sizes.entry((info_size, program.dxil_version)).or_default() += 1;
-        assert_eq!(
-            u32::from(p.runtime.stage),
-            program.program_version >> 16,
-            "{name}: stage"
-        );
+        *sizes.entry((p.runtime.size, program.dxil_version)).or_default() += 1;
+        if let Some(g) = p.runtime.signature {
+            assert_eq!(u32::from(g.stage), program.program_version >> 16, "{name}: stage");
+        }
         let m = dxil_reader::module(&chunks, b"DXIL").unwrap().unwrap();
         // mesh and ray tracing entry points state their own kind of properties: the stage is all that is compared
         if name.contains("mesh") || name.contains("ray") {
             checked += 1;
             continue;
         }
-        if let Some(threads) = reflection::num_threads(&m).unwrap() {
+        // the thread group is in a runtime info of 48 bytes or more
+        if let Some(threads) = reflection::num_threads(&m).unwrap()
+            && p.runtime.size >= 48
+        {
             assert_eq!(p.runtime.num_threads, Some(threads), "{name}: thread group");
         }
         let mut from_psv: Vec<_> = p
@@ -270,6 +294,11 @@ fn the_part_agrees_with_the_metadata_on_every_fixture() {
                 .all(|w| rank(w[0].resource_type) <= rank(w[1].resource_type)),
             "{name}: resource order"
         );
+        // a version-0 part holds no signature: its resources are all it states
+        let Some(g) = p.runtime.signature else {
+            checked += 1;
+            continue;
+        };
         let (inputs, outputs) = reflection::elements(&m).unwrap();
         let patch = reflection::patch_elements(&m).unwrap();
         for (label, in_psv, in_metadata) in [
@@ -314,16 +343,16 @@ fn the_part_agrees_with_the_metadata_on_every_fixture() {
                 .unwrap_or(0)
         };
         assert_eq!(
-            u32::from(p.runtime.input_vectors),
+            u32::from(g.input_vectors),
             vectors(&inputs),
             "{name}: input vectors"
         );
         assert_eq!(
-            u32::from(p.runtime.output_vectors[0]),
+            u32::from(g.output_vectors[0]),
             vectors(&outputs),
             "{name}: output vectors"
         );
-        let counts = p.runtime.element_counts.map(usize::from);
+        let counts = g.element_counts.map(usize::from);
         assert_eq!(
             counts,
             [inputs.len(), outputs.len(), patch.len()],

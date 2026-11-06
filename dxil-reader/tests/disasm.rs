@@ -45,5 +45,5 @@ fn every_listing_matches_dxc() {
         containers.len(),
         failures.join("\n")
     );
-    assert_eq!(containers.len(), 132, "containers compared");
+    assert_eq!(containers.len(), 139, "containers compared");
 }
