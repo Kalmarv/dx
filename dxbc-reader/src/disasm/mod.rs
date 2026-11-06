@@ -134,7 +134,10 @@ pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
         }
     }
     let annotations = match directory.iter().any(|c| &c.kind == b"SPDB") && options.debug_info {
-        true => Some(crate::spdb::annotations(chunk(&directory, b"SPDB")?)?),
+        true => Some(crate::spdb::annotations(
+            chunk(&directory, b"SPDB")?,
+            (program.major, program.minor) >= (5, 1),
+        )?),
         false => None,
     };
     program::write(&mut out, &program, options, annotations.as_ref());

@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+- `dxbc-reader`: six more rules of Microsoft's listings, found by the larger sweep below. Each has a fixture, which
+  0.8.0 lists differently:
+  - a buffer variable's default value is written before the line naming the registers it holds (`// Sampler: s0`);
+    fixture `defaults_samplers`;
+  - the initial locations end at the first whose path Microsoft's disassembler cannot find: that location, its
+    `// <internal error> ...` line and an empty line, and none after it; fixture `zi_object_input` (textures in an
+    input struct, which the debug information gives no size);
+  - a multisampled texture's sample count is a signed number, so `Texture2DMS<float4, -1>` is `2dMS-1`; fixture
+    `ms_sample_counts`;
+  - a variable typed through a `typedef` of a `typedef` (modifiers before, between or after them) has no length for
+    Microsoft: a location of one of more than one value is named by the variable alone with
+    `// <internal error> unable to get type length from PDB`; one `typedef` is followed to its type; fixture
+    `zi_typedefs`;
+  - a struct offset no member holds is not named by the member before it: the location ends with Microsoft's
+    `could not get find UDT child with correct offset in PDB`; fixture `zi_texture_buffer` (a `TextureBuffer` struct
+    with an array member);
+  - a UAV's location is named whole, as the instructions name it, by the variable alone where it holds it from its
+    start: `U1 <- local` from Shader Model 5.1; fixture `zi_uav_local`.
+- `dxbc-reader`: the sweep (`tests/inputs/fxc_sweep.py`) reads its corpora as their own runners do, and is larger:
+  6,870 jobs, of which fxc builds 4,613 with `/Zi` and 4,614 with `/Zi /Od` (0.8.0's sweep had 4,304 of each), and
+  `tests/corpora.rs` compares their 106,099 and 106,122 listings. The jobs fxc refuses (2,257 and 2,256) are code fxc
+  has no form of: Vulkan-only tests, Shader Model 6 features, 16-bit types, HLSL 2021, tests written to fail, fxc's
+  stricter rules and its own internal errors and crashes. What changed: a dxc test's `RUN` lines are joined where they end in `\`, `%S` names the test's folder
+  and `-I` its include folders, and the last `/E` wins; a `-D NAME=` defines `NAME` empty; vkd3d's shader tests are cut
+  as `tests/shader_runner.c` cuts them (lines starting with `%` and empty lines dropped, `[require]` resetting the
+  model range and options, `[header] test-shader-models`, `fail` and `notimpl` qualifiers with their model arguments,
+  an `options:` line matched in shader_runner's table order, backcompat dropped from 5.1 up); a Shader Model 6 job is
+  tried at 5.0, then 5.1; job names differing only in case get `__2`, `__3`; and a build fxc refuses keeps fxc's
+  messages and exit code (`fail/BUILD/NAME.txt`).
+- `dxbc-reader`: eight new fixture programs of the six sources above and their 184 listings (`tests/disasm`; 5,037 listings of 219
+  programs, 114 of them `/Zi` builds).
+
 ## 0.8.0 (2026-11-06)
 
 - `dxbc-reader`: `/Zi` listings name and order the variables' locations as Microsoft's disassembler does, so the

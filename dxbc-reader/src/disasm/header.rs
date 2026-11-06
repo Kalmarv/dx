@@ -98,8 +98,7 @@ fn buffer_variables(out: &mut String, variables: &[RdefVariable]) {
         // D3D_SVF_USED
         let unused = v.flags & 2 == 0;
         variable(out, 3, &v.name, &v.ty, v.offset, Some((v.size, unused)));
-        registers(out, v);
-        // the default value's words, four a line
+        // the default value's words, four a line, then the registers it holds
         if let Some(default) = &v.default {
             for (n, row) in default.as_chunks::<4>().0.chunks(4).enumerate() {
                 out.push_str(if n == 0 { "//      =" } else { "//       " });
@@ -109,6 +108,7 @@ fn buffer_variables(out: &mut String, variables: &[RdefVariable]) {
                 out.push_str(" \n");
             }
         }
+        registers(out, v);
     }
 }
 

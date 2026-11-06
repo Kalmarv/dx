@@ -500,8 +500,9 @@ impl RdefBinding {
             10 => "cubearray",
             _ => "NA",
         };
-        if matches!(self.dimension, 6 | 7) && self.samples != 0 && self.samples != u32::MAX {
-            format!("{name}{}", self.samples)
+        // a sample count as a signed number: `Texture2DMS<float4, -1>` stores 0xffffffff, written `2dMS-1`
+        if matches!(self.dimension, 6 | 7) && self.samples != 0 {
+            format!("{name}{}", i32::from_le_bytes(self.samples.to_le_bytes()))
         } else {
             name.to_owned()
         }

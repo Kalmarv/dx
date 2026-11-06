@@ -62,6 +62,8 @@ const MATRIX: u16 = 0x151c;
 const STATIC: &str = "could not get UDT child offset in PDB";
 const OVERRUN: &str = "offset overruns length for type in PDB";
 const VECTOR_MEMBER: &str = "invalid vector member";
+const LENGTH: &str = "unable to get type length from PDB";
+const NO_CHILD: &str = "could not get find UDT child with correct offset in PDB";
 
 /// The name of a byte of a variable after the variable's own: the path to it, and where it could not be found the
 /// internal error Microsoft's disassembler writes after the path so far.
@@ -129,6 +131,28 @@ impl<'a> Types<'a> {
             match kind {
                 MODIFIER | ALIAS => index = s.u32(at)?,
                 _ => return Ok((index, Some((kind, at)))),
+            }
+        }
+        Err(s.fail(0, format!("type {index:#x} is modified more than 64 deep")))
+    }
+
+    /// Whether type `index` reaches its type through two `typedef`s, modifiers before, between or after them:
+    /// Microsoft's disassembler follows one to the type it names but finds no length for a `typedef` of one.
+    fn aliased_twice(&self, index: u32) -> Result<bool> {
+        let s = self.stream;
+        let (mut index, mut aliases) = (index, 0);
+        for _ in 0..64 {
+            let Some(&(kind, at, _)) = self.records.get(&index).filter(|_| index >= 0x1000) else {
+                return Ok(false);
+            };
+            match kind {
+                MODIFIER => index = s.u32(at)?,
+                ALIAS if aliases == 1 => return Ok(true),
+                ALIAS => {
+                    aliases = 1;
+                    index = s.u32(at)?;
+                }
+                _ => return Ok(false),
             }
         }
         Err(s.fail(0, format!("type {index:#x} is modified more than 64 deep")))
@@ -204,8 +228,9 @@ impl<'a> Types<'a> {
     /// member's own path for a struct (none for a base class), `[n]` and the element's path for an array, `._mRC` for a
     /// matrix's element, `.x` to `.w` for an interface pointer's words, and Microsoft's words for a minimum-precision
     /// scalar. It stops with an internal error at a struct with a static member before the one the offset is in, an
-    /// offset past its type's size (a texture or sampler has none), and one inside a vector's component. Refuses an
-    /// index without a record, a kind other than these, and nesting over 64 deep.
+    /// offset past its type's size (a texture or sampler has none), one inside a vector's component, and a type named
+    /// through two `typedef`s, whose length it does not find. Refuses an index without a record, a kind other than
+    /// these, and nesting over 64 deep.
     pub(crate) fn path(&self, index: u32, offset: u32) -> Result<Path> {
         let mut out = Path::default();
         if self.values(index)? == 1 {
@@ -214,6 +239,10 @@ impl<'a> Types<'a> {
         let (mut index, mut offset) = (index, offset);
         let s = self.stream;
         for _ in 0..64 {
+            if self.aliased_twice(index)? {
+                out.error = Some(LENGTH);
+                return Ok(out);
+            }
             if offset >= self.length(index)? {
                 out.error = Some(OVERRUN);
                 return Ok(out);
@@ -368,9 +397,8 @@ impl<'a> Types<'a> {
     }
 
     /// The data member of field list `list` that byte `offset` falls in, as Microsoft's disassembler finds it: the
-    /// first whose bytes hold it (else the last that starts before it), with its name (none for a base class), its
-    /// type and its offset; or the internal error of a static member before it. Methods, nested types and interfaces
-    /// hold no data.
+    /// first whose bytes hold it, with its name (none for a base class), its type and its offset; or the internal error
+    /// of a static member before it, or of no member holding it. Methods, nested types and interfaces hold no data.
     #[allow(clippy::type_complexity)]
     fn member(
         &self,
@@ -388,7 +416,6 @@ impl<'a> Types<'a> {
                 format!("type {list:#x} is of kind {kind:#06x}, where a field list is 0x1203"),
             ));
         }
-        let mut before = None;
         while at < end {
             let leaf = s.u16(at)?;
             let mut next = self.member_end(at, leaf)?;
@@ -400,11 +427,10 @@ impl<'a> Types<'a> {
                         MEMBER => Some(s.string(after)?.0),
                         _ => None,
                     };
-                    if let Some(into) = offset.checked_sub(start) {
-                        if into < self.length(ty)? {
-                            return Ok(Ok((name, ty, start)));
-                        }
-                        before = Some((name, ty, start));
+                    if let Some(into) = offset.checked_sub(start)
+                        && into < self.length(ty)?
+                    {
+                        return Ok(Ok((name, ty, start)));
                     }
                 }
                 // it has no offset, which Microsoft's disassembler takes for an error
@@ -417,11 +443,6 @@ impl<'a> Types<'a> {
             }
             at = next;
         }
-        before.map(Ok).ok_or_else(|| {
-            s.fail(
-                at,
-                format!("field list {list:#x} has no member at offset {offset}"),
-            )
-        })
+        Ok(Err(NO_CHILD))
     }
 }

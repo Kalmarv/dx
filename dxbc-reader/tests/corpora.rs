@@ -110,8 +110,8 @@ fn fxc_sweep_zi_under_every_flags_word() {
         return;
     };
     let tally = compare(&folder, &flag_words(), beside);
-    // 4,304 programs, each with 23 listings, 16 of them with the SPDB part's annotations
-    assert_eq!((tally.compared, tally.debug), (98_992, 68_864));
+    // 4,613 programs, each with 23 listings, 16 of them with the SPDB part's annotations
+    assert_eq!((tally.compared, tally.debug), (106_099, 73_808));
 }
 
 #[test]
@@ -120,5 +120,6 @@ fn fxc_sweep_zod_under_every_flags_word() {
         return;
     };
     let tally = compare(&folder, &flag_words(), beside);
-    assert_eq!((tally.compared, tally.debug), (98_992, 68_864));
+    // 4,614 programs
+    assert_eq!((tally.compared, tally.debug), (106_122, 73_824));
 }

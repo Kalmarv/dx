@@ -45,6 +45,8 @@ pub(crate) struct Annotations {
     pub(crate) first: Option<u32>,
     /// The lines of the initial locations: the variables in registers before `first`, one line to a register.
     pub(crate) initial: Vec<String>,
+    /// The internal error of the initial location Microsoft's disassembler could not name, the last it writes.
+    pub(crate) initial_error: Option<&'static str>,
     /// The source file's path and line of each record's byte offset that has one.
     pub(crate) sources: BTreeMap<u32, (String, u32)>,
     /// The locations that start at each byte offset, and the inlined call whose scope holds the variable (`None` for a
@@ -148,9 +150,9 @@ struct Module<'a> {
     c13: (usize, usize),
 }
 
-/// The annotations of the `SPDB` part `part`. Refuses an MSF or PDB structure that does not read as described in
-/// the module documentation, naming the part's word.
-pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
+/// The annotations of the `SPDB` part `part` of a program of Shader Model 5.1 or later (`sm51`) or before. Refuses an
+/// MSF or PDB structure that does not read as described in the module documentation, naming the part's word.
+pub(crate) fn annotations(part: &[u8], sm51: bool) -> Result<Annotations> {
     let streams = msf::streams(part)?;
     let stream = |n: usize| -> Result<&Stream> {
         streams.get(n).ok_or_else(|| {
@@ -279,20 +281,21 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
         out.sources.insert(offset, (path(file)?, line));
     }
     let location = |local: &Local, r: &Range| -> Result<Location> {
-        // an indexable temp or `m#` holding the variable from its start is named by the variable alone
+        // an indexable temp, `m#` or UAV holding the variable from its start is named by the variable alone
         let path = match (r.register, r.parent) {
-            (3 | 16, 0) => types::Path::default(),
+            (3 | 16 | 30, 0) => types::Path::default(),
             _ => types.path(local.ty, u32::from(r.parent))?,
         };
         Ok(Location {
-            text: format!("{} <- {}{}", register(r), local.name, path.text),
+            text: format!("{} <- {}{}", register(r, sm51), local.name, path.text),
             error: path.error,
         })
     };
     let before_first = |r: &Range| out.first.is_some_and(|first| r.start <= first);
-    // the initial locations group by register: one line to each run of the same register
+    // the initial locations group by register: one line to each run of the same register, up to one Microsoft's
+    // disassembler could not name, which ends them with its internal error
     let mut groups: Vec<(Base, Vec<String>)> = Vec::new();
-    for (local, _) in initial.iter().filter_map(|&i| locals.get(i)) {
+    'initial: for (local, _) in initial.iter().filter_map(|&i| locals.get(i)) {
         for r in local.ranges.iter().filter(|r| before_first(r)) {
             let name = location(local, r)?;
             let base = (
@@ -303,6 +306,10 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
             match groups.last_mut() {
                 Some((b, entries)) if *b == base => entries.push(name.text),
                 _ => groups.push((base, vec![name.text])),
+            }
+            if name.error.is_some() {
+                out.initial_error = name.error;
+                break 'initial;
             }
         }
     }
@@ -685,14 +692,18 @@ fn register_name(register: u16) -> Option<(&'static str, bool)> {
     })
 }
 
-/// A register as a location names it: `r0.x`, `o1.w`, `x2`, `vOutputControlPointID`, `vicp[3].y`, `x[1][2]`.
-fn register(r: &Range) -> String {
-    let (name, numbered) = register_name(r.register).unwrap_or(("", true));
+/// A register as a location names it: `r0.x`, `o1.w`, `x2`, `vOutputControlPointID`, `vicp[3].y`, `x[1][2]`; a UAV
+/// as the program's instructions name it, `U1` from Shader Model 5.1 (`sm51`) and `u1` before.
+fn register(r: &Range, sm51: bool) -> String {
+    let (name, numbered) = match register_name(r.register).unwrap_or(("", true)) {
+        ("u", numbered) if sm51 => ("U", numbered),
+        other => other,
+    };
     let Some(&first) = r.indices.first().filter(|_| r.dimension > 0) else {
         return name.to_owned();
     };
-    // an indexable temp and `m#` are named by their number alone, without a component
-    let whole = matches!(r.register, 3 | 16);
+    // an indexable temp, `m#` and a UAV are named by their number alone, without a component
+    let whole = matches!(r.register, 3 | 16 | 30);
     let number = if whole { first } else { first / 16 };
     let component = if whole {
         String::new()

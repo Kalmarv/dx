@@ -1134,6 +1134,9 @@ pub(super) fn write(
                 for (g, group) in a.initial.iter().enumerate() {
                     let _ = writeln!(out, "//   {group}{}", if g < last { "; " } else { "" });
                 }
+                if let Some(error) = a.initial_error {
+                    let _ = writeln!(out, "// <internal error> {error}\n");
+                }
                 out.push_str("//\n");
             }
             // a `#line` where the line or the file changes: the path with the first, a new file and a function
