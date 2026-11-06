@@ -1,0 +1,571 @@
+; shader debug name: a5c8fd53c14b7e9d7ec50f28b1f38829.pdb
+; shader hash: a5c8fd53c14b7e9d7ec50f28b1f38829
+;
+; Buffer Definitions:
+;
+; cbuffer C
+; {
+;
+;   struct hostlayout.C
+;   {
+;
+;       column_major float4x4 wvp;                    ; Offset:    0
+;       float4 colour;                                ; Offset:   64
+;       int mode;                                     ; Offset:   80
+;       uint count;                                   ; Offset:   84
+;   
+;   } C;                                              ; Offset:    0 Size:    88
+;
+; }
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; C                                 cbuffer      NA          NA     CB0            cb0     1
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%hostlayout.C = type { [4 x <4 x float>], <4 x float>, i32, i32 }
+%struct.Payload = type { <4 x float> }
+%dx.types.Handle = type { i8* }
+%dx.types.CBufRet.f32 = type { float, float, float, float }
+%struct.BuiltInTriangleIntersectionAttributes = type { <2 x float> }
+
+@C_legacy = external global %hostlayout.C
+
+; Function Attrs: nounwind readnone
+declare void @llvm.dbg.declare(metadata, metadata, metadata) #0
+
+; Function Attrs: nounwind
+define void @"\01?miss@@YAXUPayload@@@Z"(%struct.Payload* noalias nocapture %p) #1 {
+"\01?tint@Shade@@YA?AV?$vector@M$03@@V2@W4Mode@1@@Z.exit":
+  %0 = load %hostlayout.C, %hostlayout.C* @C_legacy, !dbg !212 ; line:86 col:42
+  %1 = call %dx.types.Handle @dx.op.createHandleForLib.hostlayout.C(i32 160, %hostlayout.C %0)  ; CreateHandleForLib(Resource)
+  %2 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %1, i32 4), !dbg !213 ; line:86 col:70  ; CBufferLoadLegacy(handle,regIndex)
+  %3 = extractvalue %dx.types.CBufRet.f32 %2, 0, !dbg !213 ; line:86 col:70
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !214, metadata !215), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 0, 32) func:"tint"
+  %4 = extractvalue %dx.types.CBufRet.f32 %2, 1, !dbg !213 ; line:86 col:70
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !214, metadata !218), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 32, 32) func:"tint"
+  %5 = extractvalue %dx.types.CBufRet.f32 %2, 2, !dbg !213 ; line:86 col:70
+  call void @llvm.dbg.value(metadata float %5, i64 0, metadata !214, metadata !219), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 64, 32) func:"tint"
+  %6 = extractvalue %dx.types.CBufRet.f32 %2, 3, !dbg !213 ; line:86 col:70
+  call void @llvm.dbg.value(metadata i32 2, i64 0, metadata !220, metadata !221), !dbg !222 ; var:"m" !DIExpression() func:"tint"
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !214, metadata !215), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 0, 32) func:"tint"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !214, metadata !218), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 32, 32) func:"tint"
+  call void @llvm.dbg.value(metadata float %5, i64 0, metadata !214, metadata !219), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 64, 32) func:"tint"
+  call void @llvm.dbg.value(metadata float %6, i64 0, metadata !214, metadata !223), !dbg !216 ; var:"c" !DIExpression(DW_OP_bit_piece, 96, 32) func:"tint"
+  %.i1 = fmul fast float %4, 5.000000e-01, !dbg !224 ; line:24 col:28
+  %.i2 = fmul fast float %5, 5.000000e-01, !dbg !224 ; line:24 col:28
+  %.upto0 = insertelement <4 x float> undef, float %3, i32 0, !dbg !224 ; line:24 col:28
+  %.upto1 = insertelement <4 x float> %.upto0, float %.i1, i32 1, !dbg !224 ; line:24 col:28
+  %.upto2 = insertelement <4 x float> %.upto1, float %.i2, i32 2, !dbg !224 ; line:24 col:28
+  %7 = insertelement <4 x float> %.upto2, float %6, i32 3, !dbg !224 ; line:24 col:28
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !225, metadata !215), !dbg !212 ; var:"p" !DIExpression(DW_OP_bit_piece, 0, 32) func:"miss"
+  call void @llvm.dbg.value(metadata float %.i1, i64 0, metadata !225, metadata !218), !dbg !212 ; var:"p" !DIExpression(DW_OP_bit_piece, 32, 32) func:"miss"
+  call void @llvm.dbg.value(metadata float %.i2, i64 0, metadata !225, metadata !219), !dbg !212 ; var:"p" !DIExpression(DW_OP_bit_piece, 64, 32) func:"miss"
+  call void @llvm.dbg.value(metadata float %6, i64 0, metadata !225, metadata !223), !dbg !212 ; var:"p" !DIExpression(DW_OP_bit_piece, 96, 32) func:"miss"
+  %8 = getelementptr inbounds %struct.Payload, %struct.Payload* %p, i32 0, i32 0, !dbg !226 ; line:86 col:94
+  store <4 x float> %7, <4 x float>* %8, align 4, !dbg !226 ; line:86 col:94
+  ret void, !dbg !226 ; line:86 col:94
+}
+
+; Function Attrs: nounwind
+define void @"\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z"(%struct.Payload* noalias nocapture %p, %struct.BuiltInTriangleIntersectionAttributes* nocapture readonly %a) #1 {
+  call void @llvm.dbg.declare(metadata %struct.BuiltInTriangleIntersectionAttributes* %a, metadata !227, metadata !221), !dbg !228 ; var:"a" !DIExpression() func:"hit"
+  %1 = getelementptr inbounds %struct.BuiltInTriangleIntersectionAttributes, %struct.BuiltInTriangleIntersectionAttributes* %a, i32 0, i32 0, !dbg !229 ; line:88 col:25
+  %2 = load <2 x float>, <2 x float>* %1, align 4, !dbg !229 ; line:88 col:25
+  %3 = extractelement <2 x float> %2, i64 0, !dbg !230 ; line:88 col:22
+  %4 = extractelement <2 x float> %2, i64 1, !dbg !230 ; line:88 col:22
+  %5 = extractelement <2 x float> %2, i32 0, !dbg !231 ; line:88 col:43
+  %6 = fsub fast float 1.000000e+00, %5, !dbg !232 ; line:88 col:41
+  %7 = extractelement <2 x float> %2, i32 1, !dbg !233 ; line:88 col:62
+  %8 = fsub fast float %6, %7, !dbg !234 ; line:88 col:60
+  %9 = insertelement <4 x float> undef, float %3, i64 0, !dbg !230 ; line:88 col:22
+  %10 = insertelement <4 x float> %9, float %4, i64 1, !dbg !230 ; line:88 col:22
+  %11 = insertelement <4 x float> %10, float %8, i64 2, !dbg !230 ; line:88 col:22
+  %12 = insertelement <4 x float> %11, float 1.000000e+00, i64 3, !dbg !230 ; line:88 col:22
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !235, metadata !215), !dbg !236 ; var:"p" !DIExpression(DW_OP_bit_piece, 0, 32) func:"hit"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !235, metadata !218), !dbg !236 ; var:"p" !DIExpression(DW_OP_bit_piece, 32, 32) func:"hit"
+  call void @llvm.dbg.value(metadata float %8, i64 0, metadata !235, metadata !219), !dbg !236 ; var:"p" !DIExpression(DW_OP_bit_piece, 64, 32) func:"hit"
+  call void @llvm.dbg.value(metadata float 1.000000e+00, i64 0, metadata !235, metadata !223), !dbg !236 ; var:"p" !DIExpression(DW_OP_bit_piece, 96, 32) func:"hit"
+  %13 = getelementptr inbounds %struct.Payload, %struct.Payload* %p, i32 0, i32 0, !dbg !237 ; line:89 col:1
+  store <4 x float> %12, <4 x float>* %13, align 4, !dbg !237 ; line:89 col:1
+  ret void, !dbg !237 ; line:89 col:1
+}
+
+define void @gs() {
+.lr.ph:
+  call void @llvm.dbg.value(metadata i32 0, i64 0, metadata !238, metadata !221), !dbg !240 ; var:"k" !DIExpression() func:"gs"
+  br label %0, !dbg !241 ; line:53 col:5
+
+; <label>:0                                       ; preds = %0, %.lr.ph
+  %k.0 = phi i32 [ 0, %.lr.ph ], [ %7, %0 ]
+  call void @llvm.dbg.value(metadata i32 %k.0, i64 0, metadata !238, metadata !221), !dbg !240 ; var:"k" !DIExpression() func:"gs"
+  %1 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  call void @llvm.dbg.value(metadata float %1, i64 0, metadata !245, metadata !215), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 0, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %2, i64 0, metadata !245, metadata !218), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 32, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !245, metadata !219), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 64, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !245, metadata !223), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 96, 32) func:"gs"
+  %5 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 0, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %6 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 1, i32 %k.0), !dbg !242 ; line:54 col:15  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  call void @llvm.dbg.value(metadata float %5, i64 0, metadata !245, metadata !247), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 128, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %6, i64 0, metadata !245, metadata !248), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 160, 32) func:"gs"
+  %.i0 = fmul fast float %5, 2.000000e+00, !dbg !249 ; line:55 col:14
+  %.i1 = fmul fast float %6, 2.000000e+00, !dbg !249 ; line:55 col:14
+  call void @llvm.dbg.value(metadata float %.i0, i64 0, metadata !245, metadata !247), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 128, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %.i1, i64 0, metadata !245, metadata !248), !dbg !246 ; var:"v" !DIExpression(DW_OP_bit_piece, 160, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %1, i64 0, metadata !250, metadata !215), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 0, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %2, i64 0, metadata !250, metadata !218), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 32, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !250, metadata !219), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 64, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !250, metadata !223), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 96, 32) func:"gs"
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %1), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %2), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %3), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %4), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @llvm.dbg.value(metadata float %.i0, i64 0, metadata !250, metadata !247), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 128, 32) func:"gs"
+  call void @llvm.dbg.value(metadata float %.i1, i64 0, metadata !250, metadata !248), !dbg !251 ; var:"s" !DIExpression(DW_OP_bit_piece, 160, 32) func:"gs"
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 0, float %.i0), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 1, float %.i1), !dbg !251 ; line:56 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.emitStream(i32 97, i8 0), !dbg !251 ; line:56 col:9  ; EmitStream(streamId)
+  %7 = add nuw nsw i32 %k.0, 1, !dbg !252 ; line:53 col:29
+  call void @llvm.dbg.value(metadata i32 %7, i64 0, metadata !238, metadata !221), !dbg !240 ; var:"k" !DIExpression() func:"gs"
+  %exitcond = icmp eq i32 %7, 3, !dbg !241 ; line:53 col:5
+  br i1 %exitcond, label %._crit_edge, label %0, !dbg !241 ; line:53 col:5
+
+._crit_edge:                                      ; preds = %0
+  ret void, !dbg !253 ; line:58 col:1
+}
+
+define void @"\01?pc@@YA?AUPC@@V?$InputPatch@UV@@$02@@@Z"() {
+  %1 = load %hostlayout.C, %hostlayout.C* @C_legacy
+  %2 = call %dx.types.Handle @dx.op.createHandleForLib.hostlayout.C(i32 160, %hostlayout.C %1)  ; CreateHandleForLib(Resource)
+  %3 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %2, i32 4), !dbg !254 ; line:62 col:32  ; CBufferLoadLegacy(handle,regIndex)
+  %4 = extractvalue %dx.types.CBufRet.f32 %3, 0, !dbg !254 ; line:62 col:32
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !255, metadata !219), !dbg !256 ; var:"o" !DIExpression(DW_OP_bit_piece, 64, 32) func:"pc"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !255, metadata !215), !dbg !256 ; var:"o" !DIExpression(DW_OP_bit_piece, 0, 32) func:"pc"
+  %5 = extractvalue %dx.types.CBufRet.f32 %3, 1, !dbg !257 ; line:63 col:11
+  call void @llvm.dbg.value(metadata float %5, i64 0, metadata !255, metadata !223), !dbg !256 ; var:"o" !DIExpression(DW_OP_bit_piece, 96, 32) func:"pc"
+  call void @dx.op.storePatchConstant.f32(i32 106, i32 0, i32 0, i8 0, float %4), !dbg !258 ; line:64 col:12  ; StorePatchConstant(outputSigID,row,col,value)
+  call void @dx.op.storePatchConstant.f32(i32 106, i32 0, i32 1, i8 0, float %4), !dbg !258 ; line:64 col:12  ; StorePatchConstant(outputSigID,row,col,value)
+  call void @dx.op.storePatchConstant.f32(i32 106, i32 0, i32 2, i8 0, float %4), !dbg !258 ; line:64 col:12  ; StorePatchConstant(outputSigID,row,col,value)
+  call void @dx.op.storePatchConstant.f32(i32 106, i32 1, i32 0, i8 0, float %5), !dbg !258 ; line:64 col:12  ; StorePatchConstant(outputSigID,row,col,value)
+  ret void, !dbg !259 ; line:64 col:5
+}
+
+define void @hs() {
+  %1 = call i32 @dx.op.outputControlPointID.i32(i32 107), !dbg !260 ; line:67 col:23  ; OutputControlPointID()
+  call void @llvm.dbg.value(metadata i32 %1, i64 0, metadata !261, metadata !221), !dbg !262 ; var:"i" !DIExpression() func:"hs"
+  %2 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %3 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %4 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %5 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %2), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %3), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %4), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %5), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  %6 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 0, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %7 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 1, i32 %1), !dbg !263 ; line:67 col:69  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 0, float %6), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 1, float %7), !dbg !263 ; line:67 col:69  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  ret void, !dbg !264 ; line:67 col:62
+}
+
+define void @ds() {
+  %1 = call float @dx.op.loadPatchConstant.f32(i32 104, i32 1, i32 0, i8 0), !dbg !265 ; line:68 col:82  ; LoadPatchConstant(inputSigId,row,col)
+  %2 = call float @dx.op.domainLocation.f32(i32 105, i8 0), !dbg !265 ; line:68 col:82  ; DomainLocation(component)
+  %3 = call float @dx.op.domainLocation.f32(i32 105, i8 1), !dbg !265 ; line:68 col:82  ; DomainLocation(component)
+  %4 = call float @dx.op.domainLocation.f32(i32 105, i8 2), !dbg !265 ; line:68 col:82  ; DomainLocation(component)
+  call void @llvm.dbg.value(metadata float %1, i64 0, metadata !266, metadata !223), !dbg !267 ; var:"c" !DIExpression(DW_OP_bit_piece, 96, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %2, i64 0, metadata !268, metadata !215), !dbg !269 ; var:"b" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %3, i64 0, metadata !268, metadata !218), !dbg !269 ; var:"b" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %4, i64 0, metadata !268, metadata !219), !dbg !269 ; var:"b" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ds"
+  %5 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 0), !dbg !270 ; line:70 col:16  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %6 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 0), !dbg !270 ; line:70 col:16  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %7 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 0), !dbg !270 ; line:70 col:16  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %8 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 0), !dbg !270 ; line:70 col:16  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %.i0 = fmul fast float %5, %2, !dbg !271 ; line:70 col:18
+  %.i1 = fmul fast float %6, %2, !dbg !271 ; line:70 col:18
+  %.i2 = fmul fast float %7, %2, !dbg !271 ; line:70 col:18
+  %.i3 = fmul fast float %8, %2, !dbg !271 ; line:70 col:18
+  %9 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 1), !dbg !272 ; line:70 col:31  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %10 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 1), !dbg !272 ; line:70 col:31  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %11 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 1), !dbg !272 ; line:70 col:31  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %12 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 1), !dbg !272 ; line:70 col:31  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %.i01 = fmul fast float %9, %3, !dbg !273 ; line:70 col:33
+  %.i12 = fmul fast float %10, %3, !dbg !273 ; line:70 col:33
+  %.i23 = fmul fast float %11, %3, !dbg !273 ; line:70 col:33
+  %.i34 = fmul fast float %12, %3, !dbg !273 ; line:70 col:33
+  %.i05 = fadd fast float %.i01, %.i0, !dbg !274 ; line:70 col:24
+  %.i16 = fadd fast float %.i12, %.i1, !dbg !274 ; line:70 col:24
+  %.i27 = fadd fast float %.i23, %.i2, !dbg !274 ; line:70 col:24
+  %.i38 = fadd fast float %.i34, %.i3, !dbg !274 ; line:70 col:24
+  %13 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 0, i32 2), !dbg !275 ; line:70 col:46  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %14 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 1, i32 2), !dbg !275 ; line:70 col:46  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %15 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 2, i32 2), !dbg !275 ; line:70 col:46  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %16 = call float @dx.op.loadInput.f32(i32 4, i32 0, i32 0, i8 3, i32 2), !dbg !275 ; line:70 col:46  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %.i09 = fmul fast float %13, %4, !dbg !276 ; line:70 col:48
+  %.i110 = fmul fast float %14, %4, !dbg !276 ; line:70 col:48
+  %.i211 = fmul fast float %15, %4, !dbg !276 ; line:70 col:48
+  %.i312 = fmul fast float %16, %4, !dbg !276 ; line:70 col:48
+  %.i013 = fadd fast float %.i05, %.i09, !dbg !277 ; line:70 col:39
+  %.i114 = fadd fast float %.i16, %.i110, !dbg !277 ; line:70 col:39
+  %.i215 = fadd fast float %.i27, %.i211, !dbg !277 ; line:70 col:39
+  %.i316 = fadd fast float %.i38, %.i312, !dbg !277 ; line:70 col:39
+  call void @llvm.dbg.value(metadata float %.i013, i64 0, metadata !278, metadata !215), !dbg !279 ; var:"o" !DIExpression(DW_OP_bit_piece, 0, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %.i114, i64 0, metadata !278, metadata !218), !dbg !279 ; var:"o" !DIExpression(DW_OP_bit_piece, 32, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %.i215, i64 0, metadata !278, metadata !219), !dbg !279 ; var:"o" !DIExpression(DW_OP_bit_piece, 64, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %.i316, i64 0, metadata !278, metadata !223), !dbg !279 ; var:"o" !DIExpression(DW_OP_bit_piece, 96, 32) func:"ds"
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 0, float %.i013), !dbg !279 ; line:70 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 1, float %.i114), !dbg !279 ; line:70 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 2, float %.i215), !dbg !279 ; line:70 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 0, i32 0, i8 3, float %.i316), !dbg !279 ; line:70 col:9  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  %17 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 0, i32 0), !dbg !280 ; line:71 col:17  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %18 = call float @dx.op.loadInput.f32(i32 4, i32 1, i32 0, i8 1, i32 0), !dbg !280 ; line:71 col:17  ; LoadInput(inputSigId,rowIndex,colIndex,gsVertexAxis)
+  %.i017 = fmul fast float %17, %1, !dbg !281 ; line:71 col:20
+  %.i118 = fmul fast float %18, %1, !dbg !281 ; line:71 col:20
+  call void @llvm.dbg.value(metadata float %.i017, i64 0, metadata !278, metadata !247), !dbg !282 ; var:"o" !DIExpression(DW_OP_bit_piece, 128, 32) func:"ds"
+  call void @llvm.dbg.value(metadata float %.i118, i64 0, metadata !278, metadata !248), !dbg !282 ; var:"o" !DIExpression(DW_OP_bit_piece, 160, 32) func:"ds"
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 0, float %.i017), !dbg !282 ; line:71 col:10  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  call void @dx.op.storeOutput.f32(i32 5, i32 1, i32 0, i8 1, float %.i118), !dbg !282 ; line:71 col:10  ; StoreOutput(outputSigId,rowIndex,colIndex,value)
+  ret void, !dbg !283 ; line:72 col:5
+}
+
+; Function Attrs: nounwind readnone
+declare void @llvm.dbg.value(metadata, i64, metadata, metadata) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.loadInput.f32(i32, i32, i32, i8, i32) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.storeOutput.f32(i32, i32, i32, i8, float) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.emitStream(i32, i8) #1
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.outputControlPointID.i32(i32) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.storePatchConstant.f32(i32, i32, i32, i8, float) #1
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.domainLocation.f32(i32, i8) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.loadPatchConstant.f32(i32, i32, i32, i8) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32, %dx.types.Handle, i32) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandleForLib.hostlayout.C(i32, %hostlayout.C) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind readonly }
+
+!llvm.dbg.cu = !{!0}
+!llvm.module.flags = !{!158, !159}
+!llvm.ident = !{!160}
+!dx.source.contents = !{!161}
+!dx.source.defines = !{!66}
+!dx.source.mainFileName = !{!162}
+!dx.source.args = !{!163}
+!dx.version = !{!164}
+!dx.valver = !{!165}
+!dx.shaderModel = !{!166}
+!dx.resources = !{!167}
+!dx.typeAnnotations = !{!170, !181}
+!dx.entryPoints = !{!188, !189, !192, !194, !205, !209}
+
+!0 = distinct !DICompileUnit(language: DW_LANG_C_plus_plus, file: !1, producer: "dxcoob 1.9.2609.5 (01b62ad47)", isOptimized: false, runtimeVersion: 0, emissionKind: 1, enums: !2, retainedTypes: !9, subprograms: !29, globals: !113)
+!1 = !DIFile(filename: "debug_info.hlsl", directory: "")
+!2 = !{!3}
+!3 = !DICompositeType(tag: DW_TAG_enumeration_type, name: "Mode", scope: !4, file: !1, line: 17, size: 32, align: 32, elements: !5)
+!4 = !DINamespace(name: "Shade", scope: null, file: !1, line: 16)
+!5 = !{!6, !7, !8}
+!6 = !DIEnumerator(name: "Plain", value: 0)
+!7 = !DIEnumerator(name: "Tinted", value: 2)
+!8 = !DIEnumerator(name: "Inverted", value: -3)
+!9 = !{!10, !22, !3}
+!10 = !DIDerivedType(tag: DW_TAG_typedef, name: "float4", file: !1, baseType: !11)
+!11 = !DICompositeType(tag: DW_TAG_class_type, name: "vector<float, 4>", file: !1, size: 128, align: 32, elements: !12, templateParams: !18)
+!12 = !{!13, !15, !16, !17}
+!13 = !DIDerivedType(tag: DW_TAG_member, name: "x", scope: !11, file: !1, baseType: !14, size: 32, align: 32, flags: DIFlagPublic)
+!14 = !DIBasicType(name: "float", size: 32, align: 32, encoding: DW_ATE_float)
+!15 = !DIDerivedType(tag: DW_TAG_member, name: "y", scope: !11, file: !1, baseType: !14, size: 32, align: 32, offset: 32, flags: DIFlagPublic)
+!16 = !DIDerivedType(tag: DW_TAG_member, name: "z", scope: !11, file: !1, baseType: !14, size: 32, align: 32, offset: 64, flags: DIFlagPublic)
+!17 = !DIDerivedType(tag: DW_TAG_member, name: "w", scope: !11, file: !1, baseType: !14, size: 32, align: 32, offset: 96, flags: DIFlagPublic)
+!18 = !{!19, !20}
+!19 = !DITemplateTypeParameter(name: "element", type: !14)
+!20 = !DITemplateValueParameter(name: "element_count", type: !21, value: i32 4)
+!21 = !DIBasicType(name: "int", size: 32, align: 32, encoding: DW_ATE_signed)
+!22 = !DIDerivedType(tag: DW_TAG_typedef, name: "float2", file: !1, line: 37, baseType: !23)
+!23 = !DICompositeType(tag: DW_TAG_class_type, name: "vector<float, 2>", file: !1, line: 37, size: 64, align: 32, elements: !24, templateParams: !27)
+!24 = !{!25, !26}
+!25 = !DIDerivedType(tag: DW_TAG_member, name: "x", scope: !23, file: !1, line: 37, baseType: !14, size: 32, align: 32, flags: DIFlagPublic)
+!26 = !DIDerivedType(tag: DW_TAG_member, name: "y", scope: !23, file: !1, line: 37, baseType: !14, size: 32, align: 32, offset: 32, flags: DIFlagPublic)
+!27 = !{!19, !28}
+!28 = !DITemplateValueParameter(name: "element_count", type: !21, value: i32 2)
+!29 = !{!30, !33, !40, !55, !58, !69, !84, !89, !97, !100, !107}
+!30 = !DISubprogram(name: "tint", linkageName: "\01?tint@Shade@@YA?AV?$vector@M$03@@V2@W4Mode@1@@Z", scope: !4, file: !1, line: 19, type: !31, isLocal: false, isDefinition: true, scopeLine: 19, flags: DIFlagPrototyped, isOptimized: false)
+!31 = !DISubroutineType(types: !32)
+!32 = !{!10, !10, !3}
+!33 = !DISubprogram(name: "accumulate", linkageName: "\01?accumulate@@YA?AUBlend@@U1@V?$vector@M$03@@M@Z", scope: !1, file: !1, line: 32, type: !34, isLocal: false, isDefinition: true, scopeLine: 32, flags: DIFlagPrototyped, isOptimized: false)
+!34 = !DISubroutineType(types: !35)
+!35 = !{!36, !36, !10, !14}
+!36 = !DICompositeType(tag: DW_TAG_structure_type, name: "Blend", file: !1, line: 31, size: 160, align: 32, elements: !37)
+!37 = !{!38, !39}
+!38 = !DIDerivedType(tag: DW_TAG_member, name: "sum", scope: !36, file: !1, line: 31, baseType: !10, size: 128, align: 32)
+!39 = !DIDerivedType(tag: DW_TAG_member, name: "total", scope: !36, file: !1, line: 31, baseType: !14, size: 32, align: 32, offset: 128)
+!40 = !DISubprogram(name: "vs", linkageName: "\01?vs@@YA?AUV@@V?$vector@M$02@@V?$vector@M$01@@@Z", scope: !1, file: !1, line: 38, type: !41, isLocal: false, isDefinition: true, scopeLine: 38, flags: DIFlagPrototyped, isOptimized: false)
+!41 = !DISubroutineType(types: !42)
+!42 = !{!43, !47, !22}
+!43 = !DICompositeType(tag: DW_TAG_structure_type, name: "V", file: !1, line: 30, size: 192, align: 32, elements: !44)
+!44 = !{!45, !46}
+!45 = !DIDerivedType(tag: DW_TAG_member, name: "p", scope: !43, file: !1, line: 30, baseType: !10, size: 128, align: 32)
+!46 = !DIDerivedType(tag: DW_TAG_member, name: "uv", scope: !43, file: !1, line: 30, baseType: !22, size: 64, align: 32, offset: 128)
+!47 = !DIDerivedType(tag: DW_TAG_typedef, name: "float3", file: !1, line: 37, baseType: !48)
+!48 = !DICompositeType(tag: DW_TAG_class_type, name: "vector<float, 3>", file: !1, line: 37, size: 96, align: 32, elements: !49, templateParams: !53)
+!49 = !{!50, !51, !52}
+!50 = !DIDerivedType(tag: DW_TAG_member, name: "x", scope: !48, file: !1, line: 37, baseType: !14, size: 32, align: 32, flags: DIFlagPublic)
+!51 = !DIDerivedType(tag: DW_TAG_member, name: "y", scope: !48, file: !1, line: 37, baseType: !14, size: 32, align: 32, offset: 32, flags: DIFlagPublic)
+!52 = !DIDerivedType(tag: DW_TAG_member, name: "z", scope: !48, file: !1, line: 37, baseType: !14, size: 32, align: 32, offset: 64, flags: DIFlagPublic)
+!53 = !{!19, !54}
+!54 = !DITemplateValueParameter(name: "element_count", type: !21, value: i32 3)
+!55 = !DISubprogram(name: "ps", linkageName: "\01?ps@@YA?AV?$vector@M$03@@UV@@@Z", scope: !1, file: !1, line: 44, type: !56, isLocal: false, isDefinition: true, scopeLine: 44, flags: DIFlagPrototyped, isOptimized: false)
+!56 = !DISubroutineType(types: !57)
+!57 = !{!10, !43}
+!58 = !DISubprogram(name: "gs", linkageName: "\01?gs@@YAXY02UV@@V?$TriangleStream@UV@@@@@Z", scope: !1, file: !1, line: 52, type: !59, isLocal: false, isDefinition: true, scopeLine: 52, flags: DIFlagPrototyped, isOptimized: false, function: void ()* @gs)
+!59 = !DISubroutineType(types: !60)
+!60 = !{null, !61, !64}
+!61 = !DICompositeType(tag: DW_TAG_array_type, baseType: !43, size: 576, align: 32, elements: !62)
+!62 = !{!63}
+!63 = !DISubrange(count: 3)
+!64 = !DIDerivedType(tag: DW_TAG_restrict_type, baseType: !65)
+!65 = !DICompositeType(tag: DW_TAG_class_type, name: "TriangleStream<V>", file: !1, line: 51, size: 192, align: 32, elements: !66, templateParams: !67)
+!66 = !{}
+!67 = !{!68}
+!68 = !DITemplateTypeParameter(name: "element", type: !43)
+!69 = !DISubprogram(name: "pc", linkageName: "\01?pc@@YA?AUPC@@V?$InputPatch@UV@@$02@@@Z", scope: !1, file: !1, line: 60, type: !70, isLocal: false, isDefinition: true, scopeLine: 60, flags: DIFlagPrototyped, isOptimized: false, function: void ()* @"\01?pc@@YA?AUPC@@V?$InputPatch@UV@@$02@@@Z")
+!70 = !DISubroutineType(types: !71)
+!71 = !{!72, !77}
+!72 = !DICompositeType(tag: DW_TAG_structure_type, name: "PC", file: !1, line: 59, size: 128, align: 32, elements: !73)
+!73 = !{!74, !76}
+!74 = !DIDerivedType(tag: DW_TAG_member, name: "e", scope: !72, file: !1, line: 59, baseType: !75, size: 96, align: 32)
+!75 = !DICompositeType(tag: DW_TAG_array_type, baseType: !14, size: 96, align: 32, elements: !62)
+!76 = !DIDerivedType(tag: DW_TAG_member, name: "n", scope: !72, file: !1, line: 59, baseType: !14, size: 32, align: 32, offset: 96)
+!77 = !DICompositeType(tag: DW_TAG_class_type, name: "InputPatch<V, 3>", file: !1, line: 58, size: 576, align: 32, elements: !78, templateParams: !82)
+!78 = !{!79, !81}
+!79 = !DIDerivedType(tag: DW_TAG_member, name: "Length", scope: !77, file: !1, line: 58, baseType: !80, flags: DIFlagPublic | DIFlagStaticMember, extraData: i32 3)
+!80 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !21)
+!81 = !DIDerivedType(tag: DW_TAG_member, name: "h", scope: !77, file: !1, line: 58, baseType: !61, size: 576, align: 32)
+!82 = !{!68, !83}
+!83 = !DITemplateValueParameter(name: "count", type: !21, value: i32 3)
+!84 = !DISubprogram(name: "hs", linkageName: "\01?hs@@YA?AUV@@V?$InputPatch@UV@@$02@@I@Z", scope: !1, file: !1, line: 67, type: !85, isLocal: false, isDefinition: true, scopeLine: 67, flags: DIFlagPrototyped, isOptimized: false, function: void ()* @hs)
+!85 = !DISubroutineType(types: !86)
+!86 = !{!43, !77, !87}
+!87 = !DIDerivedType(tag: DW_TAG_typedef, name: "uint", file: !1, line: 27, baseType: !88)
+!88 = !DIBasicType(name: "unsigned int", size: 32, align: 32, encoding: DW_ATE_unsigned)
+!89 = !DISubprogram(name: "ds", linkageName: "\01?ds@@YA?AUV@@UPC@@V?$vector@M$02@@V?$OutputPatch@UV@@$02@@@Z", scope: !1, file: !1, line: 68, type: !90, isLocal: false, isDefinition: true, scopeLine: 68, flags: DIFlagPrototyped, isOptimized: false, function: void ()* @ds)
+!90 = !DISubroutineType(types: !91)
+!91 = !{!43, !72, !47, !92}
+!92 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !93)
+!93 = !DICompositeType(tag: DW_TAG_class_type, name: "OutputPatch<V, 3>", file: !1, line: 67, size: 576, align: 32, elements: !94, templateParams: !82)
+!94 = !{!95, !96}
+!95 = !DIDerivedType(tag: DW_TAG_member, name: "Length", scope: !93, file: !1, line: 67, baseType: !80, flags: DIFlagPublic | DIFlagStaticMember, extraData: i32 3)
+!96 = !DIDerivedType(tag: DW_TAG_member, name: "h", scope: !93, file: !1, line: 67, baseType: !61, size: 576, align: 32)
+!97 = !DISubprogram(name: "cs", linkageName: "\01?cs@@YAXI@Z", scope: !1, file: !1, line: 76, type: !98, isLocal: false, isDefinition: true, scopeLine: 76, flags: DIFlagPrototyped, isOptimized: false)
+!98 = !DISubroutineType(types: !99)
+!99 = !{null, !87}
+!100 = !DISubprogram(name: "miss", linkageName: "\01?miss@@YAXUPayload@@@Z", scope: !1, file: !1, line: 86, type: !101, isLocal: false, isDefinition: true, scopeLine: 86, flags: DIFlagPrototyped, isOptimized: false, function: void (%struct.Payload*)* @"\01?miss@@YAXUPayload@@@Z")
+!101 = !DISubroutineType(types: !102)
+!102 = !{null, !103}
+!103 = !DIDerivedType(tag: DW_TAG_restrict_type, baseType: !104)
+!104 = !DICompositeType(tag: DW_TAG_structure_type, name: "Payload", file: !1, line: 85, size: 128, align: 32, elements: !105)
+!105 = !{!106}
+!106 = !DIDerivedType(tag: DW_TAG_member, name: "colour", scope: !104, file: !1, line: 85, baseType: !10, size: 128, align: 32)
+!107 = !DISubprogram(name: "hit", linkageName: "\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", scope: !1, file: !1, line: 87, type: !108, isLocal: false, isDefinition: true, scopeLine: 87, flags: DIFlagPrototyped, isOptimized: false, function: void (%struct.Payload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z")
+!108 = !DISubroutineType(types: !109)
+!109 = !{null, !103, !110}
+!110 = !DICompositeType(tag: DW_TAG_structure_type, name: "BuiltInTriangleIntersectionAttributes", file: !1, line: 86, size: 64, align: 32, elements: !111)
+!111 = !{!112}
+!112 = !DIDerivedType(tag: DW_TAG_member, name: "barycentrics", scope: !110, file: !1, line: 86, baseType: !23, size: 64, align: 32)
+!113 = !{!114, !138, !140, !141, !143, !147, !150, !154, !156}
+!114 = !DIGlobalVariable(name: "wvp", linkageName: "\01?wvp@C@@3V?$matrix@M$03$03@@B", scope: !0, file: !1, line: 27, type: !115, isLocal: false, isDefinition: true)
+!115 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !116)
+!116 = !DIDerivedType(tag: DW_TAG_typedef, name: "float4x4", file: !1, line: 27, baseType: !117)
+!117 = !DICompositeType(tag: DW_TAG_class_type, name: "matrix<float, 4, 4>", file: !1, line: 27, size: 512, align: 32, elements: !118, templateParams: !135)
+!118 = !{!119, !120, !121, !122, !123, !124, !125, !126, !127, !128, !129, !130, !131, !132, !133, !134}
+!119 = !DIDerivedType(tag: DW_TAG_member, name: "_11", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, flags: DIFlagPublic)
+!120 = !DIDerivedType(tag: DW_TAG_member, name: "_12", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 32, flags: DIFlagPublic)
+!121 = !DIDerivedType(tag: DW_TAG_member, name: "_13", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 64, flags: DIFlagPublic)
+!122 = !DIDerivedType(tag: DW_TAG_member, name: "_14", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 96, flags: DIFlagPublic)
+!123 = !DIDerivedType(tag: DW_TAG_member, name: "_21", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 128, flags: DIFlagPublic)
+!124 = !DIDerivedType(tag: DW_TAG_member, name: "_22", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 160, flags: DIFlagPublic)
+!125 = !DIDerivedType(tag: DW_TAG_member, name: "_23", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 192, flags: DIFlagPublic)
+!126 = !DIDerivedType(tag: DW_TAG_member, name: "_24", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 224, flags: DIFlagPublic)
+!127 = !DIDerivedType(tag: DW_TAG_member, name: "_31", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 256, flags: DIFlagPublic)
+!128 = !DIDerivedType(tag: DW_TAG_member, name: "_32", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 288, flags: DIFlagPublic)
+!129 = !DIDerivedType(tag: DW_TAG_member, name: "_33", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 320, flags: DIFlagPublic)
+!130 = !DIDerivedType(tag: DW_TAG_member, name: "_34", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 352, flags: DIFlagPublic)
+!131 = !DIDerivedType(tag: DW_TAG_member, name: "_41", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 384, flags: DIFlagPublic)
+!132 = !DIDerivedType(tag: DW_TAG_member, name: "_42", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 416, flags: DIFlagPublic)
+!133 = !DIDerivedType(tag: DW_TAG_member, name: "_43", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 448, flags: DIFlagPublic)
+!134 = !DIDerivedType(tag: DW_TAG_member, name: "_44", scope: !117, file: !1, line: 27, baseType: !14, size: 32, align: 32, offset: 480, flags: DIFlagPublic)
+!135 = !{!19, !136, !137}
+!136 = !DITemplateValueParameter(name: "row_count", type: !21, value: i32 4)
+!137 = !DITemplateValueParameter(name: "col_count", type: !21, value: i32 4)
+!138 = !DIGlobalVariable(name: "colour", linkageName: "\01?colour@C@@3V?$vector@M$03@@B", scope: !0, file: !1, line: 27, type: !139, isLocal: false, isDefinition: true)
+!139 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !10)
+!140 = !DIGlobalVariable(name: "mode", linkageName: "\01?mode@C@@3HB", scope: !0, file: !1, line: 27, type: !80, isLocal: false, isDefinition: true)
+!141 = !DIGlobalVariable(name: "count", linkageName: "\01?count@C@@3IB", scope: !0, file: !1, line: 27, type: !142, isLocal: false, isDefinition: true)
+!142 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !87)
+!143 = !DIGlobalVariable(name: "shared_rows", linkageName: "\01?shared_rows@@3PAV?$vector@M$03@@A", scope: !0, file: !1, line: 75, type: !144, isLocal: false, isDefinition: true)
+!144 = !DICompositeType(tag: DW_TAG_array_type, baseType: !10, size: 1024, align: 32, elements: !145)
+!145 = !{!146}
+!146 = !DISubrange(count: 8)
+!147 = !DIGlobalVariable(name: "weights", linkageName: "\01?weights@Shade@@3QBMB", scope: !4, file: !1, line: 18, type: !148, isLocal: true, isDefinition: true)
+!148 = !DICompositeType(tag: DW_TAG_array_type, baseType: !149, size: 96, align: 32, elements: !62)
+!149 = !DIDerivedType(tag: DW_TAG_const_type, baseType: !14)
+!150 = !DIGlobalVariable(name: "t", linkageName: "\01?t@@3V?$Texture2D@V?$vector@M$03@@@@A", scope: !0, file: !1, line: 28, type: !151, isLocal: false, isDefinition: true)
+!151 = !DICompositeType(tag: DW_TAG_class_type, name: "Texture2D<vector<float, 4> >", file: !1, line: 28, size: 160, align: 32, elements: !66, templateParams: !152)
+!152 = !{!153}
+!153 = !DITemplateTypeParameter(name: "element", type: !11)
+!154 = !DIGlobalVariable(name: "ss", linkageName: "\01?ss@@3USamplerState@@A", scope: !0, file: !1, line: 29, type: !155, isLocal: false, isDefinition: true)
+!155 = !DICompositeType(tag: DW_TAG_structure_type, name: "SamplerState", file: !1, line: 29, size: 32, align: 32, elements: !66)
+!156 = !DIGlobalVariable(name: "o", linkageName: "\01?o@@3V?$RWStructuredBuffer@V?$vector@M$03@@@@A", scope: !0, file: !1, line: 74, type: !157, isLocal: false, isDefinition: true)
+!157 = !DICompositeType(tag: DW_TAG_class_type, name: "RWStructuredBuffer<vector<float, 4> >", file: !1, line: 74, size: 128, align: 32, elements: !66, templateParams: !152)
+!158 = !{i32 2, !"Dwarf Version", i32 4}
+!159 = !{i32 2, !"Debug Info Version", i32 3}
+!160 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!161 = !{!"debug_info.hlsl", !"// dxc: -T vs_6_0 -E vs -Zi -Qembed_debug -Fo debug_info.vs.dxil\0A// dxc: -T ps_6_0 -E ps -Zi -Qembed_debug -Fo debug_info.ps.dxil\0A// dxc: -T ps_6_0 -E ps -Zi -Qembed_debug -Od -Fo debug_info.ps.od.dxil\0A// dxc: -T gs_6_0 -E gs -Zi -Qembed_debug -Fo debug_info.gs.dxil\0A// dxc: -T hs_6_0 -E hs -Zi -Qembed_debug -Fo debug_info.hs.dxil\0A// dxc: -T ds_6_0 -E ds -Zi -Qembed_debug -Fo debug_info.ds.dxil\0A// dxc: -T cs_6_0 -E cs -Zi -Qembed_debug -Fo debug_info.cs.dxil\0A// dxc: -T cs_6_0 -E cs -Zi -Qembed_debug -Od -Fo debug_info.cs.od.dxil\0A// dxc: -T lib_6_3 -Zi -Qembed_debug -Fo debug_info.lib.dxil\0A// Programs of every stage and a library built with debug information in the module (-Zi -Qembed_debug), optimized\0A// and not (-Od): the listing prints the debug metadata nodes, each instruction's !dbg location with its line and\0A// column, and the debug intrinsics with the variable and expression they describe. The source has an enumeration, a\0A// namespace, structs, arrays, a matrix, static data, loops with their own locals and helper functions the compiler\0A// inlines, so the nodes include enumerators, namespaces, lexical blocks, global variables, subranges and inlined\0A// locations.\0Anamespace Shade {\0Aenum Mode { Plain = 0, Tinted = 2, Inverted = -3 };\0Astatic const float weights[3] = { 0.25, 0.5, 0.25 };\0Afloat4 tint(float4 c, Mode m) {\0A    if (m == Inverted) {\0A        float4 inv = 1 - c;\0A        return inv;\0A    }\0A    return m == Tinted ? c * float4(1, 0.5, 0.5, 1) : c;\0A}\0A}\0Acbuffer C : register(b0) { float4x4 wvp; float4 colour; int mode; uint count; };\0ATexture2D t : register(t0);\0ASamplerState ss : register(s0);\0Astruct V { float4 p : SV_Position; float2 uv : TEXCOORD0; };\0Astruct Blend { float4 sum; float total; };\0ABlend accumulate(Blend b, float4 c, float w) {\0A    Blend o;\0A    o.sum = b.sum + c * w;\0A    o.total = b.total + w;\0A    return o;\0A}\0AV vs(float3 p : POSITION, float2 uv : TEXCOORD0) {\0A    V o;\0A    o.p = mul(float4(p, 1), wvp);\0A    o.uv = uv;\0A    return o;\0A}\0Afloat4 ps(V i) : SV_Target {\0A    Blend b = { float4(0, 0, 0, 0), 0 };\0A    for (uint k = 0; k < 3; k++) {\0A        float2 at = i.uv + float2(k * 0.01, 0);\0A        b = accumulate(b, t.Sample(ss, at), Shade::weights[k]);\0A    }\0A    return Shade::tint(b.sum / b.total, (Shade::Mode)mode) * colour;\0A}\0A[maxvertexcount(3)] void gs(triangle V i[3], inout TriangleStream<V> s) {\0A    for (int k = 0; k < 3; k++) {\0A        V v = i[k];\0A        v.uv *= 2;\0A        s.Append(v);\0A    }\0A}\0Astruct PC { float e[3] : SV_TessFactor; float n : SV_InsideTessFactor; };\0APC pc(InputPatch<V, 3> p) {\0A    PC o;\0A    o.e[0] = o.e[1] = o.e[2] = colour.x;\0A    o.n = colour.y;\0A    return o;\0A}\0A[domain(\22tri\22)][partitioning(\22integer\22)][outputtopology(\22triangle_cw\22)][outputcontrolpoints(3)][patchconstantfunc(\22pc\22)]\0AV hs(InputPatch<V, 3> p, uint i : SV_OutputControlPointID) { return p[i]; }\0A[domain(\22tri\22)] V ds(PC c, float3 b : SV_DomainLocation, const OutputPatch<V, 3> p) {\0A    V o;\0A    o.p = p[0].p * b.x + p[1].p * b.y + p[2].p * b.z;\0A    o.uv = p[0].uv * c.n;\0A    return o;\0A}\0ARWStructuredBuffer<float4> o : register(u0);\0Agroupshared float4 shared_rows[8];\0A[numthreads(8, 1, 1)] void cs(uint i : SV_GroupIndex) {\0A    shared_rows[i] = colour * i;\0A    GroupMemoryBarrierWithGroupSync();\0A    float4 sum = 0;\0A    for (uint k = 0; k < count && k < 8; k++) {\0A        sum += shared_rows[k];\0A    }\0A    o[i] = Shade::tint(sum, (Shade::Mode)mode);\0A}\0Astruct Payload { float4 colour; };\0A[shader(\22miss\22)] void miss(inout Payload p) { p.colour = Shade::tint(colour, Shade::Tinted); }\0A[shader(\22closesthit\22)] void hit(inout Payload p, BuiltInTriangleIntersectionAttributes a) {\0A    p.colour = float4(a.barycentrics, 1 - a.barycentrics.x - a.barycentrics.y, 1);\0A}\0A"}
+!162 = !{!"debug_info.hlsl"}
+!163 = !{!"-E", !"lib.no::entry", !"-T", !"lib_6_3", !"-Zi", !"-Qembed_debug", !"-Fo", !"debug_info.lib.dxil"}
+!164 = !{i32 1, i32 3}
+!165 = !{i32 1, i32 9}
+!166 = !{!"lib", i32 6, i32 3}
+!167 = !{null, null, !168, null}
+!168 = !{!169}
+!169 = !{i32 0, %hostlayout.C* @C_legacy, !"C", i32 0, i32 0, i32 1, i32 88, null}
+!170 = !{i32 0, %struct.Payload undef, !171, %struct.BuiltInTriangleIntersectionAttributes undef, !173, %hostlayout.C undef, !175}
+!171 = !{i32 16, !172}
+!172 = !{i32 6, !"colour", i32 3, i32 0, i32 7, i32 9}
+!173 = !{i32 8, !174}
+!174 = !{i32 6, !"barycentrics", i32 3, i32 0, i32 7, i32 9}
+!175 = !{i32 88, !176, !178, !179, !180}
+!176 = !{i32 6, !"wvp", i32 2, !177, i32 3, i32 0, i32 7, i32 9}
+!177 = !{i32 4, i32 4, i32 2}
+!178 = !{i32 6, !"colour", i32 3, i32 64, i32 7, i32 9}
+!179 = !{i32 6, !"mode", i32 3, i32 80, i32 7, i32 4}
+!180 = !{i32 6, !"count", i32 3, i32 84, i32 7, i32 5}
+!181 = !{i32 1, void (%struct.Payload*)* @"\01?miss@@YAXUPayload@@@Z", !182, void (%struct.Payload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !185, void ()* @"\01?pc@@YA?AUPC@@V?$InputPatch@UV@@$02@@@Z", !187, void ()* @gs, !187, void ()* @hs, !187, void ()* @ds, !187}
+!182 = !{!183, !184}
+!183 = !{i32 1, !66, !66}
+!184 = !{i32 2, !66, !66}
+!185 = !{!183, !184, !186}
+!186 = !{i32 0, !66, !66}
+!187 = !{!186}
+!188 = !{null, !"", null, !167, null}
+!189 = !{void (%struct.Payload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?hit@@YAXUPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !190}
+!190 = !{i32 8, i32 10, i32 6, i32 16, i32 7, i32 8, i32 5, !191}
+!191 = !{i32 0}
+!192 = !{void (%struct.Payload*)* @"\01?miss@@YAXUPayload@@@Z", !"\01?miss@@YAXUPayload@@@Z", null, null, !193}
+!193 = !{i32 8, i32 11, i32 6, i32 16, i32 5, !191}
+!194 = !{void ()* @ds, !"ds", !195, null, !203}
+!195 = !{!196, !196, !199}
+!196 = !{!197, !198}
+!197 = !{i32 0, !"SV_Position", i8 9, i8 3, !191, i8 4, i32 1, i8 4, i32 0, i8 0, null}
+!198 = !{i32 1, !"TEXCOORD", i8 9, i8 0, !191, i8 2, i32 1, i8 2, i32 1, i8 0, null}
+!199 = !{!200, !202}
+!200 = !{i32 0, !"SV_TessFactor", i8 9, i8 25, !201, i8 0, i32 3, i8 1, i32 0, i8 3, null}
+!201 = !{i32 0, i32 1, i32 2}
+!202 = !{i32 1, !"SV_InsideTessFactor", i8 9, i8 26, !191, i8 0, i32 1, i8 1, i32 3, i8 0, null}
+!203 = !{i32 8, i32 4, i32 2, !204, i32 5, !191}
+!204 = !{i32 2, i32 3}
+!205 = !{void ()* @gs, !"gs", !206, null, !207}
+!206 = !{!196, !196, null}
+!207 = !{i32 8, i32 2, i32 1, !208, i32 5, !191}
+!208 = !{i32 3, i32 3, i32 1, i32 5, i32 1}
+!209 = !{void ()* @hs, !"hs", !195, null, !210}
+!210 = !{i32 8, i32 3, i32 3, !211, i32 5, !191}
+!211 = !{void ()* @"\01?pc@@YA?AUPC@@V?$InputPatch@UV@@$02@@@Z", i32 3, i32 3, i32 2, i32 1, i32 3, float 6.400000e+01}
+!212 = !DILocation(line: 86, column: 42, scope: !100)
+!213 = !DILocation(line: 86, column: 70, scope: !100)
+!214 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "c", arg: 1, scope: !30, file: !1, line: 19, type: !10)
+!215 = !DIExpression(DW_OP_bit_piece, 0, 32)
+!216 = !DILocation(line: 19, column: 20, scope: !30, inlinedAt: !217)
+!217 = distinct !DILocation(line: 86, column: 58, scope: !100)
+!218 = !DIExpression(DW_OP_bit_piece, 32, 32)
+!219 = !DIExpression(DW_OP_bit_piece, 64, 32)
+!220 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "m", arg: 2, scope: !30, file: !1, line: 19, type: !3)
+!221 = !DIExpression()
+!222 = !DILocation(line: 19, column: 28, scope: !30, inlinedAt: !217)
+!223 = !DIExpression(DW_OP_bit_piece, 96, 32)
+!224 = !DILocation(line: 24, column: 28, scope: !30, inlinedAt: !217)
+!225 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "p", arg: 1, scope: !100, file: !1, line: 86, type: !104)
+!226 = !DILocation(line: 86, column: 94, scope: !100)
+!227 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "a", arg: 2, scope: !107, file: !1, line: 87, type: !110)
+!228 = !DILocation(line: 87, column: 88, scope: !107)
+!229 = !DILocation(line: 88, column: 25, scope: !107)
+!230 = !DILocation(line: 88, column: 22, scope: !107)
+!231 = !DILocation(line: 88, column: 43, scope: !107)
+!232 = !DILocation(line: 88, column: 41, scope: !107)
+!233 = !DILocation(line: 88, column: 62, scope: !107)
+!234 = !DILocation(line: 88, column: 60, scope: !107)
+!235 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "p", arg: 1, scope: !107, file: !1, line: 87, type: !104)
+!236 = !DILocation(line: 87, column: 47, scope: !107)
+!237 = !DILocation(line: 89, column: 1, scope: !107)
+!238 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "k", scope: !239, file: !1, line: 53, type: !21)
+!239 = distinct !DILexicalBlock(scope: !58, file: !1, line: 53, column: 5)
+!240 = !DILocation(line: 53, column: 14, scope: !239)
+!241 = !DILocation(line: 53, column: 5, scope: !239)
+!242 = !DILocation(line: 54, column: 15, scope: !243)
+!243 = distinct !DILexicalBlock(scope: !244, file: !1, line: 53, column: 33)
+!244 = distinct !DILexicalBlock(scope: !239, file: !1, line: 53, column: 5)
+!245 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "v", scope: !243, file: !1, line: 54, type: !43)
+!246 = !DILocation(line: 54, column: 11, scope: !243)
+!247 = !DIExpression(DW_OP_bit_piece, 128, 32)
+!248 = !DIExpression(DW_OP_bit_piece, 160, 32)
+!249 = !DILocation(line: 55, column: 14, scope: !243)
+!250 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "s", arg: 2, scope: !58, file: !1, line: 52, type: !65)
+!251 = !DILocation(line: 56, column: 9, scope: !243)
+!252 = !DILocation(line: 53, column: 29, scope: !244)
+!253 = !DILocation(line: 58, column: 1, scope: !58)
+!254 = !DILocation(line: 62, column: 32, scope: !69)
+!255 = !DILocalVariable(tag: DW_TAG_auto_variable, name: "o", scope: !69, file: !1, line: 61, type: !72)
+!256 = !DILocation(line: 61, column: 8, scope: !69)
+!257 = !DILocation(line: 63, column: 11, scope: !69)
+!258 = !DILocation(line: 64, column: 12, scope: !69)
+!259 = !DILocation(line: 64, column: 5, scope: !69)
+!260 = !DILocation(line: 67, column: 23, scope: !84)
+!261 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "i", arg: 2, scope: !84, file: !1, line: 67, type: !87)
+!262 = !DILocation(line: 67, column: 31, scope: !84)
+!263 = !DILocation(line: 67, column: 69, scope: !84)
+!264 = !DILocation(line: 67, column: 62, scope: !84)
+!265 = !DILocation(line: 68, column: 82, scope: !89)
+!266 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "c", arg: 1, scope: !89, file: !1, line: 68, type: !72)
+!267 = !DILocation(line: 68, column: 25, scope: !89)
+!268 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "b", arg: 2, scope: !89, file: !1, line: 68, type: !47)
+!269 = !DILocation(line: 68, column: 35, scope: !89)
+!270 = !DILocation(line: 70, column: 16, scope: !89)
+!271 = !DILocation(line: 70, column: 18, scope: !89)
+!272 = !DILocation(line: 70, column: 31, scope: !89)
+!273 = !DILocation(line: 70, column: 33, scope: !89)
+!274 = !DILocation(line: 70, column: 24, scope: !89)
+!275 = !DILocation(line: 70, column: 46, scope: !89)
+!276 = !DILocation(line: 70, column: 48, scope: !89)
+!277 = !DILocation(line: 70, column: 39, scope: !89)
+!278 = !DILocalVariable(tag: DW_TAG_arg_variable, name: "o", arg: 0, scope: !89, file: !1, line: 69, type: !43)
+!279 = !DILocation(line: 70, column: 9, scope: !89)
+!280 = !DILocation(line: 71, column: 17, scope: !89)
+!281 = !DILocation(line: 71, column: 20, scope: !89)
+!282 = !DILocation(line: 71, column: 10, scope: !89)
+!283 = !DILocation(line: 72, column: 5, scope: !89)
+

@@ -38,8 +38,10 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   (`Instruction::attachments`, with `dx.precise` also as `precise`) and to a function. Instructions: binary operators
   (with their optimisation flags), casts, comparisons, select, extractvalue and insertvalue, vector element and shuffle
   operations, call (tail marker, calling convention, attributes), phi, ret, branches, switch, unreachable, alloca, load
-  and store (volatile, atomic), getelementptr, atomicrmw, cmpxchg and fence. Debug locations, function-local metadata,
-  comdats, prologue and prefix data and switch case ranges are refused by name, as is any other record.
+  and store (volatile, atomic), getelementptr, atomicrmw, cmpxchg and fence. A program built with debug information
+  (`-Zi`) reads with it: every LLVM 3.7 debug node (`debug_info::DebugNode`), each instruction's source location and the
+  metadata its debug intrinsics are passed. Comdats, prologue and prefix data and switch case ranges are refused by
+  name, as is any other record.
 - **Texture reads** (`sampling::texture_reads`): every `sample`, `sampleBias`, `sampleLevel`, `sampleGrad`, `sampleCmp`,
   `sampleCmpLevelZero`, `textureGather`, `textureGatherCmp`, `calculateLOD`, `textureLoad`, `bufferLoad` and
   `rawBufferLoad` call, with the class, space and register of its resource's handle and of its sampler's (the handle is
@@ -104,11 +106,13 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (139 `.dxil` files, all but `matrix_lib15` compiled by dxc 1.9.2609 from the
-HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
-in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. `tests/disasm.rs` compares the
-listing of every fixture (every stage, ray tracing libraries included) with dxc's own in `tests/disasm/listings`, which
-`tests/disasm/generate.py` compiles and lists; a fixture without its listing fails. No game files are needed.
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (149 `.dxil` files, all but `matrix_lib15` and
+`debug_nodes` compiled by dxc 1.9.2609 from the HLSL beside each (`matrix_lib15` by dxc 1.5.2010; `debug_nodes`
+assembled from its `.ll` by `tests/disasm/assemble.py`), with the command in each file; `.od` files with `-Od`) is read,
+control-flow and memory fixtures are checked in detail, and `RDAT` data laid out by hand exercises every subobject kind
+and the refusals. `tests/disasm.rs` compares the listing of every fixture (every stage, ray tracing libraries included)
+with dxc's own in `tests/disasm/listings`, which `tests/disasm/generate.py` compiles and lists; a fixture without its
+listing fails. No game files are needed.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with dxc's for all 50,283 of
 Elden Ring's programs (1,731 `cs_6_0`, 150 `ds_6_0`, 33 `gs_6_0`, 136 `hs_6_0`, 4,281 `lib_6_3`, 25,183 `ps_6_0`, 18,769

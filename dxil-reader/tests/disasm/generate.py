@@ -6,6 +6,9 @@ compiled in that folder, from that file. Then dxc's listing of every container i
 
     python -I generate.py --dxc <dxc folder>
 
+`fixtures/debug_nodes.dxil` is not compiled: `assemble.py` (a Windows Python with dxcompiler.dll 1.9.2609) assembles it
+from `fixtures/debug_nodes.ll`, LLVM IR with the debug nodes no HLSL compiler writes; it is listed as the others are.
+
 The dxc folder holds `bin/dxc` and `lib/` (the layout of Microsoft's Linux release, and of the oracle home's
 `tools/dxc-linux-1.9.2609`). The fixtures and listings are those of dxc 1.9.2609 (VERSION); another build is refused,
 since its listing differs, unless --any-version is given.

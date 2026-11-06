@@ -6,10 +6,20 @@ use std::fmt::Write as _;
 
 use super::annotate;
 use crate::module::{
-    Atomic, Attribute, BinaryOp, CastOp, Constant, FUNCTION_SLOT, Function, Instruction, Linkage, Metadata,
-    MetadataId, Module, Op, Ordering, TailCall, Type, TypeId, Value, ValueId,
+    Atomic, Attribute, BinaryOp, CastOp, Constant, DebugLoc, DebugNode, FUNCTION_SLOT, Function, Instruction,
+    Linkage, Metadata, MetadataId, Module, Op, Ordering, TailCall, Type, TypeId, Value, ValueId,
 };
 use crate::{Result, error};
+
+mod debug;
+
+/// A metadata node of the listing: one of the module's, or the location an instruction's debug location makes where
+/// no node of the module is that location (`DebugLoc::get` makes the `DILocation` the bitcode does not store).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum Node {
+    Metadata(MetadataId),
+    Location(usize),
+}
 
 /// The metadata kinds an LLVM 3.7 context registers before reading a module, by their fixed ids. An attachment's
 /// position among an instruction's is by this id; the kinds a module adds follow, in the order it names them.
@@ -188,8 +198,12 @@ struct Writer<'m> {
     /// The slot of each global value without a name.
     global_slots: HashMap<ValueId, usize>,
     /// The slot of each metadata node, and the nodes by slot.
-    md_slots: HashMap<MetadataId, usize>,
-    md_order: Vec<MetadataId>,
+    md_slots: HashMap<Node, usize>,
+    md_order: Vec<Node>,
+    /// The locations instructions are at that no node of the module is, by [`Node::Location`].
+    locations: Vec<DebugLoc>,
+    /// The node of each location an instruction is at.
+    location_nodes: HashMap<DebugLoc, Node>,
     /// The function attribute sets by slot (`#0`...).
     attribute_sets: Vec<Vec<Attr>>,
     /// Each function body by the module value of its function.
@@ -224,6 +238,8 @@ impl<'m> Writer<'m> {
             global_slots: HashMap::new(),
             md_slots: HashMap::new(),
             md_order: Vec::new(),
+            locations: Vec::new(),
+            location_nodes: HashMap::new(),
             attribute_sets: Vec::new(),
             bodies: m.functions.iter().map(|f| (f.value, f)).collect(),
             names: m.names.iter().map(|(v, n)| (*v, n.as_str())).collect(),
@@ -240,6 +256,36 @@ impl<'m> Writer<'m> {
                 }
             };
             w.kind_order.insert(*id, order);
+        }
+        // `DILocation::get` uniques a location: an instruction at the location of a module node is at that node
+        for (id, md) in m.metadata.iter().enumerate() {
+            if let Metadata::Debug {
+                distinct: false,
+                node:
+                    DebugNode::Location {
+                        line,
+                        column,
+                        scope,
+                        inlined_at,
+                    },
+            } = md
+            {
+                let loc = DebugLoc {
+                    line: *line,
+                    column: *column,
+                    scope: Some(*scope),
+                    inlined_at: *inlined_at,
+                };
+                w.location_nodes.entry(loc).or_insert(Node::Metadata(id));
+            }
+        }
+        for f in &m.functions {
+            for loc in f.instructions.iter().filter_map(|i| i.debug_loc) {
+                if loc.scope.is_some() && !w.location_nodes.contains_key(&loc) {
+                    w.location_nodes.insert(loc, Node::Location(w.locations.len()));
+                    w.locations.push(loc);
+                }
+            }
         }
         let structs = Finder::new(&w).run();
         for t in structs {
@@ -421,7 +467,7 @@ impl<'m> Writer<'m> {
         }
         for (_, nodes) in &m.named_metadata {
             for n in nodes {
-                self.md_slot(*n);
+                self.md_slot(Node::Metadata(*n));
             }
         }
         for v in &m.values {
@@ -439,11 +485,25 @@ impl<'m> Writer<'m> {
                 continue;
             };
             for n in self.sorted_attachments(&body.attachments) {
-                self.md_slot(n);
+                self.md_slot(Node::Metadata(n));
             }
+            // `processInstructionMetadata`: the nodes an intrinsic is passed, then the location and the attachments
             for inst in &body.instructions {
-                for n in self.sorted_attachments(&inst.attachments) {
+                if let Op::Call { function, args, .. } = &inst.op
+                    && self.names.get(function).is_some_and(|n| n.starts_with("llvm."))
+                {
+                    for a in args {
+                        let i = a.saturating_sub(body.first);
+                        if let Some(Value::Metadata(md)) = body.locals.get(i).filter(|_| *a >= body.first) {
+                            self.md_slot(Node::Metadata(*md));
+                        }
+                    }
+                }
+                if let Some(n) = self.location_node(inst.debug_loc) {
                     self.md_slot(n);
+                }
+                for n in self.sorted_attachments(&inst.attachments) {
+                    self.md_slot(Node::Metadata(n));
                 }
             }
             for inst in &body.instructions {
@@ -459,18 +519,32 @@ impl<'m> Writer<'m> {
         Ok(())
     }
 
-    /// `CreateMetadataSlot`: a node, then the nodes among its operands, depth first.
-    fn md_slot(&mut self, node: MetadataId) {
-        let Some(ops) = self.m.metadata.get(node).and_then(Metadata::operands) else {
-            return;
-        };
-        if self.md_slots.contains_key(&node) {
-            return;
+    /// `CreateMetadataSlot`: a node, then the nodes among its operands, depth first (a string or a value takes no
+    /// slot). The walk keeps its own stack: a program's debug types nest deeply.
+    fn md_slot(&mut self, node: Node) {
+        let mut stack = vec![node];
+        while let Some(node) = stack.pop() {
+            let Some(ops) = self.node_operands(node) else {
+                continue;
+            };
+            if self.md_slots.contains_key(&node) {
+                continue;
+            }
+            self.md_slots.insert(node, self.md_order.len());
+            self.md_order.push(node);
+            stack.extend(ops.into_iter().rev().flatten().map(Node::Metadata));
         }
-        self.md_slots.insert(node, self.md_order.len());
-        self.md_order.push(node);
-        for op in ops.iter().flatten() {
-            self.md_slot(*op);
+    }
+
+    /// The operands of a metadata node in LLVM's order; `None` where it is not a node (a string or a value).
+    fn node_operands(&self, node: Node) -> Option<Vec<Option<MetadataId>>> {
+        match node {
+            Node::Metadata(id) => match self.m.metadata.get(id)? {
+                Metadata::Node(ops) | Metadata::Distinct(ops) => Some(ops.clone()),
+                Metadata::Debug { node, .. } => Some(node.operands()),
+                Metadata::String(_) | Metadata::Value { .. } => None,
+            },
+            Node::Location(i) => self.locations.get(i).map(debug::location_operands),
         }
     }
 
@@ -620,6 +694,19 @@ impl<'m> Writer<'m> {
                     let _ = write!(s, "%{n}");
                 }
                 None => s.push_str("<badref>"),
+            },
+            // `MetadataAsValue`: the metadata as an operand; a body's own is one of its values after its type
+            Value::Metadata(md) => match in_body.filter(|l| *md >= l.f.first_metadata) {
+                Some(l) => match l.f.metadata.get(md.saturating_sub(l.f.first_metadata)) {
+                    Some(Metadata::Value { value, .. }) => self.operand(s, Some(l), *value, true)?,
+                    _ => {
+                        return Err(error(
+                            self.m.at,
+                            format!("metadata {md} of the body is not a value"),
+                        ));
+                    }
+                },
+                None => self.md_operand(s, Some(*md))?,
             },
         }
         Ok(())
@@ -901,7 +988,9 @@ impl<'m> Writer<'m> {
             return Ok(());
         };
         match self.m.metadata.get(id) {
-            Some(Metadata::Node(_) | Metadata::Distinct(_)) => self.md_ref(s, id),
+            Some(Metadata::Node(_) | Metadata::Distinct(_) | Metadata::Debug { .. }) => {
+                self.md_ref(s, Node::Metadata(id));
+            }
             Some(Metadata::String(bytes)) => {
                 s.push_str("!\"");
                 escaped(s, bytes);
@@ -913,7 +1002,7 @@ impl<'m> Writer<'m> {
         Ok(())
     }
 
-    fn md_ref(&self, s: &mut String, node: MetadataId) {
+    fn md_ref(&self, s: &mut String, node: Node) {
         match self.md_slots.get(&node) {
             Some(n) => {
                 let _ = write!(s, "!{n}");
@@ -936,7 +1025,7 @@ impl<'m> Writer<'m> {
                 }
             }
             s.push(' ');
-            self.md_ref(s, node);
+            self.md_ref(s, Node::Metadata(node));
         }
     }
 
@@ -1013,7 +1102,7 @@ impl<'m> Writer<'m> {
                 if i > 0 {
                     s.push_str(", ");
                 }
-                self.md_ref(s, *n);
+                self.md_ref(s, Node::Metadata(*n));
             }
             s.push_str("}\n");
         }
@@ -1022,10 +1111,27 @@ impl<'m> Writer<'m> {
         }
         for (slot, node) in self.md_order.iter().enumerate() {
             let _ = write!(s, "!{slot} = ");
-            let (distinct, ops) = match m.metadata.get(*node) {
+            let id = match *node {
+                Node::Location(i) => {
+                    let l = self
+                        .locations
+                        .get(i)
+                        .ok_or_else(|| error(m.at, format!("location {i} is missing")))?;
+                    self.location(s, l)?;
+                    s.push('\n');
+                    continue;
+                }
+                Node::Metadata(id) => id,
+            };
+            let (distinct, ops) = match m.metadata.get(id) {
                 Some(Metadata::Node(ops)) => (false, ops),
                 Some(Metadata::Distinct(ops)) => (true, ops),
-                _ => return Err(error(m.at, format!("metadata {node} is not a node"))),
+                Some(Metadata::Debug { distinct, node }) => {
+                    self.debug_node(s, *distinct, node)?;
+                    s.push('\n');
+                    continue;
+                }
+                _ => return Err(error(m.at, format!("metadata {id} is not a node"))),
             };
             if distinct {
                 s.push_str("distinct ");
@@ -1545,7 +1651,13 @@ impl<'m> Writer<'m> {
                 atomic_text(s, *atomic);
             }
         }
+        // `getAllMetadata`: the location first (kind `dbg`), then the attachments
+        if let Some(n) = self.location_node(inst.debug_loc) {
+            s.push_str(", !dbg ");
+            self.md_ref(s, n);
+        }
         self.attachments(s, &inst.attachments, ", ");
+        self.debug_comment(s, l, inst)?;
         if let Op::Call { function, args, .. } = &inst.op {
             self.dx_op_comment(s, l, *function, args)?;
         }
@@ -1779,6 +1891,18 @@ impl<'w, 'm> Finder<'w, 'm> {
             }
             _ => (m.values.get(id), m.value_types.get(id), (None, id)),
         };
+        // `incorporateValue` of a `MetadataAsValue`: the node, or the value a module's value-as-metadata is
+        if let Some(Value::Metadata(md)) = value {
+            if body.is_some_and(|f| *md >= f.first_metadata) {
+                return;
+            }
+            match m.metadata.get(*md) {
+                Some(Metadata::Value { value, .. }) => self.value(None, *value),
+                Some(Metadata::Node(_) | Metadata::Distinct(_) | Metadata::Debug { .. }) => self.node(*md),
+                _ => {}
+            }
+            return;
+        }
         let (Some(Value::Constant(c)), Some(ty)) = (value, ty) else {
             return;
         };
@@ -1806,12 +1930,12 @@ impl<'w, 'm> Finder<'w, 'm> {
             return;
         }
         let m = self.w.m;
-        let Some(ops) = m.metadata.get(node).and_then(Metadata::operands) else {
+        let Some(ops) = self.w.node_operands(Node::Metadata(node)) else {
             return;
         };
         for op in ops.iter().flatten() {
             match m.metadata.get(*op) {
-                Some(Metadata::Node(_) | Metadata::Distinct(_)) => self.node(*op),
+                Some(Metadata::Node(_) | Metadata::Distinct(_) | Metadata::Debug { .. }) => self.node(*op),
                 Some(Metadata::Value { value, .. }) => self.value(None, *value),
                 _ => {}
             }
