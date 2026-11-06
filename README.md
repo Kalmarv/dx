@@ -1,4 +1,4 @@
-# dx
+# <img src="docs/logo.svg" alt="" height="25"> dx
 
 [![crates.io](https://img.shields.io/crates/v/dxcontainer)](https://crates.io/crates/dxcontainer) [![docs.rs](https://img.shields.io/docsrs/dxcontainer)](https://docs.rs/dxcontainer) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/dx/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/dx/actions/workflows/ci.yml)
 
