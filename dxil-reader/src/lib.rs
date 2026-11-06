@@ -25,6 +25,7 @@
 #![deny(missing_docs)]
 #![deny(clippy::disallowed_methods, clippy::disallowed_types)]
 pub mod bitstream;
+pub mod disasm;
 pub mod module;
 pub mod psv;
 pub mod rdat;
