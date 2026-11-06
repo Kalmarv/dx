@@ -1,6 +1,6 @@
 # dx
 
-[![crates.io: dxbc-reader](https://img.shields.io/crates/v/dxbc-reader?label=dxbc-reader)](https://crates.io/crates/dxbc-reader) [![crates.io: dxil-reader](https://img.shields.io/crates/v/dxil-reader?label=dxil-reader)](https://crates.io/crates/dxil-reader) [![crates.io: dxcontainer](https://img.shields.io/crates/v/dxcontainer?label=dxcontainer)](https://crates.io/crates/dxcontainer) [![crates.io: rsx-reader](https://img.shields.io/crates/v/rsx-reader?label=rsx-reader)](https://crates.io/crates/rsx-reader) [![docs.rs](https://img.shields.io/docsrs/dxbc-reader)](https://docs.rs/dxbc-reader) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/dx/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/dx/actions/workflows/ci.yml) [![release](https://img.shields.io/github/v/release/Kalmarv/dx)](https://github.com/Kalmarv/dx/releases/latest)
+[![crates.io](https://img.shields.io/crates/v/dxcontainer)](https://crates.io/crates/dxcontainer) [![docs.rs](https://img.shields.io/docsrs/dxcontainer)](https://docs.rs/dxcontainer) [![CI](https://img.shields.io/github/actions/workflow/status/Kalmarv/dx/ci.yml?branch=main&label=CI)](https://github.com/Kalmarv/dx/actions/workflows/ci.yml)
 
 Rust libraries that read compiled shader programs and their containers: Direct3D 9, DXBC and DXIL programs, and PlayStation 3 RSX programs and texture descriptors.
 
@@ -37,7 +37,7 @@ Rust 1.99 or newer (edition 2024). The repository pins its toolchain in `rust-to
 | [`dxil-reader`](dxil-reader) | DXIL, Shader Model 6, with reflection, `PSV0`, `RDAT` and the `dxc -dumpbin` listing |
 | [`rsx-reader`](rsx-reader) | PS3 texture descriptors, Cg binary programs, fragment and vertex microcode |
 
-All five are published on crates.io:
+Add a library from crates.io:
 
 ```sh
 cargo add dxbc-reader
