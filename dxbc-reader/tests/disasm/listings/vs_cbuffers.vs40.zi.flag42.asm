@@ -32,20 +32,20 @@ dcl_temps 4
 //   o1.x <- <main return value>.n.x; o1.y <- <main return value>.n.y; o1.z <- <main return value>.n.z; 
 //   o0.x <- <main return value>.pos.x; o0.y <- <main return value>.pos.y; o0.z <- <main return value>.pos.z; o0.w <- <main return value>.pos.w
 //
-#line 51 "C:\dx-fixtures\vs_cbuffers.hlsl"
+#line 50 "C:\dx-fixtures\vs_cbuffers.hlsl"
 and r0.x, v4.x, l(15)
 ushr r0.y, v4.x, l(4)
 mov r0.zw, l(0,0,0,0)
 ld r0.xyzw, r0.xyzw, t0.xyzw
 
-#line 49
+#line 48
 mov r1.xyz, v0.xyzx
 mov r1.w, l(1.000000)
 
-#line 48
+#line 47
 ishl r0.yz, v3.xxyx, l(2)
 
-#line 49
+#line 48
 dp4 r2.x, cb3[r0.y + 0].xyzw, r1.xyzw
 dp4 r2.y, cb3[r0.y + 1].xyzw, r1.xyzw
 dp4 r2.z, cb3[r0.y + 2].xyzw, r1.xyzw
@@ -55,31 +55,31 @@ dp4 r3.y, cb3[r0.z + 1].xyzw, r1.xyzw
 dp4 r3.z, cb3[r0.z + 2].xyzw, r1.xyzw
 mad r0.yzw, r3.xxyz, cb3[r0.z + 3].xxxx, r2.xxyz  // r0.y <- p.x; r0.z <- p.y; r0.w <- p.z
 
-#line 51
+#line 50
 add r0.x, r0.x, r0.z  // r0.x <- p.y
 
-#line 52
+#line 51
 mul r1.xyzw, r0.xxxx, cb0[5].xyzw
 mad r1.xyzw, r0.yyyy, cb0[4].xyzw, r1.xyzw
 mad r0.xyzw, r0.wwww, cb0[6].xyzw, r1.xyzw
 add r0.xyzw, r0.xyzw, cb0[7].xyzw  // r0.x <- wp.x; r0.y <- wp.y; r0.z <- wp.z; r0.w <- wp.w
 
-#line 53
+#line 52
 dp4 o0.x, r0.xyzw, cb0[0].xyzw
 dp4 o0.y, r0.xyzw, cb0[1].xyzw
 dp4 o0.z, r0.xyzw, cb0[2].xyzw
 dp4 o0.w, r0.xyzw, cb0[3].xyzw
 
-#line 54
+#line 53
 mad r1.xyz, cb0[8].xyzx, cb0[8].wwww, v1.xyzx
 dp3 r0.w, r1.xyzx, r1.xyzx
 rsq r0.w, r0.w
 mul o1.xyz, r0.wwww, r1.xyzx
 
-#line 55
+#line 54
 add o2.xy, v2.xyxx, cb0[9].xyxx
 
-#line 57
+#line 56
 dp3_sat r0.w, v1.xyzx, cb0[11].xyzx
 dp3_sat r1.x, v1.xyzx, cb0[14].xyzx
 and r1.y, cb0[9].z, l(1)
@@ -90,19 +90,19 @@ mad r2.xyzw, cb0[r1.y + 18].xyzw, r0.wwww, r2.xyzw
 dp3_sat r0.w, v1.xyzx, cb0[20].xyzx
 mad r1.xyzw, cb0[r1.y + 21].xyzw, r0.wwww, r2.xyzw  // r1.x <- c.x; r1.y <- c.y; r1.z <- c.z; r1.w <- c.w
 
-#line 58
+#line 57
 and r0.w, v5.x, l(7)
 ld r2.xyzw, r0.wwww, t2.xyzw  // r2.x <- extra[0].x; r2.y <- extra[0].y; r2.z <- extra[0].z; r2.w <- extra[0].w
 movc r2.xyzw, cb0[10].xxxx, r2.xyzw, l(1.000000,1.000000,1.000000,1.000000)
 mul o3.xyzw, r1.xyzw, r2.xyzw
 
-#line 62
+#line 61
 ld r1.xyzw, v5.xxxx, t1.xyzw
 utof r1.xyz, r1.xyzx
 dp3 o4.x, r0.xyzx, r1.xyzx
 
-#line 63
+#line 62
 xor o5.x, v4.x, v5.x
 
-#line 64
+#line 63
 ret 

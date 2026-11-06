@@ -124,10 +124,10 @@
 //   o1.x <- <main return value>.n.x; o1.y <- <main return value>.n.y; o1.z <- <main return value>.n.z; 
 //   o0.x <- <main return value>.pos.x; o0.y <- <main return value>.pos.y; o0.z <- <main return value>.pos.z; o0.w <- <main return value>.pos.w
 //
-#line 46 "C:\dx-fixtures\vs_cbuffers.hlsl"
+#line 45 "C:\dx-fixtures\vs_cbuffers.hlsl"
    0: mov r0.xyz, v0.xyzx  // r0.x <- p.x; r0.y <- p.y; r0.z <- p.z
 
-#line 47
+#line 46
    1: mov r0.w, l(0)  // r0.w <- b
    2: mov r1.xyz, r0.xyzx  // r1.x <- p.x; r1.y <- p.y; r1.z <- p.z
    3: mov r1.w, r0.w  // r1.w <- b
@@ -136,7 +136,7 @@
    6:   ult r2.x, r1.w, r2.x
    7:   breakc_z r2.x
 
-#line 48
+#line 47
    8:   and r2.xyz, v3.xyzx, icb[r1.w + 0].xyzx
    9:   mov r2.w, l(0)
   10:   or r2.xy, r2.ywyy, r2.xzxx
@@ -147,7 +147,7 @@
   15:   mov r5.xyzw, cb3[r2.x + 2].xyzw  // r5.x <- k.m._m20; r5.y <- k.m._m21; r5.z <- k.m._m22; r5.w <- k.m._m23
   16:   mov r2.x, cb3[r2.x + 3].x  // r2.x <- k.weight
 
-#line 49
+#line 48
   17:   itof r6.w, l(1)
   18:   mov r6.xyz, v0.xyzx
   19:   dp4 r3.x, r3.xyzw, r6.xyzw
@@ -156,11 +156,11 @@
   22:   mul r2.xyz, r2.xxxx, r3.xyzx
   23:   add r1.xyz, r1.xyzx, r2.xyzx
 
-#line 50
+#line 49
   24:   iadd r1.w, r1.w, l(1)
   25: endloop 
 
-#line 51
+#line 50
   26: mov r0.x, l(15)
   27: and r0.x, r0.x, v4.x
   28: mov r1.w, l(4)
@@ -169,7 +169,7 @@
   31: ld r0.xyzw, r0.xyzw, t0.xyzw
   32: add r0.x, r0.x, r1.y  // r0.x <- p.y
 
-#line 52
+#line 51
   33: itof r0.y, l(1)
   34: mul r2.xyzw, r1.xxxx, cb0[4].xyzw
   35: mul r3.xyzw, r0.xxxx, cb0[5].xyzw
@@ -179,26 +179,26 @@
   39: mul r0.xyzw, r0.yyyy, cb0[7].xyzw
   40: add r0.xyzw, r0.xyzw, r1.xyzw  // r0.x <- wp.x; r0.y <- wp.y; r0.z <- wp.z; r0.w <- wp.w
 
-#line 53
+#line 52
   41: dp4 r1.x, r0.xyzw, cb0[0].xyzw  // r1.x <- o.pos.x
   42: dp4 r1.y, r0.xyzw, cb0[1].xyzw  // r1.y <- o.pos.y
   43: dp4 r1.z, r0.xyzw, cb0[2].xyzw  // r1.z <- o.pos.z
   44: dp4 r1.w, r0.xyzw, cb0[3].xyzw  // r1.w <- o.pos.w
 
-#line 54
+#line 53
   45: mul r2.xyz, cb0[8].wwww, cb0[8].xyzx
   46: add r2.xyz, r2.xyzx, v1.xyzx
   47: dp3 r0.w, r2.xyzx, r2.xyzx
   48: rsq r0.w, r0.w
   49: mul r2.xyz, r0.wwww, r2.xyzx  // r2.x <- o.n.x; r2.y <- o.n.y; r2.z <- o.n.z
 
-#line 55
+#line 54
   50: add r3.xy, v2.xyxx, cb0[9].xyxx  // r3.x <- o.uv.x; r3.y <- o.uv.y
 
-#line 56
+#line 55
   51: itof r4.xyzw, l(0, 0, 0, 0)  // r4.x <- c.x; r4.y <- c.y; r4.z <- c.z; r4.w <- c.w
 
-#line 57
+#line 56
   52: mov r0.w, l(1)
   53: and r0.w, r0.w, cb0[9].z
   54: dp3 r2.w, v1.xyzx, cb0[11].xyzx
@@ -228,7 +228,7 @@
   78: mul r5.xyzw, r2.wwww, cb0[r0.w + 21].xyzw
   79: add r4.xyzw, r4.xyzw, r5.xyzw
 
-#line 58
+#line 57
   80: ine r0.w, l(0, 0, 0, 0), cb0[10].x
   81: mov r2.w, l(7)
   82: and r2.w, r2.w, v5.x
@@ -238,15 +238,15 @@
   86: movc r5.xyzw, r0.wwww, r6.xyzw, r5.xyzw
   87: mul r4.xyzw, r4.xyzw, r5.xyzw  // r4.x <- o.c.x; r4.y <- o.c.y; r4.z <- o.c.z; r4.w <- o.c.w
 
-#line 62
+#line 61
   88: ld r5.xyzw, v5.xxxx, t1.xyzw
   89: utof r5.xyz, r5.xyzx
   90: dp3 r0.x, r0.xyzx, r5.xyzx  // r0.x <- o.clip
 
-#line 63
+#line 62
   91: xor r0.y, v4.x, v5.x  // r0.y <- o.id
 
-#line 64
+#line 63
   92: mov o0.xyzw, r1.xyzw
   93: mov o3.xyzw, r4.xyzw
   94: mov o1.xyz, r2.xyzx

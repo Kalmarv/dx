@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1 (2026-11-06)
+
+- `dxbc-reader`: the fixture generator (`tests/disasm/generate.py`) keeps a stored container whose listings under
+  every flags word are those of the new build, so a run over unchanged sources changes no file (a `/Zi` build differs
+  on every run in its digest and its PDB's GUID and timestamp). The seven `/Zi` builds of `vs_cbuffers.hlsl` were made
+  from an earlier copy of the source one line longer; they and their listings are made again from the committed one
+  (their `#line` numbers move by one). All fixtures regenerate byte for byte on Linux, with fxc 10.0.26100.4654 under
+  Wine (primase-oracles `tools/wine`).
+- `dxil-reader`: `generate_ops.py` formats `ops.rs` with rustfmt, so it writes the committed file.
+
 ## 0.5.0 (2026-11-06)
 
 - `dxil-reader`: `disasm::disassemble` writes a DXIL container's listing as dxc 1.9.2609's `dxc -dumpbin` does, byte

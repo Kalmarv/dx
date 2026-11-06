@@ -2,7 +2,8 @@
 
 dxc builds the table its disassembler annotates calls with (`; Sample(srv,sampler,...)`) from `utils/hct/hctdb.py`
 when it compiles; this runs the same functions (`get_db_dxil`, and the operands as `get_opsigs` lists them) over a
-dxc source tree at the release the listings are compared with.
+dxc source tree at the release the listings are compared with, and formats the file with rustfmt (the workspace's
+rustfmt.toml), as it is committed.
 
     python -I generate_ops.py --source <DirectXShaderCompiler checkout at v1.9.2609>
 """
@@ -53,8 +54,10 @@ def main():
     out.append("        _ => None,")
     out.append("    }")
     out.append("}")
-    with open(os.path.join(HERE, "ops.rs"), "w", newline="\n") as f:
+    path = os.path.join(HERE, "ops.rs")
+    with open(path, "w", newline="\n") as f:
         f.write("\n".join(out) + "\n")
+    subprocess.run(["rustfmt", "--edition", "2024", path], check=True)
     print(", ".join(f"{t.name} {len(list(t))}" for t in db.op_tables))
 
 

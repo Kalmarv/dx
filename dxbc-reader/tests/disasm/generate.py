@@ -23,7 +23,8 @@ FLAGS = sorted({0x8, *TEXT_FLAGS, *(a | b for a, b in itertools.combinations(TEX
 # fxc /Zi stores the source's absolute path in the container (and the listing prints it), so every source is compiled
 # from a copy in this folder: the stored path is the same on every machine, under Wine too (the prefix's drive_c),
 # and names no user. A /Zi build still differs on every run in its digest and its PDB's GUID and timestamp; its listings
-# do not.
+# do not, so a build whose listings under every flags word are those of the container already here keeps that
+# container, and a run over unchanged sources changes no file.
 STAGE = r"C:\dx-fixtures"
 
 
@@ -73,6 +74,14 @@ def version(path):
     return f"{high >> 16}.{high & 0xFFFF}.{low >> 16}.{low & 0xFFFF}"
 
 
+def same_listings(disasm, old, new):
+    """Whether the container at `old` exists and D3DDisassemble lists it as the one at `new` under every flags word."""
+    if not os.path.exists(old):
+        return False
+    a, b = open(old, "rb").read(), open(new, "rb").read()
+    return a == b or all(disasm(a, flags) == disasm(b, flags) for flags in [0] + FLAGS)
+
+
 def sha256(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest()
 
@@ -99,13 +108,20 @@ def main():
                 continue
             args = shlex.split(m.group(1), posix=False)
             out = os.path.join(here, args[args.index("/Fo") + 1])
-            args[args.index("/Fo") + 1] = out
+            fresh = out + ".new"
+            args[args.index("/Fo") + 1] = fresh
             cmd = [a.fxc, "/nologo", *args, src]
             r = subprocess.run(cmd, capture_output=True, text=True)
             if r.returncode != 0:
                 failed += 1
                 print(f"FAIL {os.path.basename(out)}: {r.stderr.strip() or r.stdout.strip()}")
+                if os.path.exists(fresh):
+                    os.remove(fresh)
                 continue
+            if same_listings(disasm, out, fresh):
+                os.remove(fresh)
+            else:
+                os.replace(fresh, out)
             built.append(out)
     for path in built:
         data = open(path, "rb").read()
