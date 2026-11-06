@@ -156,7 +156,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "d3d9-reader"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "primase-testdata",
  "thiserror",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "dx"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "clap",
  "d3d9-reader",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "dxbc-reader"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "d3d9-reader",
  "dxcontainer",
@@ -186,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "dxcontainer"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "primase-foundations",
  "thiserror",
@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "dxil-reader"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "dxcontainer",
  "primase-foundations",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "rsx-reader"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "primase-foundations",
  "thiserror",

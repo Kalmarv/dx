@@ -3,7 +3,7 @@ resolver = "3"
 members = ["d3d9-reader", "dx", "dxbc-reader", "dxcontainer", "dxil-reader", "rsx-reader"]
 
 [workspace.package]
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 rust-version = "1.99"
 license = "GPL-3.0-or-later"

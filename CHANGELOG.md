@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2 (2026-11-06)
 
 - `d3d9-reader`: Shader Model 1 and 2 listings match `D3DDisassemble` in the places they did not:
   - the instruction-slot footer counts pixel 1.x's texture addressing operations as texture slots, vertex 1.1's
