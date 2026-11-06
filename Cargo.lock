@@ -125,6 +125,7 @@ dependencies = [
  "d3d9-reader",
  "dxbc-reader",
  "dxcontainer",
+ "dxil-reader",
  "serde_json",
 ]
 

@@ -337,11 +337,25 @@ pub fn info(bytes: &[u8]) -> Result<Value, String> {
             let base = bytes.as_ptr().addr();
             let stored = bytes.get(4..20).map(hex);
             let computed = dxcontainer::checksum(bytes).map(|d| hex(&d));
-            let target = dxbc_target(bytes).map(|(_, t)| t).ok();
+            // a DXIL container's target is in its DXIL part's header; a Shader Model 4 or 5 one's in its code part
+            let dxil = directory
+                .iter()
+                .any(|c| &c.kind == b"DXIL")
+                .then(|| dxil_reader::part(bytes).map_err(|e| e.to_string()))
+                .transpose()?;
+            let target = match &dxil {
+                Some(part) => part.target(),
+                None => dxbc_target(bytes).map(|(_, t)| t).ok(),
+            };
+            let features = dxcontainer::feature_flags(bytes)
+                .map_err(|e| e.to_string())?
+                .map(|f| f.names());
             Ok(json!({
-                "format": "dxbc",
+                "format": if dxil.is_some() { "dxil" } else { "dxbc" },
                 "size": bytes.len(),
                 "target": target,
+                "program_version": dxil.map(|p| format!("0x{:08x}", p.program_version)),
+                "features": features,
                 "digest": stored,
                 "digest_matches": stored.is_some() && stored == computed,
                 "parts": directory.iter().map(|c| json!({

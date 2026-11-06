@@ -87,12 +87,6 @@ pub fn disassemble(container: &[u8]) -> Result<String> {
 /// The listing of a `DXBC` container as [`disassemble`] writes it, with `options`.
 pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
     let directory = parts(container)?;
-    if directory.iter().any(|c| &c.kind == b"DXIL") {
-        return Err(error(
-            0,
-            "a DXIL container: its program is LLVM bitcode, not a Shader Model 4 or 5 token stream",
-        ));
-    }
     let program = decode(&code(container)?)?;
     let reflection = rdef(container)?;
     let read = |tags: &[&[u8; 4]]| -> Result<Option<(Vec<crate::SignatureElement>, bool)>> {

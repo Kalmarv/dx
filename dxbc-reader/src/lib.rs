@@ -92,13 +92,27 @@ pub fn chunk<'a>(directory: &[dxcontainer::Chunk<'a>], tag: &[u8; 4]) -> Result<
     Ok(data)
 }
 
-/// The program's token stream (its `SHEX` or `SHDR` part) as 32-bit little-endian words, for [`decode()`].
-pub fn code(bytes: &[u8]) -> Result<Vec<u32>> {
-    let directory = parts(bytes)?;
-    let code = directory
+/// The container's code part (`SHEX` or `SHDR`). Refuses a `DXIL` container, whose program is a `DXIL` part of LLVM
+/// bitcode, and a container with neither, naming the parts.
+pub(crate) fn code_part<'a>(directory: &'a [dxcontainer::Chunk<'a>]) -> Result<&'a dxcontainer::Chunk<'a>> {
+    if directory.iter().any(|c| &c.kind == b"DXIL") {
+        return Err(error(
+            0,
+            "a DXIL container (Shader Model 6): its program is the DXIL part's LLVM bitcode, not a Shader Model 4 or 5 \
+             token stream",
+        ));
+    }
+    directory
         .iter()
         .find(|c| matches!(&c.kind, b"SHDR" | b"SHEX"))
-        .ok_or_else(|| error(0, "missing shader code chunk"))?;
+        .ok_or_else(|| error(0, "the container has no code part (SHEX, SHDR or DXIL)"))
+}
+
+/// The program's token stream (its `SHEX` or `SHDR` part) as 32-bit little-endian words, for [`decode()`]. Refuses
+/// what [`parts`] refuses and a container without that part (a `DXIL` one among them).
+pub fn code(bytes: &[u8]) -> Result<Vec<u32>> {
+    let directory = parts(bytes)?;
+    let code = code_part(&directory)?;
     if code.data.len() % 4 != 0 {
         return Err(error(
             code.data.len() / 4,

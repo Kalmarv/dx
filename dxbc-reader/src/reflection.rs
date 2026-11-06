@@ -372,10 +372,7 @@ pub fn signature_elements(
 
 /// The type of a container's program: its code part's version token names it in the high 16 bits.
 pub fn program_type(directory: &[dxcontainer::Chunk<'_>]) -> Result<ProgramType> {
-    let code = directory
-        .iter()
-        .find(|c| matches!(&c.kind, b"SHDR" | b"SHEX"))
-        .ok_or_else(|| error(0, "the container has no SHDR or SHEX part"))?;
+    let code = crate::code_part(directory)?;
     let token = View(code.data).u32(0)?;
     match token >> 16 {
         0 => Ok(ProgramType::Pixel),

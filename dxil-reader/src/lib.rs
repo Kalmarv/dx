@@ -65,6 +65,28 @@ pub struct Part<'a> {
     pub bitcode: &'a [u8],
 }
 
+impl Part<'_> {
+    /// The target the program was compiled for, as `dxc -T` names it (`ps_6_0`, `lib_6_3`, `ms_6_5`): the shader kind
+    /// by DXC's `DXIL::ShaderKind` numbering and the model. `None` for a kind no target names (the ray tracing kinds,
+    /// 7 to 12, which only a library's functions have).
+    pub fn target(&self) -> Option<String> {
+        let prefix = match self.program_version >> 16 {
+            0 => "ps",
+            1 => "vs",
+            2 => "gs",
+            3 => "hs",
+            4 => "ds",
+            5 => "cs",
+            6 => "lib",
+            13 => "ms",
+            14 => "as",
+            _ => return None,
+        };
+        let (major, minor) = ((self.program_version >> 4) & 0xf, self.program_version & 0xf);
+        Some(format!("{prefix}_{major}_{minor}"))
+    }
+}
+
 /// The parts of a DXBC container (its directory), an error of the container at the bit of its byte.
 pub fn parts(container: &[u8]) -> Result<Vec<dxcontainer::Chunk<'_>>> {
     dxcontainer::chunks(container).map_err(|e| error(e.offset.saturating_mul(8), e.detail))
