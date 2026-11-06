@@ -56,6 +56,19 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   `PCSG` and `PSG1` parts.
 - **Statistics** (`statistics`): the `STAT` part, the compiler's counters, with accessors for the words checked against
   `D3DReflect`.
+- **Class linkage** (`interfaces`): the `IFCE` part of a program with class linkage, its class types, class instances
+  and interface slot records.
+- **Feature level 9** (`level9`): the `Aon9` part of a `_level_9_x` container, its Direct3D 9 program and the mappings
+  of its constant buffers, samplers and runtime constants.
+- **Listing** (`disassemble`, `disassemble_with`, `Options`): a Shader Model 4, 5 or 5.1 container's text listing as
+  Microsoft's disassembler writes it (`D3DDisassemble` of d3dcompiler_47 10.0.26100.4654, `fxc /dumpbin`), byte for
+  byte: the header (buffer definitions, resource bindings, class tables, signatures, functionality notes,
+  tessellation tables), the program and its instruction count; a level 9 container's as well, with the Direct3D 9
+  program of its `Aon9` part. `Options::from_flags` takes the `D3D_DISASM_*` flags word: `0x40` leaves out the
+  header, `0x04` numbers the instructions, `0x20` writes their offsets, `0x80` writes literals in hex (`0x02` and
+  `0x10` change nothing in the text this writes); it refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's
+  disassembler refuses too. A container with an `SPDB` part (the PDB `fxc /Zi` embeds) is written without the source
+  lines and variable locations Microsoft's listing interleaves (its listing with `0x10`).
 - **Container** (`parts`, over the `dxcontainer` crate).
 
 Numbers are Direct3D's own (`D3D_NAME`, `D3D_SHADER_INPUT_TYPE`, `D3D_REGISTER_COMPONENT_TYPE`, ...), as stored.
@@ -69,8 +82,8 @@ dimensions, an operand count other than the opcode's format) is an `Error` namin
 
 ## What it does not do
 
-It does not execute, translate or validate programs. Declarations of the tessellation and geometry stages (and interface
-tables) are kept as `Declared::Other` with their raw words (`Declaration`'s accessors read their values). Shader Model
+It does not execute, translate or validate programs. Declarations of the tessellation and geometry stages are kept as
+`Declared::Other` with their raw words (`Declaration`'s accessors read their values). Shader Model
 5.1's binding declarations and operands (the id, the register range and the space) are read as fxc's disassembly of
 the `sm51` fixtures gives them; no game program checks them yet, the D3D11 games' being 4.0 and 5.0 (Direct3D 11 does
 not load 5.1). Nothing in the 7,729 programs of Sekiro, Riders Republic and Sledding Game needs more: they hold no
@@ -84,8 +97,10 @@ Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s
 ## Tests
 
 `cargo test -p dxbc-reader`: token streams assembled by hand (a vertex program, typed declarations, an instruction's
-controls and extended tokens, the refusals by name) and the 30 committed fixtures in `tests/fixtures`, compiled by `fxc`
-from the HLSL beside each (`.od` files with `/Od`), each read to its end. No game files are needed.
+controls and extended tokens, the refusals by name) and the committed fixtures in `tests/fixtures` and `tests/disasm`,
+compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end. `tests/disasm.rs` compares
+the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them). No game files are needed.
 
 ## Check the examples
 

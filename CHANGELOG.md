@@ -8,15 +8,22 @@
   by shader model and stage; `dx reflect FILE` writes the `RDEF` bindings and buffer layouts, the signatures, the
   `STAT` counters, the `SFI0` flags and the level 9 mappings of a DXBC container, or a Direct3D 9 program's constant
   table, as JSON (`--json`) or indented text, each record with D3D's numbers and the disassembler's names; `dx info
-  FILE` writes a container's parts with their offsets and sizes, its digest and whether it matches.
+  FILE` writes a container's parts with their offsets and sizes, its digest and whether it matches, its target and its
+  `SFI0` feature flags; a DXIL container's target is its `DXIL` part's (`ps_6_0`). A folder holds the files that start
+  as a container or a Direct3D 9 program does, so the other files beside them (scripts, tables) are left out and
+  counted. `--check` finds a program's listing by its whole file name first (`NAME.vpo.flag24.asm`), and by `NAME`
+  alone only where no other program in the folder is `NAME` with another extension; it fails when no program has a
+  listing to compare. `dx disasm` says on stderr when a container's `SPDB` annotations are left out.
 - `dxbc-reader`: `disassemble` and `disassemble_with(&[u8], &Options)` write a Shader Model 4, 5 or 5.1 container's
   listing as `D3DDisassemble` (d3dcompiler_47 10.0.26100.4654) does, byte for byte: the header (buffer definitions,
   resource bindings, signatures, functionality notes, tessellation tables), the program and its slot count.
   `Options::from_flags` takes Microsoft's flags word: `0x40` leaves out the header, `0x04` numbers the instructions,
-  `0x20` writes their offsets, `0x80` writes literals in hex (`0x02` and `0x10` change nothing in the text); it
+  `0x20` writes their offsets (after the number, `   3  0x00000024: `, with both), `0x80` writes literals in hex
+  (`0x02` and `0x10` change nothing in the text); it
   refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's disassembler refuses too. The listings are identical to
-  Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 390 of Sekiro's, and for 553 listings of
-  79 fixture programs under seven flag words, class linkage included; a container with an `SPDB` part (the PDB
+  Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 432 of Sekiro's under each of 23 flag
+  words, and for 1,817 listings of 79 fixture programs under the same 23 (no flags, and the flags that change the text
+  alone, in pairs and all together), class linkage included; a container with an `SPDB` part (the PDB
   `fxc /Zi` embeds: source lines and variable locations) differs, in those annotations only.
 - `dxbc-reader`: `interfaces` reads the `IFCE` part of a program with class linkage: its class types, class instances
   and interface slot records (`Interfaces`, `ClassType`, `ClassInstance`, `InterfaceSlots`). The listing writes them
@@ -37,9 +44,10 @@
   `scalar_name`; `SignatureElement::system_value_for` (a pixel program's outputs store no system value; theirs is the one
   the semantic names), `system_value_name` and `format_name`.
 - `d3d9-reader`: `disassemble_with(&[u8], &Options)` and `Options::from_flags`, the same flags as `dxbc-reader`'s. The
-  listings are identical to Microsoft's for all 7,306 programs of Shaun White Snowboarding (6,207 `ps_3_0`, 1,099
-  `vs_3_0`) and 182 listings of 26 fixture programs (`vs_2_0` to `ps_3_0`) under seven flag words, struct parameters
-  and the texture and arithmetic slot split included.
+  listings are identical to Microsoft's for all 7,306 programs of Shaun White Skateboarding (6,207 `ps_3_0`, 1,099
+  `vs_3_0`) and 782 listings of 34 fixture programs (`vs_1_1` and `ps_1_1` to `ps_3_0`) under the 23 flag words,
+  struct parameters, co-issue (`  + mov r0.w, v0`, which takes no slot and no number) and the texture and arithmetic
+  slot split included. The Shader Model 1 fixtures are written from their tokens, which fxc no longer compiles.
 - `dxbc-reader`: `decode` refuses an instruction whose trailing words decode as more operands than its opcode's
   format has, naming the count, where it took the first operands before. A change for code that relied on it.
 
