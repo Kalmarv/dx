@@ -64,8 +64,9 @@ Run it with `cargo run -p dxil-reader --example inspect_dxil -- <files>`; the so
   components, the usage mask), the optional fields of each resource record (`resource_extras`: an SRV's sample count, a
   UAV's coherence, rasterizer order and 64-bit atomic use, the tag list), and the string attribute of the entry function
   that states the denormal mode (`fp32_denorm_mode`).
-- **Pipeline state** (`psv`): the `PSV0` part the validator writes: runtime information (36, 48, 52 or 56 bytes), resource
-  records, strings, semantic indices, signature elements and the dependency words.
+- **Pipeline state** (`psv`): the `PSV0` part the validator writes: runtime information (24, 36, 48, 52 or 56 bytes;
+  validator 1.0's 24 bytes too), resource records, strings, semantic indices, signature elements and the dependency
+  words.
 - **Runtime data** (`rdat`): a library's subobjects as its `RDAT` part stores them (state object and pipeline configuration,
   root signatures, associations, hit groups), and a function's export name from its decorated name.
 - `operations`: the `dx.op` operations a container's module calls, by name, for surveying shaders.
@@ -103,7 +104,7 @@ because a metadata node has no position of its own.
 
 ## Tests
 
-`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (132 `.dxil` files compiled by dxc 1.9.2609 from the
+`cargo test -p dxil-reader`: every committed fixture in `tests/fixtures` (139 `.dxil` files, all but `matrix_lib15` compiled by dxc 1.9.2609 from the
 HLSL beside each, with the command in each file; `.od` files with `-Od`) is read, control-flow and memory fixtures are checked
 in detail, and `RDAT` data laid out by hand exercises every subobject kind and the refusals. `tests/disasm.rs` compares the
 listing of every fixture (every stage, ray tracing libraries included) with dxc's own in `tests/disasm/listings`, which

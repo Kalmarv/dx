@@ -3,8 +3,9 @@
 //! metadata. Little-endian.
 //!
 //! ```text
-//! u32 runtime-info size (36, 48, 52 or 56), then the runtime info
+//! u32 runtime-info size (24, 36, 48, 52 or 56), then the runtime info
 //! u32 resource count; when it is not zero, u32 record size (16 or 24), then the records
+//! then, where the runtime info is 36 bytes or more:
 //! u32 string-table size, then the table
 //! u32 semantic-index count, then the indices (u32 each)
 //! u32 element size (16) when there are any input, output or patch-constant elements, then the input, the output and
@@ -22,9 +23,10 @@
 //! depth (byte 0) and whether it shades per sample (byte 1); hull, the input and output control point counts, the
 //! domain and the output primitive; domain, the input control point count; geometry, the input primitive, the output
 //! topology, the output stream mask and whether it writes a position. The record sizes follow the validator that wrote
-//! the part: validator 1.5 writes a 36-byte runtime info and 16-byte resource records, 1.6 writes 48 and 24, and 1.10
-//! writes 52 and 24 (the 16-byte records have no kind or flags). The 56-byte runtime info is the fourth version of the
-//! layout in dxc's source (`PSVRuntimeInfo4`). The reader reads these four sizes only.
+//! the part: validator 1.0 writes a 24-byte runtime info, which ends at the wave lane counts, and its part ends with
+//! the resource records; 1.5 writes a 36-byte runtime info and 16-byte resource records, 1.6 writes 48 and 24, and
+//! 1.10 writes 52 and 24 (the 16-byte records have no kind or flags). The 56-byte runtime info is the fourth version
+//! of the layout in dxc's source (`PSVRuntimeInfo4`). The reader reads these five sizes only.
 //!
 //! Every field above was checked against the metadata of the same program in the stock containers of skate. (19,240
 //! with a `PSV0` part, validator 1.10) and Elden Ring (46,002; 10 with validator 1.5, 45,992 with 1.6): the layout
@@ -49,6 +51,23 @@ pub struct RuntimeInfo {
     pub min_wave_lanes: u32,
     /// The largest wave lane count the program expects (`u32::MAX` where it states none).
     pub max_wave_lanes: u32,
+    /// The stage and the signature's counts, from 36 bytes of runtime info; the 24 bytes validator 1.0 writes have
+    /// none.
+    pub signature: Option<StageSignature>,
+    /// The thread group size, from 48 bytes of runtime info.
+    pub num_threads: Option<[u32; 3]>,
+    /// The offset of the entry point's name in the string table, from 52 bytes of runtime info.
+    pub entry_name: Option<u32>,
+    /// The bytes of group-shared memory a compute, mesh or amplification program uses, from 56 bytes of runtime info.
+    pub group_shared_bytes: Option<u32>,
+    /// The size of the runtime info in bytes (24, 36, 48, 52 or 56), which says which of its versions the part holds.
+    pub size: u32,
+}
+
+/// The runtime info's bytes 24 to 35 (dxc's `PSVRuntimeInfo1`): the stage and the counts of the signatures the part's
+/// tables hold.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StageSignature {
     /// The shader kind (0 pixel, 1 vertex, 2 geometry, 3 hull, 4 domain, 5 compute, 13 mesh, ...), as in the program
     /// header.
     pub stage: u8,
@@ -63,14 +82,6 @@ pub struct RuntimeInfo {
     pub input_vectors: u8,
     /// How many output vectors it writes, per stream.
     pub output_vectors: [u8; 4],
-    /// The thread group size, from 48 bytes of runtime info.
-    pub num_threads: Option<[u32; 3]>,
-    /// The offset of the entry point's name in the string table, from 52 bytes of runtime info.
-    pub entry_name: Option<u32>,
-    /// The bytes of group-shared memory a compute, mesh or amplification program uses, from 56 bytes of runtime info.
-    pub group_shared_bytes: Option<u32>,
-    /// The size of the runtime info in bytes (36, 48, 52 or 56), which says which of its versions the part holds.
-    pub size: u32,
 }
 
 /// A resource record.
@@ -191,10 +202,10 @@ pub fn read(data: &[u8]) -> Result<Psv> {
 
     let info_size = count(0, "the runtime info size")?;
     let mut at = 4usize;
-    if !matches!(info_size, 36 | 48 | 52 | 56) {
+    if !matches!(info_size, 24 | 36 | 48 | 52 | 56) {
         return Err(error(
             0,
-            format!("PSV0: a runtime info of {info_size} bytes, where only 36, 48, 52 and 56 are read"),
+            format!("PSV0: a runtime info of {info_size} bytes, where only 24, 36, 48, 52 and 56 are read"),
         ));
     }
     let info = view
@@ -216,12 +227,18 @@ pub fn read(data: &[u8]) -> Result<Psv> {
         stage_words: [info_word(0)?, info_word(1)?, info_word(2)?, info_word(3)?],
         min_wave_lanes: info_word(4)?,
         max_wave_lanes: info_word(5)?,
-        stage: byte(24)?,
-        uses_view_id: byte(25)? != 0,
-        stage_data: u16::from_le_bytes([byte(26)?, byte(27)?]),
-        element_counts: [byte(28)?, byte(29)?, byte(30)?],
-        input_vectors: byte(31)?,
-        output_vectors: [byte(32)?, byte(33)?, byte(34)?, byte(35)?],
+        signature: if info_size >= 36 {
+            Some(StageSignature {
+                stage: byte(24)?,
+                uses_view_id: byte(25)? != 0,
+                stage_data: u16::from_le_bytes([byte(26)?, byte(27)?]),
+                element_counts: [byte(28)?, byte(29)?, byte(30)?],
+                input_vectors: byte(31)?,
+                output_vectors: [byte(32)?, byte(33)?, byte(34)?, byte(35)?],
+            })
+        } else {
+            None
+        },
         num_threads: if info_size >= 48 {
             Some([info_word(9)?, info_word(10)?, info_word(11)?])
         } else {
@@ -270,6 +287,29 @@ pub fn read(data: &[u8]) -> Result<Psv> {
         }
     }
 
+    // a version-0 part ends with its resource records: the tables after them are counted by the runtime info's later
+    // bytes
+    let Some(signature) = runtime.signature else {
+        if at != data.len() {
+            return Err(error(
+                bit(at),
+                format!(
+                    "PSV0: {} bytes after the resource records of a 24-byte runtime info",
+                    data.len().saturating_sub(at)
+                ),
+            ));
+        }
+        return Ok(Psv {
+            runtime,
+            resources,
+            strings: Vec::new(),
+            semantic_indices: Vec::new(),
+            inputs: Vec::new(),
+            outputs: Vec::new(),
+            patch_constants: Vec::new(),
+            dependencies: Vec::new(),
+        });
+    };
     let strings_size = count(at, "the string table size")?;
     at = advance(at, 4)?;
     let strings = view
@@ -297,7 +337,7 @@ pub fn read(data: &[u8]) -> Result<Psv> {
     at = advance(at, index_bytes.len())?;
 
     let mut elements = [Vec::new(), Vec::new(), Vec::new()];
-    if runtime.element_counts.iter().any(|n| *n > 0) {
+    if signature.element_counts.iter().any(|n| *n > 0) {
         let size = count(at, "the element size")?;
         at = advance(at, 4)?;
         if size != 16 {
@@ -306,7 +346,7 @@ pub fn read(data: &[u8]) -> Result<Psv> {
                 format!("PSV0: signature elements of {size} bytes, where only 16 are read"),
             ));
         }
-        for (list, n) in elements.iter_mut().zip(runtime.element_counts) {
+        for (list, n) in elements.iter_mut().zip(signature.element_counts) {
             for _ in 0..n {
                 let raw = view
                     .array::<16>(at)

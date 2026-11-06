@@ -161,7 +161,7 @@ pub(super) fn hash(s: &mut String, part: &[u8]) -> Result<()> {
 
 /// `PrintPipelineStateValidationRuntimeInfo`: the `PSV0` part's runtime info, for a program of `kind` (the program
 /// header's shader kind, which the runtime info's own stage overrides).
-pub(super) fn psv_runtime(s: &mut String, p: &psv::Psv) -> Result<()> {
+pub(super) fn psv_runtime(s: &mut String, p: &psv::Psv, kind: u8) -> Result<()> {
     let r = &p.runtime;
     let [w0, w1, w2, w3] = r.stage_words;
     let byte = |w: u32, i: u32| w.wrapping_shr(i.wrapping_mul(8)) & 0xFF;
@@ -175,7 +175,7 @@ pub(super) fn psv_runtime(s: &mut String, p: &psv::Psv) -> Result<()> {
             let _ = writeln!(s, "; NumBytesGroupSharedMemory: {n}");
         }
     };
-    match r.stage {
+    match r.signature.map_or(kind, |g| g.stage) {
         3 => {
             let _ = writeln!(
                 s,
@@ -246,13 +246,16 @@ pub(super) fn psv_runtime(s: &mut String, p: &psv::Psv) -> Result<()> {
             threads(s);
         }
         13 => {
-            let topology = match r.stage_data >> 8 {
-                0 => "undefined",
-                1 => "line",
-                2 => "triangle",
-                _ => "invalid",
-            };
-            let _ = writeln!(s, "; Mesh Shader\n; MeshOutputTopology={topology}");
+            s.push_str("; Mesh Shader\n");
+            if let Some(g) = r.signature {
+                let topology = match g.stage_data >> 8 {
+                    0 => "undefined",
+                    1 => "line",
+                    2 => "triangle",
+                    _ => "invalid",
+                };
+                let _ = writeln!(s, "; MeshOutputTopology={topology}");
+            }
             threads(s);
         }
         _ => {}
@@ -266,15 +269,17 @@ pub(super) fn psv_runtime(s: &mut String, p: &psv::Psv) -> Result<()> {
             r.min_wave_lanes, r.max_wave_lanes
         );
     }
-    let [inputs, outputs, patch] = r.element_counts;
-    let _ = writeln!(
-        s,
-        "; UsesViewID: {}\n; SigInputElements: {inputs}\n; SigOutputElements: {outputs}\n\
-         ; SigPatchConstOrPrimElements: {patch}\n; SigInputVectors: {}",
-        r.uses_view_id, r.input_vectors
-    );
-    for (i, v) in r.output_vectors.iter().enumerate() {
-        let _ = writeln!(s, "; SigOutputVectors[{i}]: {v}");
+    if let Some(g) = r.signature {
+        let [inputs, outputs, patch] = g.element_counts;
+        let _ = writeln!(
+            s,
+            "; UsesViewID: {}\n; SigInputElements: {inputs}\n; SigOutputElements: {outputs}\n\
+             ; SigPatchConstOrPrimElements: {patch}\n; SigInputVectors: {}",
+            g.uses_view_id, g.input_vectors
+        );
+        for (i, v) in g.output_vectors.iter().enumerate() {
+            let _ = writeln!(s, "; SigOutputVectors[{i}]: {v}");
+        }
     }
     if let Some(name) = r.entry_name {
         let _ = writeln!(s, "; EntryFunctionName: {}", p.string(name)?);
@@ -525,10 +530,17 @@ impl Types<'_> {
             }
             match types.get(element) {
                 Some(Type::Vector(_, e)) => element = *e,
+                // a high-level `class.matrix.*` struct, which dxc 1.5 and earlier leave in a library's buffer types:
+                // dxc takes its element type, which only tells it apart from a struct field, as `is_matrix` does
+                Some(Type::Struct { .. }) if self.is_matrix(element) => {}
                 Some(Type::Struct { .. }) => {
                     return Err(error(
                         self.m.at,
-                        "a buffer field of an HLSL matrix type is not supported",
+                        format!(
+                            "the buffer field {} has a matrix annotation and the struct type {}, which is not a matrix",
+                            f.name,
+                            self.struct_name(element)
+                        ),
                     ));
                 }
                 _ => {}

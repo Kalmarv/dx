@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Breaking, `dxil-reader`: a `PSV0` part with the 24-byte runtime info validator 1.0 writes reads, and its program
+  lists as dxc 1.9.2609 lists it; before, the part was refused ("a runtime info of 24 bytes") and with it the listing.
+  Such a part ends with its resource records. `psv::RuntimeInfo::signature` (a `psv::StageSignature`) holds the
+  stage, the view-id flag, the stage's u16, the element and vector counts, which were `RuntimeInfo`'s own fields and
+  are `None` for 24 bytes; the listing then takes the stage from the program header. Six new fixtures
+  (`validator10.*`, one per Shader Model 6.0 stage) and their dxc listings.
+- `dxil-reader`: a buffer field whose type is a high-level matrix (`class.matrix.*`), which dxc 1.4 and 1.5 leave in a
+  library's structured and constant buffer types (dxc 1.6 and later write lowered `hostlayout.*` types), lists as dxc
+  1.9.2609 lists it (its matrix type, and a one-level matrix array without its length); before, the listing was
+  refused ("a buffer field of an HLSL matrix type is not supported"). A matrix-annotated field of a struct that is not
+  a matrix is still refused, naming the field and the struct. New fixture `matrix_lib15`, a `lib_6_3` library built by
+  dxc 1.5.2010.
+
 ## 0.8.0 (2026-11-06)
 
 - `dxbc-reader`: `/Zi` listings name and order the variables' locations as Microsoft's disassembler does, so the
