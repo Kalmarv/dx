@@ -111,7 +111,9 @@ def compute_plan():
     meta = json.loads(run("cargo", "metadata", "--no-deps", "--format-version", "1").stdout)
     members = set(meta["workspace_members"])
     pkgs = {p["name"]: p for p in meta["packages"] if p["id"] in members}
-    wanted = set(os.environ.get("RELEASE_BINS", "").split())
+    # RELEASE_BINS: `bin` (every target) or `bin:windows` / `bin:linux` (only targets whose triple names it)
+    only = dict((w.split(":") + [""])[:2] for w in os.environ.get("RELEASE_BINS", "").split())
+    wanted = set(only)
     head = run("git", "rev-parse", "HEAD").stdout.strip()
 
     units = {}
@@ -124,7 +126,7 @@ def compute_plan():
         u = units.setdefault(key, {"package": key, "version": p["version"], "crates": [], "bins": []})
         if publishable:
             u["crates"].append(p["name"])
-        u["bins"] += [{"package": p["name"], "bin": b} for b in bins]
+        u["bins"] += [{"package": p["name"], "bin": b, "only": only[b]} for b in bins]
     missing = wanted - {b["bin"] for u in units.values() for b in u["bins"]}
     if missing:
         sys.exit(f"RELEASE_BINS names binaries no workspace package has: {' '.join(sorted(missing))}")
@@ -212,6 +214,8 @@ def build_cmd(target):
     exe = ".exe" if "windows" in target else ""
     for u in load_plan():
         for b in u["bins"]:
+            if b.get("only") and b["only"] not in target:
+                continue
             run("cargo", "build", "--release", *LOCKED, "--target", target, "-p", b["package"], "--bin", b["bin"],
                 capture=False)
             built = ROOT / "target" / target / "release" / f"{b['bin']}{exe}"
