@@ -37,17 +37,16 @@ Rust 1.99 or newer (edition 2024). The repository pins its toolchain in `rust-to
 | [`dxil-reader`](dxil-reader) | DXIL, Shader Model 6, with reflection, `PSV0`, `RDAT` and the `dxc -dumpbin` listing |
 | [`rsx-reader`](rsx-reader) | PS3 texture descriptors, Cg binary programs, fragment and vertex microcode |
 
-`dxcontainer`, `dxbc-reader`, `dxil-reader` and `rsx-reader` are published on crates.io at 0.4.0:
+All five are published on crates.io at 0.4.0:
 
 ```sh
 cargo add dxbc-reader
 ```
 
-`d3d9-reader` is not published yet, and Shader Model 5.1 support in `dxbc-reader` is newer than the published 0.4.0.
-For either, depend on the repository:
+Shader Model 5.1 support in `dxbc-reader` is newer than the published 0.4.0; until the next release, depend on the
+repository for it:
 
 ```toml
-d3d9-reader = { git = "https://github.com/Kalmarv/dx" }
 dxbc-reader = { git = "https://github.com/Kalmarv/dx" }
 ```
 
