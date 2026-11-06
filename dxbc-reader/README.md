@@ -69,7 +69,8 @@ Run it with `cargo run -p dxbc-reader --example inspect_dxbc -- <files>`; the so
   out the debug information (`0x02` changes nothing in the text this writes); it refuses `0x01` (an HTML listing) and
   `0x08`, which Microsoft's disassembler refuses too. A container with an `SPDB` part (the PDB `fxc /Zi` embeds) is
   written with the source lines and variable locations Microsoft's listing interleaves: `#line` lines, the
-  variables' initial locations, and after an instruction the locations that start at the next (`r0.xyz <- c.rgb`).
+  variables' initial locations, and after an instruction the locations that start at the next (`r0.xyz <- c.rgb`; an
+  inlined call's variables only after an instruction in the code the call spans).
   The PDB is read without file access, from the part's bytes: the MSF streams, the line and inlinee tables, the
   symbols and the types the locations name.
 - **Container** (`parts`, over the `dxcontainer` crate).
@@ -103,8 +104,8 @@ Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s
 controls and extended tokens, the refusals by name) and the committed fixtures in `tests/fixtures` and `tests/disasm`,
 compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end. `tests/disasm.rs` compares
 the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
-change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 4,002 listings of 174
-programs, 92 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 4,508 listings of 196
+programs, 104 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
 `tests/spdb.rs` changes every byte of two `/Zi` builds' `SPDB` parts and checks each is written or refused without a
 panic. No game files are needed for these.
 

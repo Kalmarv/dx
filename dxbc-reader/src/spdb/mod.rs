@@ -1,7 +1,8 @@
 //! The `SPDB` part `fxc /Zi` writes: a program database (PDB) in a multi-stream file, which says the source line of
 //! each instruction and where each variable lives. The listing writes it as `#line` lines, a block of the variables'
 //! initial locations before the first instruction with a line, and after an instruction the variables whose location
-//! starts at the next one.
+//! starts at the next one: a function's own variables after any instruction, an inlined call's only after one in the
+//! code the call spans.
 //!
 //! Read from the PDB, as fxc 10.0.26100.4654 writes it:
 //! - stream 1 (PDB info) names the string table stream, `/names`;
@@ -46,8 +47,32 @@ pub(crate) struct Annotations {
     pub(crate) initial: Vec<String>,
     /// The source file's path and line of each record's byte offset that has one.
     pub(crate) sources: BTreeMap<u32, (String, u32)>,
-    /// The locations that start at each byte offset: `r0.x <- name.member`.
-    pub(crate) starting: BTreeMap<u32, Vec<String>>,
+    /// The locations that start at each byte offset: `r0.x <- name.member`, and the inlined call whose scope holds
+    /// the variable (`None` for a function's own).
+    starting: BTreeMap<u32, Vec<(String, Option<usize>)>>,
+    /// The code each inlined call spans: from its first row's byte offset to its last row's end, any of the caller's
+    /// code between its rows among it.
+    sites: Vec<(u32, u32)>,
+}
+
+impl Annotations {
+    /// The locations written after the record at byte offset `at`: those that start at `next`, the following record,
+    /// where the variable's scope covers `at`. A function's variables are written after any record; an inlined call's
+    /// only after a record in the code the call spans, so not after the caller's code that leads into it.
+    pub(crate) fn after(&self, at: u32, next: u32) -> Vec<&str> {
+        let covers = |site: usize| {
+            self.sites
+                .get(site)
+                .is_some_and(|&(start, end)| start <= at && at < end)
+        };
+        self.starting
+            .get(&next)
+            .into_iter()
+            .flatten()
+            .filter(|(_, site)| site.is_none_or(covers))
+            .map(|(name, _)| name.as_str())
+            .collect()
+    }
 }
 
 /// A variable's range in a register (`S_DEFRANGE_HLSL`).
@@ -80,16 +105,19 @@ struct Local {
 /// A scope's variables: its nested scopes' come before its own.
 #[derive(Default)]
 struct Scope {
+    /// The inlined call the scope is (its index in the calls in symbol order), `None` for a function.
+    site: Option<usize>,
     nested: Vec<Scope>,
     locals: Vec<Local>,
 }
 
 impl Scope {
-    fn flatten(self, out: &mut Vec<Local>) {
+    /// The variables in listing order, each with the inlined call whose scope holds it.
+    fn flatten(self, out: &mut Vec<(Local, Option<usize>)>) {
         for scope in self.nested {
             scope.flatten(out);
         }
-        out.extend(self.locals);
+        out.extend(self.locals.into_iter().map(|local| (local, self.site)));
     }
 }
 
@@ -164,8 +192,11 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
                     root.push(Scope::default());
                 }
                 INLINE_SITE => {
+                    root.push(Scope {
+                        site: Some(sites.len()),
+                        ..Scope::default()
+                    });
                     sites.push(site(s, data, next, code, &inlinees)?);
-                    root.push(Scope::default());
                 }
                 END | INLINE_SITE_END => {
                     let inner = root.pop().unwrap_or_default();
@@ -236,7 +267,7 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
     }
     // the initial locations group by register: one line to each run of the same register
     let mut groups: Vec<(Base, Vec<String>)> = Vec::new();
-    for local in &locals {
+    for (local, site) in &locals {
         for r in &local.ranges {
             let mut name = format!("{} <- {}", register(r), local.name);
             // an indexable temp's array is named whole
@@ -254,7 +285,10 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
                     _ => groups.push((base, vec![name.clone()])),
                 }
             } else {
-                out.starting.entry(r.start).or_default().push(name.clone());
+                out.starting
+                    .entry(r.start)
+                    .or_default()
+                    .push((name.clone(), *site));
             }
             // after a gap the location starts again
             for &(gap, len) in &r.gaps {
@@ -262,13 +296,21 @@ pub(crate) fn annotations(part: &[u8]) -> Result<Annotations> {
                     .start
                     .saturating_add(u32::from(gap))
                     .saturating_add(u32::from(len));
-                out.starting.entry(again).or_default().push(name.clone());
+                out.starting.entry(again).or_default().push((name.clone(), *site));
             }
         }
     }
     out.initial = groups
         .into_iter()
         .map(|(_, entries)| entries.join("; "))
+        .collect();
+    out.sites = sites
+        .iter()
+        .map(|rows| {
+            let start = rows.iter().map(|r| r.start).min().unwrap_or(0);
+            let end = rows.iter().map(|r| r.end).max().unwrap_or(0);
+            (start, end)
+        })
         .collect();
     Ok(out)
 }
@@ -391,19 +433,26 @@ fn subsections(
                     r = s.plus(r, block)?;
                 }
             }
-            // inlinee lines: the signature 0 (no extra files), then the inlinee, its file and its first line
+            // inlinee lines: a signature, then records of the inlinee, its file and its first line; under signature 1
+            // (`CV_INLINEE_SOURCE_LINE_SIGNATURE_EX`, written where an inlined function's code comes from more than
+            // one file, an `#include` among them) each record goes on with a count and that many further files, which
+            // the binary annotations name again where they switch to one
             0xf6 => {
                 let signature = s.u32(data)?;
-                if signature != 0 {
+                if signature > 1 {
                     return Err(s.fail(
                         data,
-                        format!("inlinee lines of signature {signature}, where 0 is the one known"),
+                        format!("inlinee lines of signature {signature}, where 0 and 1 are known"),
                     ));
                 }
                 let mut r = s.plus(data, 4)?;
                 while r < stop {
                     inlinees.insert(s.u32(r)?, (s.u32(s.plus(r, 4)?)?, s.u32(s.plus(r, 8)?)?));
                     r = s.plus(r, 12)?;
+                    if signature == 1 {
+                        let extra = s.size(r)?;
+                        r = s.plus(r, extra.saturating_add(1).saturating_mul(4))?;
+                    }
                 }
             }
             _ => {}
@@ -480,12 +529,14 @@ fn site(
                 code = code.saturating_add(i64::from(operand()?));
                 rows.push((code, None, file, line));
             }
-            // the length of the last row
+            // the length of the last row, which moves the code offset past it (where a length and a code delta in
+            // one, 12, does not): the next row's delta counts from the row's end
             4 => {
                 let len = operand()?;
                 rows.last_mut()
                     .ok_or_else(|| s.fail(at, "a code length before any row"))?
                     .1 = Some(len);
+                code = code.saturating_add(i64::from(len));
             }
             5 => file = operand()?,
             6 => line = line.saturating_add(signed(operand()?)),

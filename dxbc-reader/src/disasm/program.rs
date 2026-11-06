@@ -1052,9 +1052,9 @@ pub(super) fn write(
         if let Some(a) = annotations
             && a.first.is_none_or(|first| at >= first)
             && !bare.starts_with("dcl_")
-            && let Some(starting) = rows
-                .get(n.saturating_add(1))
-                .and_then(|next| a.starting.get(&offset(next)))
+            && let Some(next) = rows.get(n.saturating_add(1))
+            && let starting = a.after(at, offset(next))
+            && !starting.is_empty()
         {
             let prior = if bare.starts_with("else") {
                 "Prior locations: "

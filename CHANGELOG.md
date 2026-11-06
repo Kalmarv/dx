@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- `dxbc-reader`: `/Zi` listings are Microsoft's where three new kinds of program made them differ:
+  - inlinee lines of signature 1 (`CV_INLINEE_SOURCE_LINE_SIGNATURE_EX`, which an inlined function with code from an
+    `#include` makes) are read, where they were refused;
+  - a binary annotation's code length (op 4) moves the code offset past the row it ends, so the next row's code delta
+    counts from there: an inlined call's rows no longer overlap its caller's code, whose instruction got the inlinee's
+    `#line`;
+  - after an instruction, an inlined call's variables are written only where the instruction is in the code the call
+    spans (from its first row to its last, its nested calls' code and its caller's code between its rows among it); a
+    function's own variables after any instruction, as before. The caller's code that leads into a call wrote the
+    call's parameters early.
+- `dxbc-reader`: 22 new fixture programs and their 506 listings (`tests/disasm`; 4,508 listings of 196 programs, 104 of
+  them `/Zi` builds): inlined calls from an included file, two and three deep, in a loop and with an else
+  (`zi_inlined`, `zi_scopes`), interface arrays indexed by a register (`classes_arrays2d`), Shader Model 4.0 and 4.1
+  vertex, geometry and pixel programs, feature level 9_1 and 9_3 pixel and vertex programs (one a `/Zi` build) and
+  Shader Model 5.1 pixel and compute programs with register spaces and unbounded arrays. `generate.py` takes the
+  sources to build and copies the `.hlsli` files beside them.
 - `dxil-reader`: `ops.rs` is written by `cargo xtask dxil-ops` (a Rust task in the workspace) from the operation tables
   dxc 1.9.2609 commits in C++ (`DxilOperations.cpp`, `DxilInstructions.h`, `DxilConstants.h`), where `generate_ops.py`
   ran dxc's Python database and rustfmt. The tables are the same; the file is marked `@generated`, rustfmt leaves it

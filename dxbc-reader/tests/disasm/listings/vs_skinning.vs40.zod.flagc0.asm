@@ -1,0 +1,58 @@
+vs_4_0
+dcl_constantbuffer CB0[68], dynamicIndexed
+dcl_resource_buffer (float,float,float,float) t0
+dcl_input v0.xyzw
+dcl_input v1.xyzw
+dcl_input v2.xyzw
+dcl_input_sgv v3.x, vertex_id
+dcl_output_siv o0.xyzw, position
+dcl_output o1.xyzw
+dcl_output o2.x
+dcl_temps 3
+//
+// Initial variable locations:
+//   v0.x <- p.x; v0.y <- p.y; v0.z <- p.z; v0.w <- p.w; 
+//   v1.x <- idx.x; v1.y <- idx.y; v1.z <- idx.z; v1.w <- idx.w; 
+//   v2.x <- w.x; v2.y <- w.y; v2.z <- w.z; v2.w <- w.w; 
+//   v3.x <- vid; 
+//   o2.x <- <main return value>.fog; 
+//   o1.x <- <main return value>.c.x; o1.y <- <main return value>.c.y; o1.z <- <main return value>.c.z; o1.w <- <main return value>.c.w; 
+//   o0.x <- <main return value>.p.x; o0.y <- <main return value>.p.y; o0.z <- <main return value>.p.z; o0.w <- <main return value>.p.w
+//
+#line 8 "C:\dx-fixtures\vs_skinning.hlsl"
+itof r0.xyzw, l(0x00000000, 0x00000000, 0x00000000, 0x00000000)  // r0.x <- q.x; r0.y <- q.y; r0.z <- q.z; r0.w <- q.w
+
+#line 9
+mov r1.x, v1.x
+mul r1.xyzw, v2.xxxx, cb0[r1.x + 4].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+mov r1.x, v1.y
+mul r1.xyzw, v2.yyyy, cb0[r1.x + 4].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+mov r1.x, v1.z
+mul r1.xyzw, v2.zzzz, cb0[r1.x + 4].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+mov r1.x, v1.w
+mul r1.xyzw, v2.wwww, cb0[r1.x + 4].xyzw
+add r0.xyzw, r0.xyzw, r1.xyzw
+
+#line 10
+add r0.xyzw, r0.xyzw, v0.xyzw
+dp4 r1.x, r0.xyzw, cb0[0].xyzw  // r1.x <- o.p.x
+dp4 r1.y, r0.xyzw, cb0[1].xyzw  // r1.y <- o.p.y
+dp4 r1.z, r0.xyzw, cb0[2].xyzw  // r1.z <- o.p.z
+dp4 r1.w, r0.xyzw, cb0[3].xyzw  // r1.w <- o.p.w
+mov r0.x, v3.x
+ld r0.xyzw, r0.xxxx, t0.xyzw
+mov r2.x, l(0x00000003)
+udiv null, r2.x, v3.x, r2.x
+mov r2.y, l(0x00000000)
+ieq r2.x, r2.y, r2.x
+itof r2.y, l(0x00000002)
+movc r2.x, r2.x, r2.y, l(0x3f000000)
+mul r0.xyzw, r0.xyzw, r2.xxxx  // r0.x <- o.c.x; r0.y <- o.c.y; r0.z <- o.c.z; r0.w <- o.c.w
+div r2.x, r1.z, r1.w  // r2.x <- o.fog
+mov o0.xyzw, r1.xyzw
+mov o1.xyzw, r0.xyzw
+mov o2.x, r2.x
+ret 

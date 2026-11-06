@@ -1,0 +1,77 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer CB0[10], dynamicIndexed
+dcl_sampler s0, mode_default
+dcl_resource_texture2d (float,float,float,float) t0
+dcl_input_ps linear v0.xyz
+dcl_input_ps linear v1.xy
+dcl_output o0.xyzw
+dcl_temps 5
+mov r0.xyzw, l(0,0,0,0)
+mov r1.x, l(0)
+loop 
+  ige r1.y, r1.x, cb0[9].y
+  breakc_nz r1.y
+  dp3 r1.y, v0.xyzx, cb0[r1.x + 1].xyzx
+  lt r1.z, l(0.000000), r1.y
+  mul r1.w, r1.y, cb0[9].x
+  movc r1.y, r1.z, r1.w, -r1.y
+  lt r1.z, l(0.250000), r1.y
+  if_nz r1.z
+    mul r2.xyz, r1.yyyy, cb0[r1.x + 1].xyzx
+  else 
+    add r1.z, -r1.y, l(1.000000)
+    mul r2.xyz, r1.zzzz, v0.xyzx
+  endif 
+  dp3 r1.z, r2.xyzx, v0.xyzx
+  lt r1.w, l(0.000000), r1.z
+  mul r2.w, r1.z, cb0[9].x
+  movc r1.z, r1.w, r2.w, -r1.z
+  add r1.y, r1.z, r1.y
+  mad r0.xyz, r2.xyzx, r1.yyyy, r0.xyzx
+  add r0.w, r0.w, r1.y
+  iadd r1.x, r1.x, l(1)
+endloop 
+sample_indexable(texture2d)(float,float,float,float) r1.xyzw, v1.xyxx, t0.xyzw, s0
+max r0.w, r0.w, l(0.001000)
+div r0.xyz, r0.xyzx, r0.wwww
+mov r0.w, l(1.000000)
+mul r0.xyzw, r1.xyzw, r0.xyzw
+dp3 r1.x, v0.xyzx, r0.xyzx
+lt r1.y, l(0.000000), r1.x
+mul r1.z, r1.x, cb0[9].x
+movc r1.x, r1.y, r1.z, -r1.x
+mul r1.yz, r1.xxxx, v1.xxyx
+mov r1.w, l(0)
+mov r2.xyzw, l(0,0,0,0)
+loop 
+  ige r3.x, r2.w, cb0[9].y
+  breakc_nz r3.x
+  dp3 r3.x, -v0.xyzx, cb0[r2.w + 1].xyzx
+  lt r3.y, l(0.000000), r3.x
+  mul r3.z, r3.x, cb0[9].x
+  movc r3.x, r3.y, r3.z, -r3.x
+  lt r3.y, l(0.250000), r3.x
+  if_nz r3.y
+    mul r3.yzw, r3.xxxx, cb0[r2.w + 1].xxyz
+  else 
+    add r4.x, -r3.x, l(1.000000)
+    mul r3.yzw, r4.xxxx, -v0.xxyz
+  endif 
+  dp3 r4.x, r3.yzwy, -v0.xyzx
+  lt r4.y, l(0.000000), r4.x
+  mul r4.z, r4.x, cb0[9].x
+  movc r4.x, r4.y, r4.z, -r4.x
+  add r3.x, r3.x, r4.x
+  mad r2.xyz, r3.yzwy, r3.xxxx, r2.xyzx
+  add r1.w, r1.w, r3.x
+  iadd r2.w, r2.w, l(1)
+endloop 
+sample_indexable(texture2d)(float,float,float,float) r3.xyzw, r1.yzyy, t0.xyzw, s0
+max r1.y, r1.w, l(0.001000)
+div r2.xyz, r2.xyzx, r1.yyyy
+mov r2.w, l(1.000000)
+mul r2.xyzw, r3.xyzw, r2.xyzw
+mul r1.xyzw, r1.xxxx, r2.xyzw
+mad o0.xyzw, r0.xyzw, cb0[0].xyzw, r1.xyzw
+ret 

@@ -1,0 +1,18 @@
+0x00000000: cs_5_1
+0x00000008: dcl_globalFlags refactoringAllowed
+0x0000000C: dcl_resource_raw T0[3:3], space=7
+0x00000024: dcl_uav_typed_texture2d (float,float,float,float) U0[1:2], space=0
+0x00000040: dcl_input vThreadIDInGroupFlattened
+0x00000048: dcl_input vThreadID.xyz
+0x00000050: dcl_temps 1
+0x00000058: dcl_tgsm_structured g0, 4, 64
+0x0000006C: dcl_thread_group 8, 8, 1
+0x0000007C: ishl r0.x, vThreadIDInGroupFlattened.x, l(2)
+0x00000094: ld_raw r0.x, r0.x, T0[3].xxxx
+0x000000B4: store_structured g0.x, vThreadIDInGroupFlattened.x, l(0), r0.x
+0x000000D4: sync_g_t
+0x000000D8: and r0.x, vThreadID.z, l(1)
+0x000000F0: iadd r0.y, -vThreadIDInGroupFlattened.x, l(63)
+0x0000010C: ld_structured r0.y, r0.y, l(0), g0.xxxx
+0x00000130: store_uav_typed U0[r0.x + 1].xyzw, vThreadID.xyyy, r0.yyyy
+0x00000154: ret 

@@ -1,0 +1,22 @@
+      ps_4_1
+      dcl_globalFlags refactoringAllowed
+      dcl_sampler s0, mode_default
+      dcl_resource_texture2dms(4) (float,float,float,float) t0
+      dcl_resource_texturecubearray (float,float,float,float) t1
+      dcl_input_ps linear v0.xyz
+      dcl_input_ps_siv linear noperspective v1.xy, position
+      dcl_input_ps_sgv constant v2.x, sampleIndex
+      dcl_output o0.xyzw
+      dcl_temps 2
+   0: ftoi r0.xy, v1.xyxx
+   1: mov r0.zw, l(0,0,0,0)
+   2: ldms r0.xyzw, r0.xyzw, t0.xyzw, v2.x
+   3: mov r1.xyz, v0.xyzx
+   4: mov r1.w, l(1.000000)
+   5: gather4 r1.xyzw, r1.xyzw, t1.xyzw, s0.x
+   6: add r0.xyzw, r0.xyzw, r1.xyzw
+   7: samplepos r1.xy, t0.xyxx, v2.x
+   8: add r0.xyzw, r0.xyzw, r1.xyxy
+   9: lod r1.x, v0.xyzx, t1.x, s0
+  10: add o0.xyzw, r0.xyzw, r1.xxxx
+  11: ret 

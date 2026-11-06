@@ -1,0 +1,64 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_constantbuffer CB0[6], immediateIndexed
+      dcl_sampler s0, mode_default
+      dcl_resource_texture2d (float,float,float,float) t0
+      dcl_input_ps linear v1.xy
+      dcl_input_ps linear v2.xyz
+      dcl_output o0.xyzw
+      dcl_temps 3
+//
+// Initial variable locations:
+//   v0.x <- v.pos.x; v0.y <- v.pos.y; v0.z <- v.pos.z; v0.w <- v.pos.w; 
+//   v1.x <- v.uv.x; v1.y <- v.uv.y; 
+//   v2.x <- v.n.x; v2.y <- v.n.y; v2.z <- v.n.z; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 4 "C:\dx-fixtures\zi_inlined.hlsli"
+   0: mul r0.xyz, v2.xyzx, cb0[5].xxxx  // r0.x <- r.x; r0.y <- r.y; r0.z <- r.z
+
+#line 5
+   1: mul r0.xyz, r0.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+   2: frc r0.xyz, r0.xyzx
+   3: mad r0.xyz, v2.xyzx, cb0[5].xxxx, r0.xyzx  // r0.x <- r.x; r0.y <- r.y; r0.z <- r.z
+
+#line 15 "C:\dx-fixtures\zi_inlined.hlsl"
+   4: sample_indexable(texture2d)(float,float,float,float) r1.xyzw, v1.xyxx, t0.xyzw, s0  // r1.x <- c.x; r1.y <- c.y; r1.z <- c.z; r1.w <- c.w
+
+#line 17
+   5: lt r0.w, r1.w, l(0.500000)
+
+#line 18
+   6: movc r0.xz, r0.wwww, r0.zzxz, r0.xxzx  // r0.x <- f.x; r0.z <- f.z
+
+#line 19
+   7: mul r1.xyz, r0.xyzx, r1.xyzx
+   8: mul r0.xyzw, r1.xyzw, cb0[4].xyzw  // r0.x <- <helper return value>.x; r0.y <- <helper return value>.y; r0.z <- <helper return value>.z; r0.w <- <helper return value>.w
+
+#line 4 "C:\dx-fixtures\zi_inlined.hlsli"
+   9: mul r1.xyz, -v2.xyzx, cb0[5].xxxx  // r1.x <- r.x; r1.y <- r.y; r1.z <- r.z
+
+#line 5
+  10: mul r1.xyz, r1.xyzx, l(0.500000, 0.500000, 0.500000, 0.000000)
+  11: frc r1.xyz, r1.xyzx
+  12: mad r1.xyz, -v2.xyzx, cb0[5].xxxx, r1.xyzx  // r1.x <- r.x; r1.y <- r.y; r1.z <- r.z
+
+#line 24 "C:\dx-fixtures\zi_inlined.hlsl"
+  13: add r2.xy, v1.xyxx, v1.xyxx  // r2.x <- uv.x; r2.y <- uv.y
+
+#line 15
+  14: sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r2.xyxx, t0.xyzw, s0  // r2.x <- c.x; r2.y <- c.y; r2.z <- c.z; r2.w <- c.w
+
+#line 17
+  15: lt r1.w, r2.w, l(0.500000)
+
+#line 18
+  16: movc r1.xz, r1.wwww, r1.zzxz, r1.xxzx  // r1.x <- f.x; r1.z <- f.z
+
+#line 19
+  17: mul r2.xyz, r1.xyzx, r2.xyzx
+
+#line 25
+  18: mad r1.xyzw, r2.xyzw, cb0[4].xyzw, -r0.xyzw
+  19: mad o0.xyzw, cb0[5].xxxx, r1.xyzw, r0.xyzw
+  20: ret 

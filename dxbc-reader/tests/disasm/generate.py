@@ -6,7 +6,11 @@ here; D3DDisassemble's listings of it, and of every container in `../fixtures`, 
 no flags and `<name>.flag<hex>.asm` with each flags word of FLAGS (0x08, which the disassembler refuses, writes
 none). `../disasm.rs` compares the disassembler with them.
 
-    python -I generate.py [--fxc PATH] [--dll PATH]
+    python -I generate.py [--fxc PATH] [--dll PATH] [SOURCE.hlsl ...]
+
+With sources named, only their builds are compiled and listed (a /Zi build differs on every run, so rebuilding them
+all rewrites every /Zi container); with none, every `.hlsl` here and every container in `../fixtures`. Include files
+(`.hlsli`) are copied beside the sources.
 
 Sources are compiled from copies in `C:\\dx-fixtures` (see STAGE). Under Wine, give the fxc and d3dcompiler_47
 builds the listings were made with, as Wine paths (Z:\\...): fxc
@@ -90,6 +94,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fxc", default=find_fxc())
     ap.add_argument("--dll", default=r"C:\Windows\System32\d3dcompiler_47.dll")
+    ap.add_argument("sources", nargs="*", help="the .hlsl files to build (default: all)")
     a = ap.parse_args()
     here = os.path.dirname(os.path.abspath(__file__))
     listings = os.path.join(here, "listings")
@@ -97,9 +102,13 @@ def main():
     disasm = disassembler(a.dll)
     print(f"fxc {a.fxc} {version(a.fxc)} {sha256(a.fxc)}")
     print(f"dll {a.dll} {version(a.dll)} {sha256(a.dll)}")
-    built, failed = sorted(glob.glob(os.path.join(here, "..", "fixtures", "*.dxbc"))), 0
+    built = [] if a.sources else sorted(glob.glob(os.path.join(here, "..", "fixtures", "*.dxbc")))
+    failed = 0
     os.makedirs(STAGE, exist_ok=True)
-    for original in sorted(glob.glob(os.path.join(here, "*.hlsl"))):
+    for include in glob.glob(os.path.join(here, "*.hlsli")):
+        shutil.copyfile(include, os.path.join(STAGE, os.path.basename(include)))
+    sources = [os.path.join(here, os.path.basename(s)) for s in a.sources]
+    for original in sorted(sources or glob.glob(os.path.join(here, "*.hlsl"))):
         src = os.path.join(STAGE, os.path.basename(original))
         shutil.copyfile(original, src)
         for line in open(src, encoding="utf-8"):

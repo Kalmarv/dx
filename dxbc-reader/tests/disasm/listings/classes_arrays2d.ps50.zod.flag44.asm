@@ -1,0 +1,163 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed | skipOptimization
+      dcl_constantbuffer CB0[1], immediateIndexed
+      dcl_constantbuffer CB1[7], immediateIndexed
+      dcl_sampler s0, mode_default
+      dcl_resource_texture2d (float,float,float,float) t2
+      dcl_function_body fb0
+      dcl_function_body fb1
+      dcl_function_body fb2
+      dcl_function_body fb3
+      dcl_function_body fb4
+      dcl_function_body fb5
+      dcl_function_body fb6
+      dcl_function_body fb7
+      dcl_function_table ft0 = {fb0, fb2}
+      dcl_function_table ft1 = {fb1, fb3}
+      dcl_function_table ft2 = {fb4, fb6}
+      dcl_function_table ft3 = {fb5, fb7}
+      dcl_interface_dynamicindexed fp0[6][2] = {ft0, ft1}
+      dcl_interface_dynamicindexed fp6[2][2] = {ft2, ft3}
+      dcl_input_ps linear v0.xyz
+      dcl_input_ps linear v1.xyz
+      dcl_input_ps linear v2.xy
+      dcl_output o0.xyzw
+      dcl_temps 7
+//
+// Initial variable locations:
+//   v0.x <- n.x; v0.y <- n.y; v0.z <- n.z; 
+//   v1.x <- p.x; v1.y <- p.y; v1.z <- p.z; 
+//   v2.x <- uv.x; v2.y <- uv.y; 
+//   o0.x <- <main return value>.x; o0.y <- <main return value>.y; o0.z <- <main return value>.z; o0.w <- <main return value>.w
+//
+#line 24 "C:\dx-fixtures\classes_arrays2d.hlsl"
+   0: itof r0.xyz, l(0, 0, 0, 0)  // r0.x <- acc.x; r0.y <- acc.y; r0.z <- acc.z
+
+#line 25
+   1: mov r0.w, l(0)  // r0.w <- i
+   2: mov r1.xyz, r0.xyzx  // r1.x <- acc.x; r1.y <- acc.y; r1.z <- acc.z
+   3: mov r2.x, r0.w  // r2.x <- i
+   4: loop 
+   5:   ilt r2.y, r2.x, cb0[0].x
+   6:   breakc_z r2.y
+   7:   nop 
+   8:   imul null, r2.y, r2.x, l(2)
+   9:   mov r2.z, l(1)
+  10:   and r2.z, r2.z, cb0[0].y
+  11:   iadd r2.y, r2.z, r2.y
+  12:   mov r3.xyz, v0.xyzx
+  13:   mov r4.xyz, v1.xyzx
+  14:   fcall fp0[r2.y + 0][0]
+  15:   nop 
+  16:   imul null, r2.y, r2.x, l(2)
+  17:   iadd r2.y, r2.y, l(1)
+  18:   itof r2.z, r2.x
+  19:   fcall fp0[r2.y + 0][1]
+  20:   mul r2.yzw, r2.wwww, r5.xxyz
+  21:   add r1.xyz, r1.xyzx, r2.yzwy
+  22:   iadd r2.x, r2.x, l(1)
+  23: endloop 
+
+#line 26
+  24: itof r1.w, l(1)
+  25: nop 
+  26: mov r0.x, l(1)
+  27: and r0.x, r0.x, cb0[0].y
+  28: fcall fp6[r0.x + 0][0]
+  29: mul r0.xyzw, r1.xyzw, r2.xyzw
+  30: nop 
+  31: itof r1.xy, l(2, 2, 0, 0)
+  32: mul r1.xy, r1.xyxx, v2.xyxx
+  33: fcall fp6[0][1]
+  34: add o0.xyzw, r0.xyzw, r2.xyzw
+  35: ret   // r1.x <- acc.x; r1.y <- acc.y; r1.z <- acc.z; r2.x <- i
+
+#line 15 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  36: label fb0
+  37: nop 
+  38: mov r4.xyz, -r4.xyzx
+  39: mov r2.z, this[r2.y + 0].y
+  40: mov r2.w, this[r2.y + 0].x
+  41: add r4.xyz, r4.xyzx, cb[r2.w + 0][r2.z + 0].xyzx  // r4.x <- l.x; r4.y <- l.y; r4.z <- l.z
+  42: dp3 r3.w, r4.xyzx, r4.xyzx
+  43: rsq r3.w, r3.w
+  44: mul r6.xyz, r3.wwww, r4.xyzx
+  45: dp3 r3.w, r3.xyzx, r6.xyzx
+  46: max r3.w, r3.w, l(0.000000)
+  47: min r3.w, r3.w, l(1.000000)
+  48: mul r6.xyz, r3.wwww, cb[r2.w + 0][r2.z + 1].xyzx
+  49: nop 
+  50: dp3 r3.w, r4.xyzx, r4.xyzx
+  51: sqrt r3.w, r3.w
+
+#line 16
+  52: itof r4.x, l(1)
+  53: div r2.z, r3.w, cb[r2.w + 0][r2.z + 1].w
+  54: mov r2.z, -r2.z
+  55: add r2.z, r2.z, r4.x
+  56: max r2.z, r2.z, l(0.000000)
+  57: min r2.z, r2.z, l(1.000000)  // r2.z <- <Point::Atten return value>
+
+#line 15
+  58: mul r5.xyz, r2.zzzz, r6.xyzx
+  59: ret 
+
+#line 12 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  60: label fb1
+  61: nop 
+  62: mov r2.z, this[r2.y + 0].y
+  63: mov r2.y, this[r2.y + 0].x
+  64: dp3 r2.w, r3.xyzx, cb[r2.y + 0][r2.z + 0].xyzx
+  65: max r2.w, r2.w, l(0.000000)
+  66: min r2.w, r2.w, l(1.000000)
+  67: mul r5.xyz, r2.wwww, cb[r2.y + 0][r2.z + 1].xyzx
+  68: ret 
+
+#line 16 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  69: label fb2
+  70: nop 
+  71: itof r3.x, l(1)
+  72: mov r3.y, this[r2.y + 0].y
+  73: mov r3.z, this[r2.y + 0].x
+  74: div r2.z, r2.z, cb[r3.z + 0][r3.y + 1].w
+  75: mov r2.z, -r2.z
+  76: add r2.z, r2.z, r3.x
+  77: max r2.z, r2.z, l(0.000000)
+  78: min r2.w, r2.z, l(1.000000)
+  79: ret 
+
+#line 13 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  80: label fb3
+  81: nop 
+  82: itof r2.w, l(1)
+  83: ret 
+
+#line 18 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  84: label fb4
+  85: nop 
+  86: mov r0.y, this[r0.x + 6].z
+  87: sample_indexable(texture2d)(float,float,float,float) r2.xyzw, v2.xyxx, t[r0.y + 0].xyzw, s0
+  88: ret 
+
+#line 17 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  89: label fb5  // r2.x <- i
+  90: nop 
+  91: mov r0.y, this[r0.x + 6].y
+  92: mov r0.x, this[r0.x + 6].x
+  93: mov r2.xyzw, cb[r0.x + 0][r0.y + 0].xyzw
+  94: ret 
+
+#line 18 "C:\dx-fixtures\classes_arrays2d.hlsl"
+  95: label fb6
+  96: nop   // this[6].x <- this.x; this[6].y <- this.y; this[6].z <- this.z; this[6].w <- this.w
+  97: mov r1.z, this[6].z
+  98: sample_indexable(texture2d)(float,float,float,float) r2.xyzw, r1.xyxx, t[r1.z + 0].xyzw, s0
+  99: ret 
+
+#line 17 "C:\dx-fixtures\classes_arrays2d.hlsl"
+ 100: label fb7  // r1.z <- acc.z
+ 101: nop   // this[6].x <- this.x; this[6].y <- this.y; this[6].z <- this.z; this[6].w <- this.w
+ 102: mov r1.x, this[6].y
+ 103: mov r1.y, this[6].x
+ 104: mov r2.xyzw, cb[r1.y + 0][r1.x + 0].xyzw
+ 105: ret 
