@@ -1,6 +1,7 @@
 //! `dx`: Direct3D shader programs from the command line. `dx disasm` writes Microsoft's listing of a program (or checks
-//! it against listings Microsoft's tools wrote), `dx reflect` its bindings, signatures and buffer layouts as JSON, `dx
-//! info` its container's parts.
+//! it against listings Microsoft's tools wrote): `D3DDisassemble`'s of a Direct3D 9 or Shader Model 4 or 5 program,
+//! `dxc -dumpbin`'s of a DXIL one. `dx reflect` writes its bindings, signatures and buffer layouts as JSON, `dx info`
+//! its container's parts.
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -19,10 +20,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Write the listing of each program as Microsoft's disassembler does (`D3DDisassemble`, `fxc /dumpbin`).
+    /// Write the listing of each program as Microsoft's disassembler does (`D3DDisassemble`, `fxc /dumpbin`; for a
+    /// DXIL program `dxc -dumpbin`, dxc 1.9.2609).
     Disasm {
-        /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream) or a folder of them: every file in it
-        /// that starts as a container or token stream does.
+        /// A compiled program (.cso, .dxbc, .dxil, .fxc, a raw Direct3D 9 token stream) or a folder of them: every file
+        /// in it that starts as a container or token stream does.
         path: PathBuf,
         /// Compare each program's listing with Microsoft's stored beside it (`NAME.<ext>.asm`, `NAME.<ext>.txt`, or
         /// `NAME.asm` or `NAME.txt` where no other program is NAME) and count identical, differing and failed
@@ -34,14 +36,15 @@ enum Command {
         verbose: bool,
         /// Microsoft's `D3D_DISASM_*` flags, in hex (`0x04` numbers instructions, `0x20` writes their offsets,
         /// `0x40` leaves out the header, `0x80` writes literals in hex); with --check, compared with
-        /// `NAME.<ext>.flagNN.asm` (or `NAME.flagNN.asm`, as above).
+        /// `NAME.<ext>.flagNN.asm` (or `NAME.flagNN.asm`, as above). A DXIL listing has no flags.
         #[arg(long, value_parser = flags, default_value = "0")]
         flags: u32,
     },
     /// Write what a program's container states about it, as JSON or text.
     ///
-    /// The RDEF part's bindings and buffer layouts, the signatures, the STAT counters, the feature flags and the level 9 mappings of a DXBC container; the constant
-    /// table of a Direct3D 9 program. Each record has D3D's numbers and the names Microsoft's disassembler gives them.
+    /// The RDEF part's bindings and buffer layouts, the signatures, the STAT counters, the feature flags and the level 9
+    /// mappings of a DXBC container; a DXIL container's signature parts, entry point, resources and constant-buffer
+    /// layouts from its metadata; the constant table of a Direct3D 9 program. Each record has D3D's numbers and the names Microsoft's disassembler gives them.
     Reflect {
         /// A compiled program (.cso, .dxbc, .fxc, a raw Direct3D 9 token stream).
         path: PathBuf,

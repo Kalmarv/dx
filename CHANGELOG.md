@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+- `dxil-reader`: `disasm::disassemble` writes a DXIL container's listing as dxc 1.9.2609's `dxc -dumpbin` does, byte
+  for byte: dxc's comment header (feature flags, signature parts, debug name, hash, the `PSV0` runtime information,
+  the entry point's signatures, buffer layouts, resource bindings, view-id state and a library's `RDAT` subobjects)
+  and the module as LLVM 3.7 prints it, with dxc's comment after each `dx.op` call. The listings are identical to dxc's
+  for all 129 fixtures (every stage, ray tracing libraries included; `tests/disasm.rs`) and for all 50,283 of Elden
+  Ring's programs (`tests/corpora.rs`, through `GAME_DATA`). `dx disasm` lists DXIL containers, `dx disasm --check`
+  compares them with a stored dxc listing and counts them by the program header's target, and `dx reflect` writes a
+  DXIL container's signature parts, entry point, resources and constant-buffer layouts.
+- `dxil-reader`: the fixtures are compiled by dxc 1.9.2609, where dxc 1.7 compiled them before; `generate.py` refuses
+  another build.
+- `dxil-reader`: the module keeps what a listing shows, changes for code that builds or matches these types
+  exhaustively: `Type::Struct` gains `packed` and `literal`; `Value::Function` gains `properties` (a `GlobalProperties`:
+  linkage, visibility, DLL storage, `unnamed_addr`, section, alignment), `calling_conv` and `gc`, `Value::Global`
+  gains `properties`, `thread_local` and `externally_initialized`; `Module` gains `triple`, `datalayout` and `asm`;
+  `Instruction` gains `flags`; `Op::Call` gains `calling_conv` and `tail`, `Op::Alloca` `inalloca`, `Op::Load` and
+  `Op::Store` `volatile` and `atomic`, `Op::Gep` `source` and `inbounds`, and `Op::AtomicRmw`, `Op::CmpXchg` and
+  `Op::Fence` carry their orderings (`Atomic`, `Ordering`, `TailCall`); `Constant::String`, `Constant::Compare` and
+  `Metadata::Distinct` are new, `Constant::Gep` gains `source` and `inbounds` and `Constant::Binary` `flags`;
+  `Function` gains `names`, `block_names` and `block_use_orders`; casts may be `CastOp::AddrSpaceCast`. A
+  `getelementptr`'s result keeps its base's address space, where it was space 0. Debug locations, function-local
+  metadata, comdats, prologue and prefix data and switch case ranges are refused by name.
+- `dxil-reader`: `reflection::struct_annotation` (a struct's size and fields), `shader_model`, `module_shader_flags`
+  (the first entry's flags, as dxc reads them, for a library too), `view_id_state`, `component_name` and
+  `dimension_name`; `SignatureElement` gains `stream` and the methods `system_value_name` and `format_name`.
+  `fields` reads only as many fields as the struct has, where it took DXIL 1.5's template-arguments operand for one.
+  `psv` reads the 56-byte runtime info (`RuntimeInfo::group_shared_bytes`, `size`).
+- `dxcontainer`: `feature_name` names the DXIL feature bits dxc 1.9.2609 names (to bit 33, and the optional bits 40
+  and 41); a DXBC container's names are unchanged.
 - `dx`, a new command-line tool (`cargo install --path dx`): `dx disasm FILE|DIR` writes the listing of each DXBC or
   Direct3D 9 program as Microsoft's disassembler does, with its `D3D_DISASM_*` flags (`--flags 0x04`), and
   `--check` compares each with Microsoft's listing stored beside it and counts identical, differing and failed programs

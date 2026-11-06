@@ -1048,6 +1048,110 @@ pub struct SignatureElement {
     pub bit: usize,
 }
 
+impl SignatureElement {
+    /// The name dxc's listing gives the element's system value (`DxilProgramSigSemantic`, D3D's `D3D_NAME`): `POS`,
+    /// `TARGET`, ...; `NONE` for none.
+    pub fn system_value_name(&self) -> &'static str {
+        match self.system_value {
+            1 => "POS",
+            2 => "CLIPDST",
+            3 => "CULLDST",
+            4 => "RTINDEX",
+            5 => "VPINDEX",
+            6 => "VERTID",
+            7 => "PRIMID",
+            8 => "INSTID",
+            9 => "FFACE",
+            10 => "SAMPLE",
+            11 => "QUADEDGE",
+            12 => "QUADINT",
+            13 => "TRIEDGE",
+            14 => "TRIINT",
+            15 => "LINEDET",
+            16 => "LINEDEN",
+            23 => "BARYCEN",
+            24 => "SHDINGRATE",
+            25 => "CULLPRIM",
+            64 => "TARGET",
+            65 => "DEPTH",
+            66 => "COVERAGE",
+            67 => "DEPTHGE",
+            68 => "DEPTHLE",
+            69 => "STENCILREF",
+            70 => "INNERCOV",
+            _ => "NONE",
+        }
+    }
+
+    /// The name dxc's listing gives the element's component type (`DxilProgramSigCompType`): `float`, `uint`, ...
+    pub fn format_name(&self) -> &'static str {
+        match self.component_type {
+            1 => "uint",
+            2 => "int",
+            3 => "float",
+            4 => "uint16",
+            5 => "int16",
+            6 => "fp16",
+            7 => "uint64",
+            8 => "int64",
+            9 => "double",
+            _ => "unknown",
+        }
+    }
+}
+
+/// The name dxc gives a DXIL component type (`CompType::GetName`: 4 `i32`, 5 `u32`, 9 `f32`, ...); `invalid` for 0
+/// and unknown numbers.
+pub fn component_name(component: u32) -> &'static str {
+    match component {
+        1 => "i1",
+        2 => "i16",
+        3 => "u16",
+        4 => "i32",
+        5 => "u32",
+        6 => "i64",
+        7 => "u64",
+        8 => "f16",
+        9 => "f32",
+        10 => "f64",
+        11 => "snorm_f16",
+        12 => "unorm_f16",
+        13 => "snorm_f32",
+        14 => "unorm_f32",
+        15 => "snorm_f64",
+        16 => "unorm_f64",
+        17 => "p32i8",
+        18 => "p32u8",
+        _ => "invalid",
+    }
+}
+
+/// The name dxc's listing gives a resource kind's dimension (`DxilResourceBase::GetResDimName`: 2 `2d`, 10 `buf`, 12
+/// `structbuf`, ...); `invalid` for 0 and unknown numbers.
+pub fn dimension_name(kind: u32) -> &'static str {
+    match kind {
+        1 => "1d",
+        2 => "2d",
+        3 => "2dMS",
+        4 => "3d",
+        5 => "cube",
+        6 => "1darray",
+        7 => "2darray",
+        8 => "2darrayMS",
+        9 => "cubearray",
+        10 => "buf",
+        11 => "rawbuf",
+        12 => "structbuf",
+        13 => "cbuffer",
+        14 => "sampler",
+        15 => "tbuffer",
+        16 => "ras",
+        17 => "fbtex2d",
+        18 => "fbtex2darray",
+        _ => "invalid",
+    }
+}
+
 /// The elements of a signature part (`ISG1`, `OSG1` or `PSG1`): a count and the offset of the first record, then
 /// records of 32 bytes (stream, name offset, semantic index, system value, component type, register, mask and
 /// read-write mask, minimum precision). A name ends within 256 bytes.

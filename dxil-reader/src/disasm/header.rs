@@ -141,23 +141,8 @@ pub(super) fn part_signature(s: &mut String, name: &str, part: &[u8], input: boo
         } else {
             let _ = write!(s, "   {} {:8}", mask_letters(e.mask), e.register);
         }
-        right(s, system_value_name(e.system_value), 9);
-        right(
-            s,
-            match e.component_type {
-                1 => "uint",
-                2 => "int",
-                3 => "float",
-                4 => "uint16",
-                5 => "int16",
-                6 => "fp16",
-                7 => "uint64",
-                8 => "int64",
-                9 => "double",
-                _ => "unknown",
-            },
-            8,
-        );
+        right(s, e.system_value_name(), 9);
+        right(s, e.format_name(), 8);
         // an input's components always read; an output's ones it may write (the stored mask is those it never does)
         let used = if input {
             e.read_write_mask
@@ -173,39 +158,6 @@ pub(super) fn part_signature(s: &mut String, name: &str, part: &[u8], input: boo
     }
     s.push_str(";\n");
     Ok(())
-}
-
-/// The system value of a signature part's element (`DxilProgramSigSemantic`, D3D's `D3D_NAME`).
-fn system_value_name(v: u32) -> &'static str {
-    match v {
-        1 => "POS",
-        2 => "CLIPDST",
-        3 => "CULLDST",
-        4 => "RTINDEX",
-        5 => "VPINDEX",
-        6 => "VERTID",
-        7 => "PRIMID",
-        8 => "INSTID",
-        9 => "FFACE",
-        10 => "SAMPLE",
-        11 => "QUADEDGE",
-        12 => "QUADINT",
-        13 => "TRIEDGE",
-        14 => "TRIINT",
-        15 => "LINEDET",
-        16 => "LINEDEN",
-        23 => "BARYCEN",
-        24 => "SHDINGRATE",
-        25 => "CULLPRIM",
-        64 => "TARGET",
-        65 => "DEPTH",
-        66 => "COVERAGE",
-        67 => "DEPTHGE",
-        68 => "DEPTHLE",
-        69 => "STENCILREF",
-        70 => "INNERCOV",
-        _ => "NONE",
-    }
 }
 
 /// The `ILDN` part: its flags (u16), the name's length (u16) and the name with its terminating zero, padded to four
@@ -478,31 +430,6 @@ fn resources(m: &Module) -> Result<Vec<Resource>> {
     Ok(all)
 }
 
-/// `CompType::GetName`.
-fn component_name(c: u32) -> &'static str {
-    match c {
-        1 => "i1",
-        2 => "i16",
-        3 => "u16",
-        4 => "i32",
-        5 => "u32",
-        6 => "i64",
-        7 => "u64",
-        8 => "f16",
-        9 => "f32",
-        10 => "f64",
-        11 => "snorm_f16",
-        12 => "unorm_f16",
-        13 => "snorm_f32",
-        14 => "unorm_f32",
-        15 => "snorm_f64",
-        16 => "unorm_f64",
-        17 => "p32i8",
-        18 => "p32u8",
-        _ => "invalid",
-    }
-}
-
 /// `CompType::GetHLSLName`.
 fn component_hlsl_name(c: u32, min_precision: bool) -> &'static str {
     match (c, min_precision) {
@@ -533,31 +460,6 @@ fn component_hlsl_name(c: u32, min_precision: bool) -> &'static str {
     }
 }
 
-/// `DxilResourceBase::GetResDimName`.
-fn dim_name(kind: u32) -> &'static str {
-    match kind {
-        1 => "1d",
-        2 => "2d",
-        3 => "2dMS",
-        4 => "3d",
-        5 => "cube",
-        6 => "1darray",
-        7 => "2darray",
-        8 => "2darrayMS",
-        9 => "cubearray",
-        10 => "buf",
-        11 => "rawbuf",
-        12 => "structbuf",
-        13 => "cbuffer",
-        14 => "sampler",
-        15 => "tbuffer",
-        16 => "ras",
-        17 => "fbtex2d",
-        18 => "fbtex2darray",
-        _ => "invalid",
-    }
-}
-
 /// `PrintResourceBindings`.
 fn resource_bindings(s: &mut String, resources: &[Resource]) {
     s.push_str(
@@ -581,7 +483,7 @@ fn resource_bindings(s: &mut String, resources: &[Resource]) {
             (false, _) => "NA",
             (true, 11) => "byte",
             (true, 12) => "struct",
-            (true, _) => component_name(g.element.unwrap_or(0)),
+            (true, _) => reflection::component_name(g.element.unwrap_or(0)),
         };
         right(s, format, 8);
         let dim = match (view, g.extra) {
@@ -590,8 +492,10 @@ fn resource_bindings(s: &mut String, resources: &[Resource]) {
             (true, 11 | 12) if g.counter => "r/w+cnt".to_owned(),
             (true, 11 | 12) => "r/w".to_owned(),
             (true, 10) => "buf".to_owned(),
-            (true, 3 | 8) if r.sample_count != 0 => format!("{}{}", dim_name(g.extra), r.sample_count),
-            (true, kind) => dim_name(kind).to_owned(),
+            (true, 3 | 8) if r.sample_count != 0 => {
+                format!("{}{}", reflection::dimension_name(g.extra), r.sample_count)
+            }
+            (true, kind) => reflection::dimension_name(kind).to_owned(),
         };
         right(s, &dim, 12);
         right(s, &format!("{id}{}", g.id), 8);

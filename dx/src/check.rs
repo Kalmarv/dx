@@ -28,14 +28,23 @@ fn first_difference<'a>(ours: &'a str, theirs: &'a str) -> Option<(usize, &'a st
     }
 }
 
-/// The kind of a differing line, for grouping: the header, a declaration or instruction by its mnemonic, or the end.
+/// The kind of a differing line, for grouping: the header (a `//` or a DXIL listing's `;` comment) by its first words,
+/// a declaration or instruction by its mnemonic (after a DXIL instruction's `%N = `), or the end.
 fn reason(theirs: &str, ours: &str) -> String {
     let line = if theirs == "<end>" { ours } else { theirs };
     let t = line.trim_start();
-    if t.starts_with("//") {
-        let words: Vec<&str> = t.trim_start_matches('/').split_whitespace().take(2).collect();
+    if t.starts_with("//") || t.starts_with(';') {
+        let words: Vec<&str> = t
+            .trim_start_matches(['/', ';'])
+            .split_whitespace()
+            .take(2)
+            .collect();
         return format!("comment: {}", words.join(" "));
     }
+    let t = t
+        .split_once(" = ")
+        .filter(|(result, _)| result.starts_with('%'))
+        .map_or(t, |(_, rest)| rest);
     let word = t.split([' ', '(']).next().unwrap_or("");
     format!("code: {word}")
 }
@@ -66,7 +75,7 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
         // Windows end their lines in CRLF
         let theirs = String::from_utf8_lossy(&theirs).replace("\r\n", "\n");
         let theirs = theirs.trim_end_matches('\0');
-        let target = files::target(theirs).unwrap_or_else(|| "unknown".to_owned());
+        let target = files::target(&bytes, theirs).unwrap_or_else(|| "unknown".to_owned());
         let counts = by_target.entry(target).or_default();
         let name = program.display().to_string();
         match files::listing(&bytes, flags) {

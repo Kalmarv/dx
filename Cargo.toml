@@ -14,7 +14,7 @@ publish = true
 d3d9-reader = { version = "0.4.0", path = "d3d9-reader" }
 dxcontainer = { version = "0.4.0", path = "dxcontainer" }
 primase-foundations = "0.3.1"
-primase-testdata = { version = "0.1.7", git = "https://github.com/Kalmarv/primase-testdata", rev = "8f998f662469da973d06015d14592c894e249a9d" }
+primase-testdata = { version = "0.1.7", git = "https://github.com/Kalmarv/primase-testdata", rev = "28748e48013219f984a49e7d0418df7852e9244d" }
 thiserror = { version = "=2.0.21", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]

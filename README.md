@@ -14,6 +14,7 @@ Rust libraries that read compiled shader programs and their containers: Direct3D
 - Reads PS3 `CellGcmTexture` descriptors and `CgBinaryProgram` containers, and decodes RSX fragment and vertex microcode
 - Traces which texture units and interpolants can influence an RSX fragment program's outputs
 - Writes Shader Model 4, 5 and 5.1 and Direct3D 9 listings byte for byte as Microsoft's disassembler does
+- Writes DXIL listings byte for byte as `dxc -dumpbin` (dxc 1.9.2609) does
 - Reports values as the file stores them, with Direct3D's own enum numbers
 - Reports every refusal with the byte, word or bit where it happened and what was expected there
 - Contains no `unsafe` code and does no file, environment or process access in the libraries
@@ -31,7 +32,7 @@ Rust 1.99 or newer (edition 2024). The repository pins its toolchain in `rust-to
 | [`dxcontainer`](dxcontainer) | The DXBC container, its digest and its `SFI0` flags; writes containers |
 | [`d3d9-reader`](d3d9-reader) | Direct3D 9 token streams, Shader Model 1.0 to 3.0, with `CTAB` |
 | [`dxbc-reader`](dxbc-reader) | DXBC, Shader Model 4 and 5, with reflection, signatures and statistics |
-| [`dxil-reader`](dxil-reader) | DXIL, Shader Model 6, with reflection, `PSV0` and `RDAT` |
+| [`dxil-reader`](dxil-reader) | DXIL, Shader Model 6, with reflection, `PSV0`, `RDAT` and the `dxc -dumpbin` listing |
 | [`rsx-reader`](rsx-reader) | PS3 texture descriptors, Cg binary programs, fragment and vertex microcode |
 
 `dxcontainer`, `dxbc-reader`, `dxil-reader` and `rsx-reader` are published on crates.io at 0.4.0:
@@ -75,14 +76,16 @@ The `dx` tool reads compiled programs from disk:
 ```sh
 cargo install --path dx
 dx disasm shader.dxbc                 # Microsoft's listing; a folder lists every program in it
+dx disasm shader.dxil                 # a DXIL program's listing as dxc -dumpbin writes it
 dx disasm --flags 0x04 shader.cso     # with D3D_DISASM_* flags: 0x04 numbers the instructions
 dx disasm --check shaders/            # compare with NAME.txt / NAME.asm beside each, counted by model and stage
 dx reflect --json shader.dxbc         # bindings, buffers, signatures, STAT, SFI0 and level 9 tables as JSON
+dx reflect shader.dxil                # a DXIL program's signatures, entry point, resources and buffer layouts
 dx info shader.dxbc                   # parts, offsets, sizes, digest
 ```
 
-A DXBC container and a Direct3D 9 token stream are told apart by their first bytes. DXIL containers are not
-disassembled.
+A DXBC container and a Direct3D 9 token stream are told apart by their first bytes, and a container holding a `DXIL`
+part is listed as dxc lists it. A DXIL listing has no `--flags`.
 
 Each crate has runnable examples that take file paths:
 

@@ -321,10 +321,152 @@ fn d3d9(bytes: &[u8]) -> Result<Value, String> {
     }))
 }
 
+/// A DXIL signature part's elements; `output` says the stored read-write mask is of the components never written.
+fn dxil_elements(part: &[u8], output: bool) -> Result<Value, String> {
+    let elements = dxil_reader::reflection::signature(part).map_err(|e| e.to_string())?;
+    Ok(elements
+        .iter()
+        .map(|e| {
+            let used = if output {
+                e.mask & !e.read_write_mask
+            } else {
+                e.read_write_mask
+            };
+            json!({
+                "name": e.name,
+                "index": e.index,
+                "system_value": e.system_value,
+                "system_value_name": e.system_value_name(),
+                "component_type": e.component_type,
+                "format": e.format_name(),
+                "register": (e.register != u32::MAX).then_some(e.register),
+                "mask": mask(e.mask),
+                "used": mask(used),
+                "stream": e.stream,
+            })
+        })
+        .collect())
+}
+
+/// A Shader Model 6 program's container: its signature parts, and from its reflection module (the `STAT` part's, or
+/// else the program's own) its entry point, resources and constant-buffer layouts.
+fn dxil(bytes: &[u8]) -> Result<Value, String> {
+    use dxil_reader::reflection;
+    let fail = |e: dxil_reader::Error| e.to_string();
+    let directory = dxil_reader::parts(bytes).map_err(fail)?;
+    let part = dxil_reader::part(bytes).map_err(fail)?;
+    let hull = part.program_version >> 16 == 3;
+    let module = dxil_reader::module(&directory, b"DXIL")
+        .map_err(fail)?
+        .ok_or("no DXIL part")?;
+    let stat = dxil_reader::module(&directory, b"STAT").map_err(fail)?;
+    let m = stat.as_ref().unwrap_or(&module);
+    let mut signatures = serde_json::Map::new();
+    for (name, tag, output) in [
+        ("input", b"ISG1", false),
+        ("output", b"OSG1", true),
+        // a hull program writes its patch constants, a domain program reads them
+        ("patch_constant", b"PSG1", hull),
+    ] {
+        if let Some(c) = directory.iter().find(|c| &c.kind == tag) {
+            signatures.insert(name.to_owned(), dxil_elements(c.data, output)?);
+        }
+    }
+    let library = reflection::shader_model(&module)
+        .map_err(fail)?
+        .is_some_and(|(kind, _, _)| kind == "lib");
+    let (entry, num_threads) = if library {
+        (None, None)
+    } else {
+        let entry = reflection::entry(&module).map_err(fail)?;
+        (
+            module.name(entry).map(str::to_owned),
+            reflection::num_threads(&module).map_err(fail)?,
+        )
+    };
+    let extras = reflection::resource_extras(m).map_err(fail)?;
+    let mut buffers = Vec::new();
+    let mut resources = Vec::new();
+    for (range, name, ty) in reflection::ranges(m).map_err(fail)? {
+        let view = matches!(range.class, 0 | 1);
+        let extra = extras.iter().find(|e| e.class == range.class && e.id == range.id);
+        let class_name = match range.class {
+            0 => "texture",
+            1 => "UAV",
+            2 => "cbuffer",
+            _ => "sampler",
+        };
+        resources.push(json!({
+            "name": name,
+            "class": range.class,
+            "class_name": class_name,
+            "id": range.id,
+            "space": range.space,
+            "register": range.lower,
+            "count": (range.count != u32::MAX).then_some(range.count),
+            "kind": view.then_some(range.extra),
+            "dimension": view.then(|| reflection::dimension_name(range.extra)),
+            "element_type": range.element,
+            "format": range.element.map(reflection::component_name),
+            "stride": range.stride,
+            "counter": range.counter,
+            "sample_count": extra.and_then(|e| e.sample_count),
+            "size": (range.class == 2).then_some(range.extra),
+        }));
+        // a constant buffer's layout, from the annotation of the struct its variable points to (through an array)
+        if range.class == 2 {
+            let mut t = ty;
+            while let Some(dxil_reader::module::Type::Array(_, e)) = t.and_then(|t| m.types.get(t)) {
+                t = Some(*e);
+            }
+            let annotation = match t {
+                Some(t) => reflection::struct_annotation(m, t).map_err(fail)?,
+                None => None,
+            };
+            buffers.push(json!({
+                "name": name,
+                "size": range.extra,
+                "fields": annotation.map(|a| a.fields.iter().map(|f| json!({
+                    "name": f.name,
+                    "offset": f.offset,
+                    "component_type": f.component,
+                    "matrix": f.matrix.map(|(rows, columns, orientation)| json!({
+                        "rows": rows,
+                        "columns": columns,
+                        "orientation": orientation,
+                    })),
+                })).collect::<Vec<_>>()),
+            }));
+        }
+    }
+    let features = dxcontainer::feature_flags(bytes)
+        .map_err(|e| e.to_string())?
+        .map(|f| {
+            json!({
+                "bits": format!("0x{:016x}", f.bits),
+                "names": f.names(),
+                "unnamed": format!("0x{:x}", f.unnamed()),
+            })
+        });
+    Ok(json!({
+        "format": "dxil",
+        "target": part.target(),
+        "dxil_version": format!("{}.{}", part.dxil_version >> 8, part.dxil_version & 0xff),
+        "entry": entry,
+        "num_threads": num_threads,
+        "shader_flags": reflection::module_shader_flags(&module).map_err(fail)?.map(|f| format!("0x{f:016x}")),
+        "signatures": signatures,
+        "resources": resources,
+        "buffers": buffers,
+        "features": features,
+    }))
+}
+
 /// The reflection of a program file.
 pub fn reflect(bytes: &[u8]) -> Result<Value, String> {
     match kind(bytes)? {
         Kind::Dxbc => dxbc(bytes),
+        Kind::Dxil => dxil(bytes),
         Kind::D3d9 => d3d9(bytes),
     }
 }
@@ -332,7 +474,7 @@ pub fn reflect(bytes: &[u8]) -> Result<Value, String> {
 /// A program file's container: its parts and their sizes and the digest, or a Direct3D 9 program's records.
 pub fn info(bytes: &[u8]) -> Result<Value, String> {
     match kind(bytes)? {
-        Kind::Dxbc => {
+        Kind::Dxbc | Kind::Dxil => {
             let directory = dxcontainer::chunks(bytes).map_err(|e| e.to_string())?;
             let base = bytes.as_ptr().addr();
             let stored = bytes.get(4..20).map(hex);
