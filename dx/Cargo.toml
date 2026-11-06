@@ -22,3 +22,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 
 [lints]
 workspace = true
+
+[package.metadata.dist]
+# not on crates.io (the name is taken), but each release has its binaries
+dist = true

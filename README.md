@@ -43,8 +43,11 @@ Add a library from crates.io:
 cargo add dxbc-reader
 ```
 
-The `dx` command-line tool is not on crates.io. Download it for Windows or Linux (x86_64) from the
-[latest release](https://github.com/Kalmarv/dx/releases/latest), or build it from the repository:
+The `dx` command-line tool is not on crates.io. Download it from the
+[latest release](https://github.com/Kalmarv/dx/releases/latest) for
+[Windows](https://github.com/Kalmarv/dx/releases/latest/download/dx-x86_64-pc-windows-msvc.zip) or
+[Linux](https://github.com/Kalmarv/dx/releases/latest/download/dx-x86_64-unknown-linux-gnu.tar.xz) (x86_64; each has
+its `.sha256`), or build it from the repository:
 
 ```sh
 cargo install --git https://github.com/Kalmarv/dx dx
