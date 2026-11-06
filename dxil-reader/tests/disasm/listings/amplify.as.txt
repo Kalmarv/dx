@@ -1,0 +1,87 @@
+;
+; Input signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+;
+; Output signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+; shader hash: 51a3baf2c13ba64d8906cfb3129295a6
+;
+; Pipeline Runtime Information: 
+;
+;PSVRuntimeInfo:
+; Amplification Shader
+; NumThreads=(8,1,1)
+; MinimumExpectedWaveLaneCount: 0
+; MaximumExpectedWaveLaneCount: 4294967295
+; UsesViewID: false
+; SigInputElements: 0
+; SigOutputElements: 0
+; SigPatchConstOrPrimElements: 0
+; SigInputVectors: 0
+; SigOutputVectors[0]: 0
+; SigOutputVectors[1]: 0
+; SigOutputVectors[2]: 0
+; SigOutputVectors[3]: 0
+; EntryFunctionName: main
+;
+;
+; Buffer Definitions:
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%struct.Payload.0 = type { [4 x float], i32 }
+
+@"\01?p@@3UPayload@@A.1" = addrspace(3) global %struct.Payload.0 undef
+
+define void @main() {
+  %1 = call i32 @dx.op.flattenedThreadIdInGroup.i32(i32 96)  ; FlattenedThreadIdInGroup()
+  store float 1.000000e+00, float addrspace(3)* getelementptr inbounds (%struct.Payload.0, %struct.Payload.0 addrspace(3)* @"\01?p@@3UPayload@@A.1", i32 0, i32 0, i32 0), align 16
+  store float 0.000000e+00, float addrspace(3)* getelementptr inbounds (%struct.Payload.0, %struct.Payload.0 addrspace(3)* @"\01?p@@3UPayload@@A.1", i32 0, i32 0, i32 1), align 4
+  store float 0.000000e+00, float addrspace(3)* getelementptr inbounds (%struct.Payload.0, %struct.Payload.0 addrspace(3)* @"\01?p@@3UPayload@@A.1", i32 0, i32 0, i32 2), align 8
+  store float 1.000000e+00, float addrspace(3)* getelementptr inbounds (%struct.Payload.0, %struct.Payload.0 addrspace(3)* @"\01?p@@3UPayload@@A.1", i32 0, i32 0, i32 3), align 4
+  store i32 %1, i32 addrspace(3)* getelementptr inbounds (%struct.Payload.0, %struct.Payload.0 addrspace(3)* @"\01?p@@3UPayload@@A.1", i32 0, i32 1), align 16, !tbaa !8
+  call void @dx.op.dispatchMesh.struct.Payload.0(i32 173, i32 3, i32 1, i32 1, %struct.Payload.0 addrspace(3)* nonnull @"\01?p@@3UPayload@@A.1")  ; DispatchMesh(threadGroupCountX,threadGroupCountY,threadGroupCountZ,payload)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.flattenedThreadIdInGroup.i32(i32) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.dispatchMesh.struct.Payload.0(i32, i32, i32, i32, %struct.Payload.0 addrspace(3)*) #1
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.entryPoints = !{!4}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 5}
+!2 = !{i32 1, i32 9}
+!3 = !{!"as", i32 6, i32 5}
+!4 = !{void ()* @main, !"main", null, null, !5}
+!5 = !{i32 10, !6}
+!6 = !{!7, i32 20}
+!7 = !{i32 8, i32 1, i32 1}
+!8 = !{!9, !9, i64 0}
+!9 = !{!"int", !10, i64 0}
+!10 = !{!"omnipotent char", !11, i64 0}
+!11 = !{!"Simple C/C++ TBAA"}
+

@@ -1,3 +1,5 @@
+// dxc: -T ps_6_2 -enable-16bit-types -E main -Fo half_ops.dxil
+// dxc: -T ps_6_2 -enable-16bit-types -E main -Od -Fo half_ops.od.dxil
 // 16-bit floats and integers (pixel). Compiled with dxc -T ps_6_2 -enable-16bit-types -E main (half_ops.dxil, also
 // -Od). With a = 1.0009765625 (1 + 2^-10, a half) and b = 1.0:
 //   x = (half)a, y = (half)b; x + y = 2.0009765625 is half-way between the halves 2.0 and 2.001953125: it rounds to

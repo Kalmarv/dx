@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo textures.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo textures.od.dxil
+// dxc: -T ps_6_6 -E main -Fo textures.66.dxil
 // Fixture for the DXIL lifter: texture operations. Compile: dxc -T ps_6_0 -E main -Fo textures.dxil textures.hlsl
 Texture2D<float4> t2 : register(t0);
 Texture2DArray<float4> ta : register(t1);

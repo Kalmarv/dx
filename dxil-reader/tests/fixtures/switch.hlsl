@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo switch.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo switch.od.dxil
+// dxc: -T ps_6_6 -E main -Fo switch.66.dxil
 // Fixture for the DXIL lifter: a switch (with a default and a case shared by two labels) and a switch in a loop.
 // Compile: dxc -T ps_6_0 -E main -Fo switch.dxil switch.hlsl
 cbuffer Values : register(b0)

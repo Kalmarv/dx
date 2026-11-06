@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo wide_ints.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo wide_ints.od.dxil
+// dxc: -T cs_6_6 -E main -Fo wide_ints.66.dxil
 // 64-bit integers (compute). Compiled with dxc -T cs_6_0 -E main (wide_ints.dxil, also -Od and -T cs_6_6). The a and b
 // of the constant buffer are 64-bit values given as halves; each result is written as its low then its high word:
 //   a + b, a - b, a * b, a & b, a | b, a ^ b, a << n, a >> n (logical), (int64) a >> n (arithmetic), a / b, a % b,

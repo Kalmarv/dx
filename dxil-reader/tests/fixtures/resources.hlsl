@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo resources.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo resources.od.dxil
+// dxc: -T ps_6_6 -E main -Fo resources.66.dxil
 // Fixture for the DXIL lifter: buffer views and unordered-access textures. Compile:
 // dxc -T ps_6_0 -E main -Fo resources.dxil resources.hlsl
 StructuredBuffer<float4> sb : register(t0);

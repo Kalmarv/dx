@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo resource_arrays.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo resource_arrays.od.dxil
+// dxc: -T ps_6_6 -E main -Fo resource_arrays.66.dxil
 // Arrays of resources read by a computed index: four textures (t0 to t3, space 1), an unbounded sampler array
 // (s0, space 2) and a single texture (t8). Compiled with dxc -T ps_6_0 (also -Od, and -T ps_6_6).
 Texture2D<float4> tex[4] : register(t0, space1);

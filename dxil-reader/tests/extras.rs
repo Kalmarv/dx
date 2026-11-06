@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 //! Metadata the reflection reader keeps that the lifter does not need: the entry point's shader flags and the usage
-//! mask of a signature element. The fixtures are dxc 1.7 output (`precise_cs.hlsl` as `cs_6_0`, `precise.hlsl` as
+//! mask of a signature element. The fixtures are dxc 1.9.2609 output (`precise_cs.hlsl` as `cs_6_0`, `precise.hlsl` as
 //! `vs_6_0`, `usage.hlsl` as `ps_6_0`); the expected values are read off dxc's own listing of the same compilation
 //! (`-Fc`): the `!{i32 0, i64 N, ...}` entry properties and the signature table's Used column (`xy`, `x`, `w`).
 use dxil_reader::module::Module;

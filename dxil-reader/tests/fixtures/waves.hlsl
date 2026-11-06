@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo waves.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo waves.od.dxil
+// dxc: -T cs_6_6 -E main -Fo waves.66.dxil
 // Wave operations in a one-dimensional thread group of 64 invocations, each writing 13 words of results. The values
 // below are for a wave of 32 lanes (invocation i is lane i % 32 of wave i / 32). Compiled with dxc -T cs_6_0 (also
 // -Od, and -T cs_6_6).

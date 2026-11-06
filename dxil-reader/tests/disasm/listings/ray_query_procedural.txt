@@ -1,0 +1,338 @@
+;
+; Note: shader requires additional functionality:
+;       Raytracing tier 1.1 features
+;
+;
+; Input signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+;
+; Output signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+; shader hash: cf1860dfe19e6154fd66a89222646eb6
+;
+; Pipeline Runtime Information: 
+;
+;PSVRuntimeInfo:
+; Compute Shader
+; NumThreads=(64,1,1)
+; MinimumExpectedWaveLaneCount: 0
+; MaximumExpectedWaveLaneCount: 4294967295
+; UsesViewID: false
+; SigInputElements: 0
+; SigOutputElements: 0
+; SigPatchConstOrPrimElements: 0
+; SigInputVectors: 0
+; SigOutputVectors[0]: 0
+; SigOutputVectors[1]: 0
+; SigOutputVectors[2]: 0
+; SigOutputVectors[3]: 0
+; EntryFunctionName: main
+;
+;
+; Buffer Definitions:
+;
+; cbuffer Rays
+; {
+;
+;   struct Rays
+;   {
+;
+;       float4 origins[64];                           ; Offset:    0
+;       float4 directions[64];                        ; Offset: 1024
+;       uint4 params[64];                             ; Offset: 2048
+;       float4 spheres[8];                            ; Offset: 3072
+;   
+;   } Rays;                                           ; Offset:    0 Size:  3200
+;
+; }
+;
+; Resource bind info for results
+; {
+;
+;   uint $Element;                                    ; Offset:    0 Size:     4
+;
+; }
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; Rays                              cbuffer      NA          NA     CB0            cb0     1
+; scene                             texture     i32         ras      T0             t0     1
+; results                               UAV  struct         r/w      U0             u0     1
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.CBufRet.f32 = type { float, float, float, float }
+%dx.types.CBufRet.i32 = type { i32, i32, i32, i32 }
+%struct.RaytracingAccelerationStructure = type { i32 }
+%"class.RWStructuredBuffer<unsigned int>" = type { i32 }
+%Rays = type { [64 x <4 x float>], [64 x <4 x float>], [64 x <4 x i32>], [8 x <4 x float>] }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %4 = call i32 @dx.op.flattenedThreadIdInGroup.i32(i32 96)  ; FlattenedThreadIdInGroup()
+  %5 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 %4)  ; CBufferLoadLegacy(handle,regIndex)
+  %6 = extractvalue %dx.types.CBufRet.f32 %5, 0
+  %7 = extractvalue %dx.types.CBufRet.f32 %5, 1
+  %8 = extractvalue %dx.types.CBufRet.f32 %5, 2
+  %9 = add i32 %4, 64
+  %10 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 %9)  ; CBufferLoadLegacy(handle,regIndex)
+  %11 = extractvalue %dx.types.CBufRet.f32 %10, 0
+  %12 = extractvalue %dx.types.CBufRet.f32 %10, 1
+  %13 = extractvalue %dx.types.CBufRet.f32 %10, 2
+  %14 = call i32 @dx.op.allocateRayQuery(i32 178, i32 0)  ; AllocateRayQuery(constRayFlags)
+  %15 = add i32 %4, 128
+  %16 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %3, i32 %15)  ; CBufferLoadLegacy(handle,regIndex)
+  %17 = extractvalue %dx.types.CBufRet.i32 %16, 1
+  %18 = extractvalue %dx.types.CBufRet.i32 %16, 0
+  call void @dx.op.rayQuery_TraceRayInline(i32 179, i32 %14, %dx.types.Handle %2, i32 %18, i32 %17, float %6, float %7, float %8, float 0.000000e+00, float %11, float %12, float %13, float 1.000000e+03)  ; RayQuery_TraceRayInline(rayQueryHandle,accelerationStructure,rayFlags,instanceInclusionMask,origin_X,origin_Y,origin_Z,tMin,direction_X,direction_Y,direction_Z,tMax)
+  %19 = call i1 @dx.op.rayQuery_Proceed.i1(i32 180, i32 %14)  ; RayQuery_Proceed(rayQueryHandle)
+  br i1 %19, label %20, label %102
+
+; <label>:20                                      ; preds = %0
+  br label %21
+
+; <label>:21                                      ; preds = %85, %20
+  %22 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 185, i32 %14)  ; RayQuery_CandidateType(rayQueryHandle)
+  %23 = icmp eq i32 %22, 0
+  br i1 %23, label %24, label %25
+
+; <label>:24                                      ; preds = %21
+  call void @dx.op.rayQuery_CommitNonOpaqueTriangleHit(i32 182, i32 %14)  ; RayQuery_CommitNonOpaqueTriangleHit(rayQueryHandle)
+  br label %85
+
+; <label>:25                                      ; preds = %21
+  %26 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 0, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %27 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 0, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %28 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 0, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %29 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 0, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %30 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 1, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %31 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 1, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %32 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 1, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %33 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 1, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %34 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 2, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %35 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 2, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %36 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 2, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %37 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %14, i32 2, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %38 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %14, i8 0)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %39 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %14, i8 1)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %40 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %14, i8 2)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %41 = fmul fast float %38, %26
+  %42 = call float @dx.op.tertiary.f32(i32 46, float %27, float %39, float %41)  ; FMad(a,b,c)
+  %43 = call float @dx.op.tertiary.f32(i32 46, float %28, float %40, float %42)  ; FMad(a,b,c)
+  %44 = fadd fast float %43, %29
+  %45 = fmul fast float %38, %30
+  %46 = call float @dx.op.tertiary.f32(i32 46, float %31, float %39, float %45)  ; FMad(a,b,c)
+  %47 = call float @dx.op.tertiary.f32(i32 46, float %32, float %40, float %46)  ; FMad(a,b,c)
+  %48 = fadd fast float %47, %33
+  %49 = fmul fast float %38, %34
+  %50 = call float @dx.op.tertiary.f32(i32 46, float %35, float %39, float %49)  ; FMad(a,b,c)
+  %51 = call float @dx.op.tertiary.f32(i32 46, float %36, float %40, float %50)  ; FMad(a,b,c)
+  %52 = fadd fast float %51, %37
+  %53 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %14, i8 0)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %54 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %14, i8 1)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %55 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %14, i8 2)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %56 = fmul fast float %53, %26
+  %57 = call float @dx.op.tertiary.f32(i32 46, float %27, float %54, float %56)  ; FMad(a,b,c)
+  %58 = call float @dx.op.tertiary.f32(i32 46, float %28, float %55, float %57)  ; FMad(a,b,c)
+  %59 = fmul fast float %53, %30
+  %60 = call float @dx.op.tertiary.f32(i32 46, float %31, float %54, float %59)  ; FMad(a,b,c)
+  %61 = call float @dx.op.tertiary.f32(i32 46, float %32, float %55, float %60)  ; FMad(a,b,c)
+  %62 = fmul fast float %53, %34
+  %63 = call float @dx.op.tertiary.f32(i32 46, float %35, float %54, float %62)  ; FMad(a,b,c)
+  %64 = call float @dx.op.tertiary.f32(i32 46, float %36, float %55, float %63)  ; FMad(a,b,c)
+  %65 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 204, i32 %14)  ; RayQuery_CandidatePrimitiveIndex(rayQueryHandle)
+  %66 = and i32 %65, 7
+  %67 = or i32 %66, 192
+  %68 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 %67)  ; CBufferLoadLegacy(handle,regIndex)
+  %69 = extractvalue %dx.types.CBufRet.f32 %68, 0
+  %70 = extractvalue %dx.types.CBufRet.f32 %68, 1
+  %71 = extractvalue %dx.types.CBufRet.f32 %68, 2
+  %72 = extractvalue %dx.types.CBufRet.f32 %68, 3
+  %73 = fsub fast float %44, %69
+  %74 = fsub fast float %48, %70
+  %75 = fsub fast float %52, %71
+  %76 = call float @dx.op.dot3.f32(i32 55, float %58, float %61, float %64, float %58, float %61, float %64)  ; Dot3(ax,ay,az,bx,by,bz)
+  %77 = call float @dx.op.dot3.f32(i32 55, float %73, float %74, float %75, float %58, float %61, float %64)  ; Dot3(ax,ay,az,bx,by,bz)
+  %78 = call float @dx.op.dot3.f32(i32 55, float %73, float %74, float %75, float %73, float %74, float %75)  ; Dot3(ax,ay,az,bx,by,bz)
+  %79 = fmul fast float %72, %72
+  %80 = fsub fast float %78, %79
+  %81 = fmul fast float %77, %77
+  %82 = fmul fast float %80, %76
+  %83 = fsub fast float %81, %82
+  %84 = fcmp fast ult float %83, 0.000000e+00
+  br i1 %84, label %85, label %87
+
+; <label>:85                                      ; preds = %100, %97, %87, %25, %24
+  %86 = call i1 @dx.op.rayQuery_Proceed.i1(i32 180, i32 %14)  ; RayQuery_Proceed(rayQueryHandle)
+  br i1 %86, label %21, label %101
+
+; <label>:87                                      ; preds = %25
+  %88 = fsub fast float -0.000000e+00, %77
+  %89 = call float @dx.op.unary.f32(i32 24, float %83)  ; Sqrt(value)
+  %90 = fsub fast float %88, %89
+  %91 = fdiv fast float %90, %76
+  %92 = call float @dx.op.rayQuery_StateScalar.f32(i32 198, i32 %14)  ; RayQuery_RayTMin(rayQueryHandle)
+  %93 = fcmp fast ult float %91, %92
+  br i1 %93, label %85, label %94
+
+; <label>:94                                      ; preds = %87
+  %95 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 184, i32 %14)  ; RayQuery_CommittedStatus(rayQueryHandle)
+  %96 = icmp eq i32 %95, 0
+  br i1 %96, label %100, label %97
+
+; <label>:97                                      ; preds = %94
+  %98 = call float @dx.op.rayQuery_StateScalar.f32(i32 200, i32 %14)  ; RayQuery_CommittedRayT(rayQueryHandle)
+  %99 = fcmp fast olt float %91, %98
+  br i1 %99, label %100, label %85
+
+; <label>:100                                     ; preds = %97, %94
+  call void @dx.op.rayQuery_CommitProceduralPrimitiveHit(i32 183, i32 %14, float %91)  ; RayQuery_CommitProceduralPrimitiveHit(rayQueryHandle,t)
+  br label %85
+
+; <label>:101                                     ; preds = %85
+  br label %102
+
+; <label>:102                                     ; preds = %101, %0
+  %103 = mul i32 %4, 10
+  %104 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 184, i32 %14)  ; RayQuery_CommittedStatus(rayQueryHandle)
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %103, i32 0, i32 %104, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %105 = icmp eq i32 %104, 0
+  br i1 %105, label %131, label %106
+
+; <label>:106                                     ; preds = %102
+  %107 = call float @dx.op.rayQuery_StateScalar.f32(i32 200, i32 %14)  ; RayQuery_CommittedRayT(rayQueryHandle)
+  %108 = bitcast float %107 to i32
+  %109 = or i32 %103, 1
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %109, i32 0, i32 %108, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %110 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 207, i32 %14)  ; RayQuery_CommittedInstanceIndex(rayQueryHandle)
+  %111 = add i32 %103, 2
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %111, i32 0, i32 %110, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %112 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 208, i32 %14)  ; RayQuery_CommittedInstanceID(rayQueryHandle)
+  %113 = add i32 %103, 3
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %113, i32 0, i32 %112, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %114 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 215, i32 %14)  ; RayQuery_CommittedInstanceContributionToHitGroupIndex(rayQueryHandle)
+  %115 = add i32 %103, 4
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %115, i32 0, i32 %114, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %116 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 209, i32 %14)  ; RayQuery_CommittedGeometryIndex(rayQueryHandle)
+  %117 = add i32 %103, 5
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %117, i32 0, i32 %116, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %118 = call i32 @dx.op.rayQuery_StateScalar.i32(i32 210, i32 %14)  ; RayQuery_CommittedPrimitiveIndex(rayQueryHandle)
+  %119 = add i32 %103, 6
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %119, i32 0, i32 %118, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %120 = icmp eq i32 %104, 1
+  br i1 %120, label %121, label %131
+
+; <label>:121                                     ; preds = %106
+  %122 = call float @dx.op.rayQuery_StateVector.f32(i32 194, i32 %14, i8 0)  ; RayQuery_CommittedTriangleBarycentrics(rayQueryHandle,component)
+  %123 = call float @dx.op.rayQuery_StateVector.f32(i32 194, i32 %14, i8 1)  ; RayQuery_CommittedTriangleBarycentrics(rayQueryHandle,component)
+  %124 = bitcast float %122 to i32
+  %125 = add i32 %103, 7
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %125, i32 0, i32 %124, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %126 = bitcast float %123 to i32
+  %127 = add i32 %103, 8
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %127, i32 0, i32 %126, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %128 = call i1 @dx.op.rayQuery_StateScalar.i1(i32 192, i32 %14)  ; RayQuery_CommittedTriangleFrontFace(rayQueryHandle)
+  %129 = zext i1 %128 to i32
+  %130 = add i32 %103, 9
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %130, i32 0, i32 %129, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  br label %131
+
+; <label>:131                                     ; preds = %121, %106, %102
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.flattenedThreadIdInGroup.i32(i32) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.unary.f32(i32, float) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.rawBufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8, i32) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32, %dx.types.Handle, i32) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32, %dx.types.Handle, i32) #2
+
+; Function Attrs: nounwind
+declare i32 @dx.op.allocateRayQuery(i32, i32) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.rayQuery_TraceRayInline(i32, i32, %dx.types.Handle, i32, i32, float, float, float, float, float, float, float, float) #1
+
+; Function Attrs: nounwind readonly
+declare i1 @dx.op.rayQuery_StateScalar.i1(i32, i32) #2
+
+; Function Attrs: nounwind readonly
+declare float @dx.op.rayQuery_StateVector.f32(i32, i32, i8) #2
+
+; Function Attrs: nounwind readonly
+declare i32 @dx.op.rayQuery_StateScalar.i32(i32, i32) #2
+
+; Function Attrs: nounwind
+declare void @dx.op.rayQuery_CommitProceduralPrimitiveHit(i32, i32, float) #1
+
+; Function Attrs: nounwind readonly
+declare float @dx.op.rayQuery_StateScalar.f32(i32, i32) #2
+
+; Function Attrs: nounwind
+declare void @dx.op.rayQuery_CommitNonOpaqueTriangleHit(i32, i32) #1
+
+; Function Attrs: nounwind
+declare i1 @dx.op.rayQuery_Proceed.i1(i32, i32) #1
+
+; Function Attrs: nounwind readonly
+declare float @dx.op.rayQuery_StateMatrix.f32(i32, i32, i32, i8) #2
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.tertiary.f32(i32, float, float, float) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #2
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind readonly }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!13}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 5}
+!2 = !{i32 1, i32 9}
+!3 = !{!"cs", i32 6, i32 5}
+!4 = !{!5, !8, !11, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RaytracingAccelerationStructure* undef, !"", i32 0, i32 0, i32 1, i32 16, i32 0, !7}
+!7 = !{i32 0, i32 4}
+!8 = !{!9}
+!9 = !{i32 0, %"class.RWStructuredBuffer<unsigned int>"* undef, !"", i32 0, i32 0, i32 1, i32 12, i1 false, i1 false, i1 false, !10}
+!10 = !{i32 1, i32 4}
+!11 = !{!12}
+!12 = !{i32 0, %Rays* undef, !"", i32 0, i32 0, i32 1, i32 3200, null}
+!13 = !{void ()* @main, !"main", null, !4, !14}
+!14 = !{i32 0, i64 33554448, i32 4, !15}
+!15 = !{i32 64, i32 1, i32 1}
+

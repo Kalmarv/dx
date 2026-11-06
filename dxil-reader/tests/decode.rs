@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-//! The DXIL reader on the control-flow and memory fixtures (dxc 1.7, default optimisation and -Od): a switch is read as
+//! The DXIL reader on the control-flow and memory fixtures (dxc 1.9.2609, default optimisation and -Od): a switch is read as
 //! a switch, a local array as an alloca with getelementptr, loads and stores; and every committed fixture reads.
 use dxil_reader::module::{Module, Op};
 

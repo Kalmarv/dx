@@ -1,3 +1,8 @@
+// dxc: -T lib_6_6 -Fo ray_subobjects.dxil
+// dxc: -T lib_6_6 -exports any_hit -Fo ray_subobjects.any_hit.dxil
+// dxc: -T lib_6_6 -exports closest_hit -Fo ray_subobjects.closest_hit.dxil
+// dxc: -T lib_6_6 -exports intersection -Fo ray_subobjects.intersection.dxil
+// dxc: -T lib_6_6 -exports miss -Fo ray_subobjects.miss.dxil
 // A ray tracing library with its state object subobjects (Shader Model 6.6): every kind the runtime data stores, and the
 // programs they name. Compile it whole as
 //   dxc -T lib_6_6 (ray_subobjects.dxil)

@@ -1,3 +1,5 @@
+// dxc: -T cs_6_5 -E main -Fo ray_query_state.dxil
+// dxc: -T cs_6_5 -E main -Od -Fo ray_query_state.od.dxil
 // What a ray query remembers of the ray it was traced with (compute): its flags, origin, direction and t min.
 // Compiled with dxc -T cs_6_5 -E main (ray_query_state.dxil, also -Od). Written to results as flags, origin, direction,
 // t min; naga's WGSL writer does not write ray queries, and no executor runs it.

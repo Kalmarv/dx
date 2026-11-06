@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo lane_2d.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo lane_2d.od.dxil
+// dxc: -T cs_6_6 -E main -Fo lane_2d.66.dxil
 // Wave operations in a thread group that is not along x alone (compute), whose lane number WebGPU has no built-in for.
 // Compiled with dxc -T cs_6_0 -E main (lane_2d.dxil, also -Od and -T cs_6_6). Each thread writes its lane in its wave,
 // the number of lanes that are active with it, and the lowest lane's value of its flattened index.

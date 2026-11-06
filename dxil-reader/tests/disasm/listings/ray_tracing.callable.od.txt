@@ -1,0 +1,55 @@
+; shader hash: 5a9339d1c6ba77e20d5c2e225e85d092
+;
+; Buffer Definitions:
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%struct.Parameter = type { float }
+
+@dx.nothing.a = internal constant [1 x i32] zeroinitializer
+
+; Function Attrs: nounwind
+define void @"\01?callable@@YAXUParameter@@@Z"(%struct.Parameter* noalias %parameter) #0 {
+  %1 = getelementptr inbounds %struct.Parameter, %struct.Parameter* %parameter, i32 0, i32 0
+  %2 = load float, float* %1, align 4
+  %3 = fmul fast float %2, 2.000000e+00
+  %4 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  store float %3, float* %1, align 4
+  %5 = load i32, i32* getelementptr inbounds ([1 x i32], [1 x i32]* @dx.nothing.a, i32 0, i32 0)
+  ret void
+}
+
+attributes #0 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.typeAnnotations = !{!4, !7}
+!dx.entryPoints = !{!12, !14}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 6}
+!2 = !{i32 1, i32 9}
+!3 = !{!"lib", i32 6, i32 6}
+!4 = !{i32 0, %struct.Parameter undef, !5}
+!5 = !{i32 4, !6}
+!6 = !{i32 6, !"value", i32 3, i32 0, i32 7, i32 9}
+!7 = !{i32 1, void (%struct.Parameter*)* @"\01?callable@@YAXUParameter@@@Z", !8}
+!8 = !{!9, !11}
+!9 = !{i32 1, !10, !10}
+!10 = !{}
+!11 = !{i32 2, !10, !10}
+!12 = !{null, !"", null, null, !13}
+!13 = !{i32 0, i64 1}
+!14 = !{void (%struct.Parameter*)* @"\01?callable@@YAXUParameter@@@Z", !"\01?callable@@YAXUParameter@@@Z", null, null, !15}
+!15 = !{i32 8, i32 12, i32 6, i32 4, i32 5, !16}
+!16 = !{i32 0}
+

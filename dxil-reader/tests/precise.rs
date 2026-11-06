@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-//! The `dx.precise` attachment of an instruction. The fixture is dxc 1.7 output (`precise.hlsl` as `vs_6_0`); the
+//! The `dx.precise` attachment of an instruction. The fixture is dxc 1.9.2609 output (`precise.hlsl` as `vs_6_0`); the
 //! expected instructions are the ones dxc's own listing of the same compilation (`-Fc`) prints `!dx.precise` on,
 //! numbered from 0 in the order the listing prints them, which is how the attachment block numbers them.
 use dxil_reader::module::{Module, Op};

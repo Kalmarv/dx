@@ -1,3 +1,4 @@
+// dxc: -T cs_6_5 -E main -Fo ray_query_procedural.dxil
 // Inline ray tracing with procedural primitives (compute, one group of 64). Compiled with dxc -T cs_6_5 -E main
 // (ray_query_procedural.dxil). Thread i traces the ray origins[i], directions[i] (t from 0 to 1000) with the flags and
 // instance mask of params[i].xy. A triangle is committed as in ray_query_grid.hlsl; a procedural primitive is a box that

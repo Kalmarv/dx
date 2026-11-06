@@ -1,3 +1,5 @@
+// dxc: -T ps_6_0 -E main -Fo sampling.dxil
+// dxc: -T ps_6_6 -E main -Fo sampling.66.dxil
 // Fixture for `sampling::texture_reads`: textures sampled, gathered, queried and loaded with samplers of two spaces and a
 // comparison sampler, a texture array indexed by a constant, and typed and raw buffer loads. Compile:
 // dxc -T ps_6_0 -E main -Fo sampling.dxil sampling.hlsl (`sampling.66.dxil` with -T ps_6_6, which makes the handles

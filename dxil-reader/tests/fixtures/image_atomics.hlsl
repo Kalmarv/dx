@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo image_atomics.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo image_atomics.od.dxil
+// dxc: -T cs_6_6 -E main -Fo image_atomics.66.dxil
 // Atomic operations on unordered-access textures from one thread group of 8 by 8 (compute). Compiled with
 //   dxc -T cs_6_0 -E main (image_atomics.dxil, also -Od and -T cs_6_6), and the DXBC copy with fxc -T cs_5_0.
 // Thread (x, y) of the group has at = (x % 4, y % 4) and makes three requests, in this order:

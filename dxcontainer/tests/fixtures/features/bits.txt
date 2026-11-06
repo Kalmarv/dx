@@ -1,0 +1,38 @@
+# bit	the name dxc -dumpbin lists for a DXIL container's SFI0 part with that bit alone set (libdxcompiler.so: 1.9(5512-01b62ad4)(1.9.2609.5)).
+# Written by bits.py; bits not listed have no name.
+0	Double-precision floating point
+1	Raw and Structured buffers
+2	UAVs at every shader stage
+3	64 UAV slots
+4	Minimum-precision data types
+5	Double-precision extensions for 11.1
+6	Shader extensions for 11.1
+7	Comparison filtering for feature level 9
+8	Tiled resources
+9	PS Output Stencil Ref
+10	PS Inner Coverage
+11	Typed UAV Load Additional Formats
+12	Raster Ordered UAVs
+13	SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer
+14	Wave level operations
+15	64-Bit integer
+16	View Instancing
+17	Barycentrics
+18	Use native low precision
+19	Shading Rate
+20	Raytracing tier 1.1 features
+21	Sampler feedback
+22	64-bit Atomics on Typed Resources
+23	64-bit Atomics on Group Shared
+24	Derivatives in mesh and amplification shaders
+25	Resource descriptor heap indexing
+26	Sampler descriptor heap indexing
+27	Wave Matrix
+28	64-bit Atomics on Heap Resources
+29	Advanced Texture Ops
+30	Writeable MSAA Textures
+31	SampleCmp with gradient or bias
+32	Extended command info
+33	Linear Algebra
+40	Function uses derivatives
+41	Function requires visible group

@@ -1,3 +1,4 @@
+// dxc: -T ms_6_6 -E main -Fo meshderiv.dxil
 Texture2D<float4> t : register(t0);
 SamplerState s : register(s0);
 struct V { float4 p : SV_Position; };

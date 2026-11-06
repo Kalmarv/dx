@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo buffer_arrays.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo buffer_arrays.od.dxil
+// dxc: -T cs_6_6 -E main -Fo buffer_arrays.66.dxil
 // Arrays of buffers read and written at a computed element (compute, one group of 4). Compiled with dxc -T cs_6_0 -E
 // main (buffer_arrays.dxil, also -Od and -T cs_6_6). Bind: bufs[0..3] with n0, n1, n2 words (at least 8 for bufs[2],
 // at least 4 for bufs[which]), all zero; raws[0] = 10, 20, 30, 40 and raws[1] = 11, 21, 31, 41; which = 1.

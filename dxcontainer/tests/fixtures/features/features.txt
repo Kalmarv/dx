@@ -1,5 +1,5 @@
 # file, SFI0 as stored (- for no SFI0 part), the compiler's own list of what the program requires.
-# dxc 1.7.2308 (cs/ps/vs/ms _6_x, -E main) and fxc 10.0.26100 (_4_x/_5_0, /E main), from the .hlsl beside each.
+# dxc 1.9.2609 (cs/ps/vs/ms _6_x, -E main) and fxc 10.0.26100 (_4_x/_5_0, /E main), from the .hlsl beside each.
 atomic64heap.dxil	0x12008000	64-Bit integer | Resource descriptor heap indexing | 64-bit Atomics on Heap Resources
 atomic64shared.dxil	0x808000	64-Bit integer | 64-bit Atomics on Group Shared
 atomic64typed.dxil	0x408000	64-Bit integer | 64-bit Atomics on Typed Resources

@@ -48,11 +48,15 @@ fn the_flags_are_the_eight_bytes_of_the_sfi0_part_and_the_program_part_says_what
         ["Raw and Structured buffers", "Minimum-precision data types"]
     );
     assert_eq!(flags(0x12, b"SHDR").unwrap().bytecode, Bytecode::Dxbc);
-    // the same bits in a DXIL container: bit 1 has no name there
-    let dxil = flags(0x12, b"DXIL").unwrap();
+    // the same bits in a DXIL container, and a bit only DXIL names
+    let dxil = flags(0x12 | 1 << 21, b"DXIL").unwrap();
     assert_eq!(dxil.bytecode, Bytecode::Dxil);
-    assert_eq!(dxil.names(), ["Minimum-precision data types"]);
-    assert_eq!(dxil.unnamed(), 0x2);
+    assert_eq!(
+        dxil.names(),
+        ["Raw and Structured buffers", "Minimum-precision data types", "Sampler feedback"]
+    );
+    assert_eq!(dxil.unnamed(), 0);
+    assert_eq!(flags(1 << 21, b"SHEX").unwrap().unnamed(), 1 << 21);
     assert!(dxil.has(1) && dxil.has(4) && !dxil.has(0) && !dxil.has(64));
     // the high bits of a 64-bit value
     let high = flags(1 << 63 | 1 << 14, b"DXIL").unwrap();
@@ -82,7 +86,7 @@ fn a_container_without_sfi0_has_no_flags_and_a_bad_one_is_refused() {
 
 #[test]
 fn bit_names_depend_on_the_bytecode() {
-    for bit in (0..=6).chain(8..=13).filter(|b| *b != 1) {
+    for bit in 0..=13 {
         assert_eq!(
             feature_name(Bytecode::Dxbc, bit),
             feature_name(Bytecode::Dxil, bit),
@@ -94,12 +98,28 @@ fn bit_names_depend_on_the_bytecode() {
         feature_name(Bytecode::Dxbc, 7),
         Some("Comparison filtering for feature level 9")
     );
-    assert_eq!(feature_name(Bytecode::Dxil, 7), None);
     assert_eq!(feature_name(Bytecode::Dxbc, 14), None);
     assert_eq!(feature_name(Bytecode::Dxil, 14), Some("Wave level operations"));
     assert_eq!(feature_name(Bytecode::Dxil, 64), None);
-    for unnamed in [1, 7, 21, 27, 31, 32, 63] {
-        assert_eq!(feature_name(Bytecode::Dxil, unnamed), None, "bit {unnamed}");
+}
+
+#[test]
+fn the_dxil_names_are_what_dxc_lists_for_each_bit() {
+    // bits.txt: what dxc's listing names each bit of SFI0, set alone (written by bits.py)
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/features");
+    let table = std::fs::read_to_string(dir.join("bits.txt")).unwrap();
+    let mut listed = std::collections::BTreeMap::new();
+    for line in table.lines().filter(|l| !l.starts_with('#')) {
+        let (bit, name) = line.split_once('\t').unwrap();
+        listed.insert(bit.parse::<u32>().unwrap(), name);
+    }
+    assert_eq!(listed.len(), 36);
+    for bit in 0..64 {
+        assert_eq!(
+            feature_name(Bytecode::Dxil, bit),
+            listed.get(&bit).copied(),
+            "bit {bit}"
+        );
     }
 }
 
@@ -146,11 +166,8 @@ fn the_names_are_what_the_compilers_list_for_their_own_output() {
         checked += 1;
     }
     assert_eq!((checked, dxil, dxbc), (44, 27, 16), "fixtures read");
-    // every named bit of either bytecode is covered by one of the compiled programs, except those no program set
-    let named_dxil: u64 = (0..64)
-        .filter(|b| feature_name(Bytecode::Dxil, *b).is_some())
-        .fold(0, |m, b| m | 1 << b);
-    assert_eq!(named_dxil & !bits_seen, 0, "a named bit no fixture sets");
+    // every bit fxc names is covered by one of the compiled programs (dxc's are checked against its listing of each
+    // bit, in bits.txt)
     let named_dxbc: u64 = (0..64)
         .filter(|b| feature_name(Bytecode::Dxbc, *b).is_some())
         .fold(0, |m, b| m | 1 << b);

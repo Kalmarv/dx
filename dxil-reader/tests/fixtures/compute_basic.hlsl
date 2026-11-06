@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo compute_basic.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo compute_basic.od.dxil
+// dxc: -T cs_6_6 -E main -Fo compute_basic.66.dxil
 // A compute program: a thread group of 8 by 4 by 2, the invocation ids, thread-group memory, barriers, atomics on
 // thread-group memory and on a buffer, and read-write buffers of each kind. Compiled with dxc -T cs_6_0 (also -Od,
 // and -T cs_6_6).

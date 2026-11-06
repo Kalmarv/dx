@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo image_arrays.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo image_arrays.od.dxil
+// dxc: -T cs_6_6 -E main -Fo image_arrays.66.dxil
 // Stores into an array of images at an element the program computes (compute, one group of 8 by 8). Compiled with dxc
 // -T cs_6_6 -E main (image_arrays.dxil; the skate programs use shader model 6.6 and a computed element index), also
 // -T cs_6_0 and -Od.

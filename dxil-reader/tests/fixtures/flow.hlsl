@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo flow.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo flow.od.dxil
+// dxc: -T ps_6_6 -E main -Fo flow.66.dxil
 // Fixture for the DXIL lifter: branches that are not plain diamonds (short-circuit tests, an early return, a discard,
 // a chain of ifs sharing an else). Compile: dxc -T ps_6_0 -E main -Fo flow.dxil flow.hlsl
 cbuffer Values : register(b0)

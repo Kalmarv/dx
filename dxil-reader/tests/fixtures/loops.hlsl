@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo loops.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo loops.od.dxil
+// dxc: -T ps_6_6 -E main -Fo loops.66.dxil
 // Fixture for the DXIL lifter: loops with a bound from a constant buffer, break, continue, a nested loop and a
 // loop with two exits. Compile: dxc -T ps_6_0 -E main -Fo loops.dxil loops.hlsl
 cbuffer Values : register(b0)

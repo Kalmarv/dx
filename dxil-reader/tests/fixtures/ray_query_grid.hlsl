@@ -1,3 +1,4 @@
+// dxc: -T cs_6_5 -E main -Fo ray_query_grid.dxil
 // Inline ray tracing, many rays (compute, one group of 64). Compiled with dxc -T cs_6_5 -E main (ray_query_grid.dxil).
 // Thread i traces the ray origins[i], directions[i] (t from 0 to 1000) with the flags and instance mask of params[i].xy,
 // commits every non-opaque triangle it is offered, and writes ten words to results[10 * i], as ray_query_hits.hlsl does:

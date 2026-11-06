@@ -1,3 +1,4 @@
+// dxc: -T ps_6_6 -E main -Fo extras.ps.dxil
 // Resource records with their optional fields: a multisampled texture (sample count), a globally coherent buffer, a
 // rasterizer-ordered view, a 64-bit atomic target, structured and typed views, a constant buffer and a sampler. Compiled with
 // dxc -T ps_6_6 -E main (extras.ps.dxil).

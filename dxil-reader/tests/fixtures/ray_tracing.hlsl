@@ -1,3 +1,16 @@
+// dxc: -T lib_6_6 -exports any_hit -Fo ray_tracing.any_hit.dxil
+// dxc: -T lib_6_6 -exports any_hit -Od -Fo ray_tracing.any_hit.od.dxil
+// dxc: -T lib_6_6 -exports callable -Fo ray_tracing.callable.dxil
+// dxc: -T lib_6_6 -exports callable -Od -Fo ray_tracing.callable.od.dxil
+// dxc: -T lib_6_6 -exports closest_hit -Fo ray_tracing.closest_hit.dxil
+// dxc: -T lib_6_6 -exports closest_hit -Od -Fo ray_tracing.closest_hit.od.dxil
+// dxc: -T lib_6_6 -exports intersection -Fo ray_tracing.intersection.dxil
+// dxc: -T lib_6_6 -exports intersection -Od -Fo ray_tracing.intersection.od.dxil
+// dxc: -T lib_6_6 -exports miss -Fo ray_tracing.miss.dxil
+// dxc: -T lib_6_6 -exports miss -Od -Fo ray_tracing.miss.od.dxil
+// dxc: -T lib_6_6 -exports raygen -Fo ray_tracing.raygen.dxil
+// dxc: -T lib_6_6 -exports raygen -Od -Fo ray_tracing.raygen.od.dxil
+// dxc: -T lib_6_6 -exports closest_hit -auto-binding-space 3 -Fo ray_tracing.closest_hit.space3.dxil
 // The ray tracing pipeline's programs, one library of them (Shader Model 6.6). Compile each program alone as
 //   dxc -T lib_6_6 -exports <name> (ray_tracing.<name>.dxil, also -Od)
 // for the names raygen, miss, closest_hit, any_hit, intersection and callable. The payload is a distance and a count;

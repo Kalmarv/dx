@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo uav_counter.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo uav_counter.od.dxil
+// dxc: -T cs_6_6 -E main -Fo uav_counter.66.dxil
 // Unordered-access counters (compute): an append buffer, a consume buffer, a structured buffer whose counter is
 // incremented and another whose counter is decremented (dxc refuses one buffer that does both). Compiled with
 // dxc -T cs_6_0 -E main (uav_counter.dxil, also -Od and -T cs_6_6).

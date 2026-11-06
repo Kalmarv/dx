@@ -1,3 +1,5 @@
+// dxc: -T cs_6_6 -E main -Fo heap.dxil
+// dxc: -T cs_6_6 -E main -Od -Fo heap.od.dxil
 // Descriptors from the heaps (compute, Shader Model 6.6): a texture sampled, a structured buffer read and a structured
 // buffer written, all by indices from a constant buffer. Compiled with dxc -T cs_6_6 -E main (heap.dxil, also -Od).
 cbuffer Indices : register(b0) {

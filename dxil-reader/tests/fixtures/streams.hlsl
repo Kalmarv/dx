@@ -1,3 +1,4 @@
+// dxc: -T gs_6_0 -E main -Fo streams.gs.dxil
 // A geometry program writing two streams, a point per input corner to each (when several streams are used they must be
 // point lists). Compiled with dxc -T gs_6_0 -E main (streams.gs.dxil). The output elements of stream 1 state their stream in
 // their tail tags.

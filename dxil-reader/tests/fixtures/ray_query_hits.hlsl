@@ -1,3 +1,5 @@
+// dxc: -T cs_6_5 -E main -Fo ray_query_hits.dxil
+// dxc: -T cs_6_5 -E main -Od -Fo ray_query_hits.od.dxil
 // Inline ray tracing against an acceleration structure (compute, one group of 5). Compiled with dxc -T cs_6_5 -E main
 // (ray_query_hits.dxil, also -Od). Thread i traces the ray origins[i], directions[i] (t from 0 to 100) with the flags
 // and instance mask of params[i].xy, commits every non-opaque triangle it is offered, and writes ten words to

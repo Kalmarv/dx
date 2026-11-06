@@ -1,3 +1,6 @@
+// dxc: -T cs_6_0 -E main -Fo image_atomic_results.dxil
+// dxc: -T cs_6_0 -E main -Od -Fo image_atomic_results.od.dxil
+// dxc: -T cs_6_6 -E main -Fo image_atomic_results.66.dxil
 // Atomic operations on an unordered-access texture whose old value the program reads (one thread group of 4 threads,
 // compute). Compiled with dxc -T cs_6_0 -E main (image_atomic_results.dxil, also -Od), and the DXBC copy with fxc -T cs_5_0.
 // Thread x makes three requests, in this order, on texels of counts, and stores each old value to olds[(x, request)]:

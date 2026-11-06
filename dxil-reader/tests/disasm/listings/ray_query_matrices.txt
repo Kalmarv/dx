@@ -1,0 +1,299 @@
+;
+; Note: shader requires additional functionality:
+;       Raytracing tier 1.1 features
+;
+;
+; Input signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+;
+; Output signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+; shader hash: 684c7cae8a5b99bded7acdbba86459ec
+;
+; Pipeline Runtime Information: 
+;
+;PSVRuntimeInfo:
+; Compute Shader
+; NumThreads=(1,1,1)
+; MinimumExpectedWaveLaneCount: 0
+; MaximumExpectedWaveLaneCount: 4294967295
+; UsesViewID: false
+; SigInputElements: 0
+; SigOutputElements: 0
+; SigPatchConstOrPrimElements: 0
+; SigInputVectors: 0
+; SigOutputVectors[0]: 0
+; SigOutputVectors[1]: 0
+; SigOutputVectors[2]: 0
+; SigOutputVectors[3]: 0
+; EntryFunctionName: main
+;
+;
+; Buffer Definitions:
+;
+; cbuffer Rays
+; {
+;
+;   struct Rays
+;   {
+;
+;       float4 origins[1];                            ; Offset:    0
+;       float4 directions[1];                         ; Offset:   16
+;   
+;   } Rays;                                           ; Offset:    0 Size:    32
+;
+; }
+;
+; Resource bind info for results
+; {
+;
+;   uint $Element;                                    ; Offset:    0 Size:     4
+;
+; }
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; Rays                              cbuffer      NA          NA     CB0            cb0     1
+; scene                             texture     i32         ras      T0             t0     1
+; results                               UAV  struct         r/w      U0             u0     1
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.CBufRet.f32 = type { float, float, float, float }
+%struct.RaytracingAccelerationStructure = type { i32 }
+%"class.RWStructuredBuffer<unsigned int>" = type { i32 }
+%Rays = type { [1 x <4 x float>], [1 x <4 x float>] }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 2, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %4 = alloca [12 x float], align 4
+  %5 = alloca [4 x i32], align 4
+  %6 = alloca [12 x float], align 4
+  %7 = alloca [4 x i32], align 4
+  %8 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
+  %9 = extractvalue %dx.types.CBufRet.f32 %8, 0
+  %10 = extractvalue %dx.types.CBufRet.f32 %8, 1
+  %11 = extractvalue %dx.types.CBufRet.f32 %8, 2
+  %12 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %3, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %13 = extractvalue %dx.types.CBufRet.f32 %12, 0
+  %14 = extractvalue %dx.types.CBufRet.f32 %12, 1
+  %15 = extractvalue %dx.types.CBufRet.f32 %12, 2
+  %16 = call i32 @dx.op.allocateRayQuery(i32 178, i32 0)  ; AllocateRayQuery(constRayFlags)
+  call void @dx.op.rayQuery_TraceRayInline(i32 179, i32 %16, %dx.types.Handle %2, i32 0, i32 255, float %9, float %10, float %11, float 0.000000e+00, float %13, float %14, float %15, float 1.000000e+03)  ; RayQuery_TraceRayInline(rayQueryHandle,accelerationStructure,rayFlags,instanceInclusionMask,origin_X,origin_Y,origin_Z,tMin,direction_X,direction_Y,direction_Z,tMax)
+  %17 = call i1 @dx.op.rayQuery_Proceed.i1(i32 180, i32 %16)  ; RayQuery_Proceed(rayQueryHandle)
+  br i1 %17, label %18, label %113
+
+; <label>:18                                      ; preds = %0
+  %19 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 0, i8 0)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %20 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 0, i8 1)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %21 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 0, i8 2)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %22 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 0, i8 3)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %23 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 1, i8 0)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %24 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 1, i8 1)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %25 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 1, i8 2)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %26 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 1, i8 3)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %27 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 2, i8 0)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %28 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 2, i8 1)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %29 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 2, i8 2)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %30 = call float @dx.op.rayQuery_StateMatrix.f32(i32 186, i32 %16, i32 2, i8 3)  ; RayQuery_CandidateObjectToWorld3x4(rayQueryHandle,row,col)
+  %31 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 0, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %32 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 0, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %33 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 0, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %34 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 0, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %35 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 1, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %36 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 1, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %37 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 1, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %38 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 1, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %39 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 2, i8 0)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %40 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 2, i8 1)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %41 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 2, i8 2)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  %42 = call float @dx.op.rayQuery_StateMatrix.f32(i32 187, i32 %16, i32 2, i8 3)  ; RayQuery_CandidateWorldToObject3x4(rayQueryHandle,row,col)
+  br label %43
+
+; <label>:43                                      ; preds = %97, %18
+  %44 = phi i32 [ 0, %18 ], [ %98, %97 ]
+  br label %45
+
+; <label>:45                                      ; preds = %45, %43
+  %46 = phi i32 [ 0, %43 ], [ %95, %45 ]
+  %47 = add nuw nsw i32 %44, 3
+  %48 = add nuw nsw i32 %44, 6
+  %49 = add nuw nsw i32 %44, 9
+  %50 = getelementptr [4 x i32], [4 x i32]* %7, i32 0, i32 0
+  store i32 %44, i32* %50, align 4
+  %51 = getelementptr [4 x i32], [4 x i32]* %7, i32 0, i32 1
+  store i32 %47, i32* %51, align 4
+  %52 = getelementptr [4 x i32], [4 x i32]* %7, i32 0, i32 2
+  store i32 %48, i32* %52, align 4
+  %53 = getelementptr [4 x i32], [4 x i32]* %7, i32 0, i32 3
+  store i32 %49, i32* %53, align 4
+  %54 = getelementptr [4 x i32], [4 x i32]* %7, i32 0, i32 %46
+  %55 = load i32, i32* %54, align 4
+  %56 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 0
+  store float %19, float* %56, align 4
+  %57 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 1
+  store float %23, float* %57, align 4
+  %58 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 2
+  store float %27, float* %58, align 4
+  %59 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 3
+  store float %20, float* %59, align 4
+  %60 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 4
+  store float %24, float* %60, align 4
+  %61 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 5
+  store float %28, float* %61, align 4
+  %62 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 6
+  store float %21, float* %62, align 4
+  %63 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 7
+  store float %25, float* %63, align 4
+  %64 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 8
+  store float %29, float* %64, align 4
+  %65 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 9
+  store float %22, float* %65, align 4
+  %66 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 10
+  store float %26, float* %66, align 4
+  %67 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 11
+  store float %30, float* %67, align 4
+  %68 = getelementptr [12 x float], [12 x float]* %6, i32 0, i32 %55
+  %69 = load float, float* %68, align 4
+  %70 = bitcast float %69 to i32
+  %71 = shl i32 %44, 2
+  %72 = add i32 %46, %71
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %72, i32 0, i32 %70, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %73 = getelementptr [4 x i32], [4 x i32]* %5, i32 0, i32 0
+  store i32 %44, i32* %73, align 4
+  %74 = getelementptr [4 x i32], [4 x i32]* %5, i32 0, i32 1
+  store i32 %47, i32* %74, align 4
+  %75 = getelementptr [4 x i32], [4 x i32]* %5, i32 0, i32 2
+  store i32 %48, i32* %75, align 4
+  %76 = getelementptr [4 x i32], [4 x i32]* %5, i32 0, i32 3
+  store i32 %49, i32* %76, align 4
+  %77 = getelementptr [4 x i32], [4 x i32]* %5, i32 0, i32 %46
+  %78 = load i32, i32* %77, align 4
+  %79 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 0
+  store float %31, float* %79, align 4
+  %80 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 1
+  store float %35, float* %80, align 4
+  %81 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 2
+  store float %39, float* %81, align 4
+  %82 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 3
+  store float %32, float* %82, align 4
+  %83 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 4
+  store float %36, float* %83, align 4
+  %84 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 5
+  store float %40, float* %84, align 4
+  %85 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 6
+  store float %33, float* %85, align 4
+  %86 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 7
+  store float %37, float* %86, align 4
+  %87 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 8
+  store float %41, float* %87, align 4
+  %88 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 9
+  store float %34, float* %88, align 4
+  %89 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 10
+  store float %38, float* %89, align 4
+  %90 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 11
+  store float %42, float* %90, align 4
+  %91 = getelementptr [12 x float], [12 x float]* %4, i32 0, i32 %78
+  %92 = load float, float* %91, align 4
+  %93 = bitcast float %92 to i32
+  %94 = add i32 %72, 12
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 %94, i32 0, i32 %93, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %95 = add nuw nsw i32 %46, 1
+  %96 = icmp eq i32 %95, 4
+  br i1 %96, label %97, label %45
+
+; <label>:97                                      ; preds = %45
+  %98 = add nuw nsw i32 %44, 1
+  %99 = icmp eq i32 %98, 3
+  br i1 %99, label %100, label %43
+
+; <label>:100                                     ; preds = %97
+  %101 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %16, i8 0)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %102 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %16, i8 1)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %103 = call float @dx.op.rayQuery_StateVector.f32(i32 196, i32 %16, i8 2)  ; RayQuery_WorldRayOrigin(rayQueryHandle,component)
+  %104 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %16, i8 0)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %105 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %16, i8 1)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %106 = call float @dx.op.rayQuery_StateVector.f32(i32 197, i32 %16, i8 2)  ; RayQuery_WorldRayDirection(rayQueryHandle,component)
+  %107 = bitcast float %101 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 24, i32 0, i32 %107, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %108 = bitcast float %102 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 25, i32 0, i32 %108, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %109 = bitcast float %103 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 26, i32 0, i32 %109, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %110 = bitcast float %104 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 27, i32 0, i32 %110, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %111 = bitcast float %105 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 28, i32 0, i32 %111, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  %112 = bitcast float %106 to i32
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 29, i32 0, i32 %112, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  call void @dx.op.rawBufferStore.i32(i32 140, %dx.types.Handle %1, i32 30, i32 0, i32 1, i32 undef, i32 undef, i32 undef, i8 1, i32 4)  ; RawBufferStore(uav,index,elementOffset,value0,value1,value2,value3,mask,alignment)
+  br label %113
+
+; <label>:113                                     ; preds = %100, %0
+  ret void
+}
+
+; Function Attrs: nounwind
+declare void @dx.op.rawBufferStore.i32(i32, %dx.types.Handle, i32, i32, i32, i32, i32, i32, i8, i32) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32, %dx.types.Handle, i32) #1
+
+; Function Attrs: nounwind
+declare i32 @dx.op.allocateRayQuery(i32, i32) #0
+
+; Function Attrs: nounwind
+declare void @dx.op.rayQuery_TraceRayInline(i32, i32, %dx.types.Handle, i32, i32, float, float, float, float, float, float, float, float) #0
+
+; Function Attrs: nounwind readonly
+declare float @dx.op.rayQuery_StateVector.f32(i32, i32, i8) #1
+
+; Function Attrs: nounwind
+declare i1 @dx.op.rayQuery_Proceed.i1(i32, i32) #0
+
+; Function Attrs: nounwind readonly
+declare float @dx.op.rayQuery_StateMatrix.f32(i32, i32, i32, i8) #1
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+attributes #0 = { nounwind }
+attributes #1 = { nounwind readonly }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!13}
+
+!0 = !{!"dxcoob 1.9.2609.5 (01b62ad47)"}
+!1 = !{i32 1, i32 5}
+!2 = !{i32 1, i32 9}
+!3 = !{!"cs", i32 6, i32 5}
+!4 = !{!5, !8, !11, null}
+!5 = !{!6}
+!6 = !{i32 0, %struct.RaytracingAccelerationStructure* undef, !"", i32 0, i32 0, i32 1, i32 16, i32 0, !7}
+!7 = !{i32 0, i32 4}
+!8 = !{!9}
+!9 = !{i32 0, %"class.RWStructuredBuffer<unsigned int>"* undef, !"", i32 0, i32 0, i32 1, i32 12, i1 false, i1 false, i1 false, !10}
+!10 = !{i32 1, i32 4}
+!11 = !{!12}
+!12 = !{i32 0, %Rays* undef, !"", i32 0, i32 0, i32 1, i32 32, null}
+!13 = !{void ()* @main, !"main", null, !4, !14}
+!14 = !{i32 0, i64 33554448, i32 4, !15}
+!15 = !{i32 1, i32 1, i32 1}
+

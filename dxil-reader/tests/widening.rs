@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 //! The metadata the reader keeps beyond the lifter's needs: the string and flag attributes of a function, the metadata
 //! attached to instructions, the entry point's property tags, the tail tags of signature elements and the optional
-//! fields of resource records. The fixtures are dxc 1.7 output (the HLSL beside each, with the command in its first
+//! fields of resource records. The fixtures are dxc 1.9.2609 output (the HLSL beside each, with the command in its first
 //! comment, or the files of the ray tracing fixtures compiled with the options named here); every expected value is read
 //! off dxc's own listing of the same compilation (`-Fc`: attribute lines, `!dx.entryPoints` records, the `!llvm.loop` and
 //! `!dx.controlflow.hints` suffixes) and equals a second reader of the bitcode, written from the LLVM bitstream
@@ -100,9 +100,9 @@ fn the_declared_operations_carry_their_flag_attributes() {
 
 #[test]
 fn an_attribute_group_keeps_its_slot() {
-    // the ray generation fixture's `declare void @llvm.lifetime.start(i64, i8* nocapture) #0`: nocapture sits in the
-    // slot of the second parameter, the function attributes in the function slot
-    let m = module("ray_tracing.raygen.dxil");
+    // the arrays fixture's `declare void @llvm.lifetime.start(i64, i8* nocapture) #0`: nocapture sits in the slot of
+    // the second parameter, the function attributes (`nounwind`) in the function slot
+    let m = module("arrays.66.dxil");
     let groups: Vec<(u64, Vec<Attribute>)> = m
         .attribute_groups
         .iter()
@@ -111,7 +111,7 @@ fn an_attribute_group_keeps_its_slot() {
     assert!(groups.contains(&(2, vec![Attribute::Enum(11)])));
     assert!(groups.contains(&(
         dxil_reader::module::FUNCTION_SLOT,
-        vec![Attribute::Enum(18), Attribute::Enum(20)]
+        vec![Attribute::Enum(18)]
     )));
     // every list names groups the module has
     for list in &m.attribute_lists {

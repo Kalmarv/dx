@@ -1,3 +1,4 @@
+// dxc: -T cs_6_0 -E main -Fo barrier.cs.dxil
 // A compute program with a group barrier: the barrier's declaration carries the attributes noduplicate and nounwind.
 // Compiled with dxc -T cs_6_0 -E main (barrier.cs.dxil).
 RWStructuredBuffer<uint> o : register(u0);

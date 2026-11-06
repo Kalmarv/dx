@@ -1,3 +1,4 @@
+// dxc: -T ps_6_0 -E main -Fo hints.ps.dxil
 // Control flow with hints and loops (the branches that close them carry the attachments dx.controlflow.hints and llvm.loop). Compiled with dxc -T ps_6_0 -E main (hints.ps.dxil).
 Texture2D<float4> t : register(t0);
 float4 main(float4 p : SV_Position, uint k : K) : SV_Target {

@@ -1,3 +1,4 @@
+// dxc: -T vs_6_0 -E main -Fo bound_palette_vs.dxil
 // Fixture for the bound size of a constant buffer (toolkit/dxil, toolkit/dxbc tests/bound_size.rs): a skinning palette the
 // program declares as two matrices (six rows of four) and indexes by a joint, as the engine binds a larger buffer than the
 // shader declares (D3D12 bounds a constant buffer read by the view bound, not by the declaration). It computes nothing

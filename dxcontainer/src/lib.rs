@@ -333,13 +333,14 @@ impl Bytecode {
 
 /// The name of bit `bit` of the `SFI0` shader feature flags of `bytecode`, `None` for a bit with no name here.
 ///
-/// A name is the description the producing compiler prints for the flag. Every named bit was read off the compiler's
-/// own output: programs that need one feature each were compiled with `fxc` (Shader Model 4.0 to 5.0) and `dxc`
-/// (Shader Model 6.0 to 6.7), and each container's flags were compared with the compiler's own listing of what the
-/// program requires. That covers bits 0 to 13 for `fxc` (bit 1 only with a Shader Model 4 pixel program that uses a
-/// raw buffer; there it also sets the program's `enableRawAndStructuredBuffers` global flag) and, for `dxc`, bits 0,
-/// 2 to 6, 8 to 20, 22 to 26 and 28 to 30. The unnamed bits (for `dxc` 1, 7, 21, 27 and everything from 31 on) were
-/// produced by none of those programs.
+/// A name is the description the producing compiler prints for the flag. For `fxc` every named bit (0 to 13) was read
+/// off the compiler's own output: programs that need one feature each were compiled with `fxc` (Shader Model 4.0 to
+/// 5.0), and each container's flags were compared with the compiler's listing of what the program requires (bit 1 only
+/// with a Shader Model 4 pixel program that uses a raw buffer; there it also sets the program's
+/// `enableRawAndStructuredBuffers` global flag). For `dxc` the names are those its listing (`dxc -dumpbin`, 1.9.2609)
+/// gives a container with that bit alone set: bits 0 to 33, and 40 and 41, the two flags it lists as optional
+/// ("Function uses derivatives", "Function requires visible group"). Programs compiled to need one feature each (Shader
+/// Model 6.0 to 6.7) set bits 0, 2 to 6, 8 to 20, 22 to 26 and 28 to 30, with those names.
 ///
 /// In the games' stock containers (the 69,728 `DXIL` containers of skate. and Elden Ring, and 21 of Unity's 4,854
 /// `DXBC` ones; Sekiro's and Riders Republic's have no `SFI0` part) the bits that occur are, for `DXIL`, 2, 3, 4, 11,
@@ -348,49 +349,52 @@ impl Bytecode {
 /// bit 25 in every program that creates a handle from a descriptor heap and no other, bit 20 in every program that
 /// uses a ray query (and in 16 that do not).
 pub fn feature_name(bytecode: Bytecode, bit: u32) -> Option<&'static str> {
+    // the bits both compilers name, alike
     let shared = match bit {
-        0 => "Double-precision floating point",
-        2 => "UAVs at every shader stage",
-        3 => "64 UAV slots",
-        4 => "Minimum-precision data types",
-        5 => "Double-precision extensions for 11.1",
-        6 => "Shader extensions for 11.1",
-        8 => "Tiled resources",
-        9 => "PS Output Stencil Ref",
-        10 => "PS Inner Coverage",
-        11 => "Typed UAV Load Additional Formats",
-        12 => "Raster Ordered UAVs",
-        13 => "SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer",
-        _ => "",
+        0 => Some("Double-precision floating point"),
+        1 => Some("Raw and Structured buffers"),
+        2 => Some("UAVs at every shader stage"),
+        3 => Some("64 UAV slots"),
+        4 => Some("Minimum-precision data types"),
+        5 => Some("Double-precision extensions for 11.1"),
+        6 => Some("Shader extensions for 11.1"),
+        7 => Some("Comparison filtering for feature level 9"),
+        8 => Some("Tiled resources"),
+        9 => Some("PS Output Stencil Ref"),
+        10 => Some("PS Inner Coverage"),
+        11 => Some("Typed UAV Load Additional Formats"),
+        12 => Some("Raster Ordered UAVs"),
+        13 => Some("SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer"),
+        _ => None,
     };
-    if !shared.is_empty() {
-        return Some(shared);
+    if shared.is_some() || bytecode == Bytecode::Dxbc {
+        return shared;
     }
-    match bytecode {
-        Bytecode::Dxbc => match bit {
-            1 => Some("Raw and Structured buffers"),
-            7 => Some("Comparison filtering for feature level 9"),
-            _ => None,
-        },
-        Bytecode::Dxil => match bit {
-            14 => Some("Wave level operations"),
-            15 => Some("64-Bit integer"),
-            16 => Some("View Instancing"),
-            17 => Some("Barycentrics"),
-            18 => Some("Use native low precision"),
-            19 => Some("Shading Rate"),
-            20 => Some("Raytracing tier 1.1 features"),
-            22 => Some("64-bit Atomics on Typed Resources"),
-            23 => Some("64-bit Atomics on Group Shared"),
-            24 => Some("Derivatives in mesh and amplification shaders"),
-            25 => Some("Resource descriptor heap indexing"),
-            26 => Some("Sampler descriptor heap indexing"),
-            28 => Some("64-bit Atomics on Heap Resources"),
-            29 => Some("Advanced Texture Ops"),
-            30 => Some("Writeable MSAA Textures"),
-            _ => None,
-        },
-    }
+    Some(match bit {
+        14 => "Wave level operations",
+        15 => "64-Bit integer",
+        16 => "View Instancing",
+        17 => "Barycentrics",
+        18 => "Use native low precision",
+        19 => "Shading Rate",
+        20 => "Raytracing tier 1.1 features",
+        21 => "Sampler feedback",
+        22 => "64-bit Atomics on Typed Resources",
+        23 => "64-bit Atomics on Group Shared",
+        24 => "Derivatives in mesh and amplification shaders",
+        25 => "Resource descriptor heap indexing",
+        26 => "Sampler descriptor heap indexing",
+        27 => "Wave Matrix",
+        28 => "64-bit Atomics on Heap Resources",
+        29 => "Advanced Texture Ops",
+        30 => "Writeable MSAA Textures",
+        31 => "SampleCmp with gradient or bias",
+        32 => "Extended command info",
+        33 => "Linear Algebra",
+        40 => "Function uses derivatives",
+        41 => "Function requires visible group",
+        _ => return None,
+    })
 }
 
 /// A container's shader feature flags: its `SFI0` part (eight bytes, a little-endian `u64`) and the bytecode that says

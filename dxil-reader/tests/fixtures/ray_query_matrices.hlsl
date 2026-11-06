@@ -1,3 +1,4 @@
+// dxc: -T cs_6_5 -E main -Fo ray_query_matrices.dxil
 // What a ray query reports of the instance it is offering a procedural candidate in (compute, one thread). Compiled with
 // dxc -T cs_6_5 -E main (ray_query_matrices.dxil). One ray, origins[0] and directions[0], is traced; the first procedural
 // candidate's object-to-world and world-to-object matrices (three rows of four, row by row: twelve floats each) and the

@@ -1,3 +1,6 @@
+// dxc: -T gs_6_0 -E main -Fo geometry.dxil
+// dxc: -T gs_6_0 -E main -Od -Fo geometry.od.dxil
+// dxc: -T gs_6_6 -E main -Fo geometry.66.dxil
 // A geometry program (Shader Model 6): a triangle in, two triangle strips out, two instances. Compiled with
 // dxc -T gs_6_0 -E main (geometry.dxil, also -Od and -T gs_6_6).
 // Per invocation: the triangle's corners with x scaled by `scale` (the first strip), a restart, then the corners moved by

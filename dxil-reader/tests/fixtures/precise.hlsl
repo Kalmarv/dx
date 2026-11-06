@@ -1,3 +1,4 @@
+// dxc: -T vs_6_0 -E main -Fo precise.vs.dxil
 cbuffer C : register(b0) { float4 a; float4 b; float4 c; };
 float4 main(float4 p : POSITION) : SV_Position {
     precise float4 x = p * a + b;

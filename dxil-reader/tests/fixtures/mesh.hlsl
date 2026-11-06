@@ -1,3 +1,6 @@
+// dxc: -T ms_6_5 -E main -Fo mesh.dxil
+// dxc: -T ms_6_5 -E main -Od -Fo mesh.od.dxil
+// dxc: -T ms_6_6 -E main -Fo mesh.66.dxil
 // A mesh program (Shader Model 6.5): one meshlet of up to 4 vertices and 2 triangles per thread group of 32. Compiled with
 //   dxc -T ms_6_5 -E main (mesh.dxil, also -Od and -T ms_6_6).
 // The group writes a quad as two triangles: vertex i (thread i < 4) at the corner (i & 1, i >> 1) scaled by `scale`, with

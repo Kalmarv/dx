@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo arrays.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo arrays.od.dxil
+// dxc: -T ps_6_6 -E main -Fo arrays.66.dxil
 // Fixture for the DXIL lifter: a local array indexed by a value from a constant buffer, a constant table, and a
 // dynamically indexed constant buffer array. Compile: dxc -T ps_6_0 -E main -Fo arrays.dxil arrays.hlsl
 cbuffer Values : register(b0)

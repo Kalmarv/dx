@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo bits.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo bits.od.dxil
+// dxc: -T ps_6_6 -E main -Fo bits.66.dxil
 // Fixture for the DXIL lifter: bit operations, divides, conversions. Compile:
 // dxc -T ps_6_0 -E main -Fo bits.dxil bits.hlsl
 cbuffer Values : register(b0)

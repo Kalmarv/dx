@@ -1,3 +1,4 @@
+// dxc: -T ps_6_0 -E main -Fo blend.dxil
 // Fixture for primase-dxil: a sample, a constant buffer, a front-face branch (phi) and the intrinsics a G-buffer
 // shader uses. Compile: dxc -T ps_6_0 -E main -Fo blend.dxil blend.hlsl
 cbuffer Constants : register(b3)

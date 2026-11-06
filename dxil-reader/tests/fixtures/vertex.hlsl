@@ -1,3 +1,6 @@
+// dxc: -T vs_6_0 -E main -Fo vertex.dxil
+// dxc: -T vs_6_0 -E main -Od -Fo vertex.od.dxil
+// dxc: -T vs_6_6 -E main -Fo vertex.66.dxil
 // Fixture for the DXIL lifter: a vertex shader with a position, a plain varying, an instance id and a clip distance.
 // Compile: dxc -T vs_6_0 -E main -Fo vertex.dxil vertex.hlsl
 cbuffer Values : register(b0)

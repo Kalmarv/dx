@@ -1,5 +1,11 @@
+// dxc: -T vs_6_0 -E vs_main -Fo draw_vs.dxil
+// dxc: -T ps_6_0 -E ps_colour -Fo draw_colour.dxil
+// dxc: -T ps_6_0 -E ps_derivatives -Fo draw_derivatives.dxil
+// dxc: -T ps_6_0 -E ps_discard -Fo draw_discard.dxil
+// dxc: -T ps_6_0 -E ps_position -Fo draw_position.dxil
+// dxc: -T ps_6_0 -E ps_texture -Fo draw_texture.dxil
 // The draw stage's fixtures (tests/exec_warp_draw.rs): one vertex program and pixel programs that show what the
-// rasterizer hands a pixel. Compiled with dxc 1.7.2308 (Windows SDK 10.0.26100) for Shader Model 6.0:
+// rasterizer hands a pixel. Compiled with dxc 1.9.2609 for Shader Model 6.0:
 //   dxc -T vs_6_0 -E vs_main -Fo draw_vs.dxil draw.hlsl
 //   dxc -T ps_6_0 -E ps_<name> -Fo draw_<name>.dxil draw.hlsl
 struct VIn {

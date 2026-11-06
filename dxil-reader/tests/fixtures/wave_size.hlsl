@@ -1,3 +1,4 @@
+// dxc: -T cs_6_6 -E main -Fo wave_size.cs.dxil
 // A compute program that states the wave size it needs (Shader Model 6.6). Compiled with dxc -T cs_6_6 -E main
 // (wave_size.cs.dxil).
 RWStructuredBuffer<uint> o : register(u0);

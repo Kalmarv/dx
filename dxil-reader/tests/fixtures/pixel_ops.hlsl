@@ -1,3 +1,6 @@
+// dxc: -T ps_6_0 -E main -Fo pixel_ops.dxil
+// dxc: -T ps_6_0 -E main -Od -Fo pixel_ops.od.dxil
+// dxc: -T ps_6_6 -E main -Fo pixel_ops.66.dxil
 // Pixel-stage operations the signature does not carry or the loads add to: the sample index (SV_SampleIndex), the
 // standard sample positions of a four-sample texture, a texel load at a constant offset, and the half-float
 // conversions. Compiled with dxc -T ps_6_0 (also -Od, and -T ps_6_6).

@@ -1,3 +1,9 @@
+// dxc: -T vs_6_0 -E vs_main -Fo tessellation.vs.dxil
+// dxc: -T vs_6_0 -E vs_main -Od -Fo tessellation.vs.od.dxil
+// dxc: -T hs_6_0 -E hs_main -Fo tessellation.hs.dxil
+// dxc: -T hs_6_0 -E hs_main -Od -Fo tessellation.hs.od.dxil
+// dxc: -T ds_6_0 -E ds_main -Fo tessellation.ds.dxil
+// dxc: -T ds_6_0 -E ds_main -Od -Fo tessellation.ds.od.dxil
 // A tessellated triangle patch: a vertex program that writes no position (its outputs feed the hull program), the hull
 // program with its patch-constant function, and the domain program that places each vertex of the patch. Compiled with
 //   dxc -T vs_6_0 -E vs_main      (tessellation.vs.dxil)

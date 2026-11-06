@@ -1,5 +1,5 @@
 #![allow(clippy::unwrap_used)]
-//! `sampling::texture_reads` on the `sampling` and `sampling_dynamic` fixtures (dxc 1.7 output). The expected reads are
+//! `sampling::texture_reads` on the `sampling` and `sampling_dynamic` fixtures (dxc 1.9.2609 output). The expected reads are
 //! the calls dxc's own listing (`-dumpbin`) prints, in its order, with the registers of the `createHandle` (or
 //! `createHandleFromBinding`) call that makes each handle and the register space of the range it names: the listing of
 //! `sampling.hlsl` has
