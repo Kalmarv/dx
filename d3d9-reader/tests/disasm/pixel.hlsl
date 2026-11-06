@@ -8,6 +8,7 @@
 // fxc: /T ps_3_0 /E main /D SM3 /D DERIVATIVES /D FLOW /Fo pixel.flow.ps30.bin
 // fxc: /T ps_3_0 /E constant /Fo pixel.constant.ps30.bin
 // fxc: /T ps_3_0 /E main /D SM3 /D DERIVATIVES /Gpp /Fo pixel.pp.ps30.bin
+// fxc: /T ps_3_0 /E twosets /Fo pixel.twosets.ps30.bin
 sampler2D albedo : register(s0);
 samplerCUBE sky : register(s1);
 sampler3D volume : register(s2);
@@ -71,4 +72,13 @@ Out main(In i) {
     o.b = float4(pow(abs(t.rgb), 2.2), exp2(t.a));
     o.depth = i.proj.z / i.proj.w;
     return o;
+}
+
+// one uniform in two register sets: `limit` as a loop count takes i0, and as a float a c# register
+int2 limit;
+float4 twosets(float4 c : COLOR0) : COLOR0
+{
+    float4 r = 0;
+    [loop] for (int i = 0; i < limit.x; i++) r += c;
+    return r * limit.y;
 }

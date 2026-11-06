@@ -58,7 +58,8 @@ against the words that exist before it is read, and the reader does not index or
 at compile time). Every refusal is an `Error` naming the 32-bit word where it happened and what was expected there:
 an opcode or a register type the program's version does not have, reserved bits, an instruction whose stated length
 disagrees with its operands, a relative address without its address token, a definition naming another bank's
-register, a `CTAB` whose version is not the program's or whose ranges overlap, words after `END`.
+register, a `CTAB` whose version is not the program's, whose ranges overlap or that names a constant twice in one
+register set, words after `END`.
 
 ## What it does not do
 
@@ -74,7 +75,7 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
 and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
-fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,012 listings of 44 programs, 10 of them
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,035 listings of 45 programs, 10 of them
 `/Zi` builds). No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every

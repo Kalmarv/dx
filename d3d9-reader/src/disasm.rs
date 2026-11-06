@@ -266,7 +266,10 @@ fn header(out: &mut String, table: &ConstantTable) {
     }
     constants.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
     out.push_str("//\n// Parameters:\n//\n");
-    for c in &constants {
+    // a uniform with a range in two register sets is one parameter
+    let mut parameters = constants.clone();
+    parameters.dedup_by(|a, b| a.name == b.name);
+    for c in &parameters {
         parameter(out, 3, &c.ty, &c.name);
     }
     out.push_str("//\n//\n// Registers:\n//\n");

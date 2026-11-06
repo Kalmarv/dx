@@ -66,7 +66,7 @@ pub struct ConstantTable {
     /// Compile flags (u32 at offset 20 of the header), as stored.
     pub flags: u32,
     /// The allocations in the order stored: at most 1024, none overlapping another in the same register set, no name
-    /// repeated.
+    /// twice in one register set (a uniform read as both an integer and a float has a range in each).
     pub constants: Vec<Constant>,
 }
 
@@ -238,16 +238,23 @@ pub(crate) fn read(data: &[u8], word: usize, expected_version: u32) -> Result<Co
                 format!("CTAB register range c{register}+{count} is empty"),
             ));
         }
-        if constants.iter().any(|c| {
-            c.name == name
-                || (c.register_set == register_set
-                    && u32::from(c.register) < u32::from(register).saturating_add(u32::from(count))
-                    && register < c.register.saturating_add(c.count))
+        // one uniform can take a range in each register set it is read from (an `int2` as a loop count in `i#` and a
+        // float in `c#`), so a name repeats only across sets
+        if let Some(c) = constants.iter().find(|c| {
+            c.register_set == register_set
+                && (c.name == name
+                    || (u32::from(c.register) < u32::from(register).saturating_add(u32::from(count))
+                        && register < c.register.saturating_add(c.count)))
         }) {
-            return Err(error(
-                r.word_of(at),
-                format!("CTAB constant {name} overlaps an allocation or repeats a name"),
-            ));
+            let detail = if c.name == name {
+                format!("CTAB constant {name} appears twice in register set {register_set}")
+            } else {
+                format!(
+                    "CTAB constant {name} overlaps {} in register set {register_set}",
+                    c.name
+                )
+            };
+            return Err(error(r.word_of(at), detail));
         }
         let default_at = r.offset(r.plus(at, 16)?)?;
         let default = if default_at == 0 {

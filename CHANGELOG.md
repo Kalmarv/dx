@@ -53,6 +53,10 @@
   (`ps_4_0_level_9_1` and the like): the Direct3D 9 program and the tables that map constant buffers, samplers and
   resources onto its registers (`Level9`, `ConstantMapping`, `ScalarMapping`, `SamplerMapping`, `RuntimeConstant`).
   The listing writes them and the program, as Microsoft's does. `dxbc-reader` now depends on `d3d9-reader`.
+- `d3d9-reader`: a constant table may name a constant once in each register set: fxc gives a uniform read both as
+  an integer and as a float a range in each (`int2 limit` as a loop count in `i0` and a float in `c0`). Reading
+  refused the second; it now refuses a name only when it repeats within one set, and the listing names such a
+  parameter once and lists both registers, as Microsoft's does.
 - `d3d9-reader`: the `DBUG` comment of an `fxc /Zi` build is read (`Program::debug`, a `DebugInfo`: source files,
   each record's line, each variable's locations), and the listing writes it as Microsoft's does: a `#line N "file"`
   where the file changes and `#line N` where the line moves by more than 2, each after a blank line, and after a line
@@ -65,7 +69,7 @@
   the semantic names), `system_value_name` and `format_name`.
 - `d3d9-reader`: `disassemble_with(&[u8], &Options)` and `Options::from_flags`, the same flags as `dxbc-reader`'s. The
   listings are identical to Microsoft's for all 7,306 programs of Shaun White Skateboarding (6,207 `ps_3_0`, 1,099
-  `vs_3_0`) and 1,012 listings of 44 fixture programs (`vs_1_1` and `ps_1_1` to `ps_3_0`) under the 23 flag words,
+  `vs_3_0`) and 1,035 listings of 45 fixture programs (`vs_1_1` and `ps_1_1` to `ps_3_0`) under the 23 flag words,
   struct parameters, co-issue (`  + mov r0.w, v0`, which takes no slot and no number), `nop` (no slot and no number
   either; it was counted as one arithmetic slot) and the texture and arithmetic slot split included. The Shader Model 1 fixtures are written from their tokens, which fxc no longer compiles.
 - `dxbc-reader`: `decode` refuses an instruction whose trailing words decode as more operands than its opcode's

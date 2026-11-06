@@ -45,7 +45,7 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 36 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs (10 of them /Zi builds) and 8 vs_1_1 and
+    // 37 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs (10 of them /Zi builds) and 8 vs_1_1 and
     // ps_1_1 to ps_1_4 ones, each with 23 listings
-    assert_eq!(compared, 1012);
+    assert_eq!(compared, 1035);
 }
