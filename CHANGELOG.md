@@ -32,6 +32,8 @@
   every operand that differed from the first, destinations, conversions, load addresses, resources and samplers
   included: 20 of the 3,316 `ps_4_0` programs of Sledding Game's Unity player differed for it. All 4,838 of its 4,854
   programs without an `SPDB` part are now identical (3,300 `ps_4_0`, 1,538 `ps_5_0`).
+- `dxbc-reader`: the tests compare the listing with Microsoft's for the 19 test programs of t7_dxbc (MIT, copied with
+  its licence into `tests/third-party/t7_dxbc`), HLSL this crate's listing was not written against.
 - `dxbc-reader`: `interfaces` reads the `IFCE` part of a program with class linkage: its class types, class instances
   and interface slot records (`Interfaces`, `ClassType`, `ClassInstance`, `InterfaceSlots`). The listing writes them
   as Microsoft's does, its quirks included (eight entries a slot row, the ninth skipped). `decode` types the class

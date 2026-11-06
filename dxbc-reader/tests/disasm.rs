@@ -51,6 +51,24 @@ fn listing(container: &Path, flags: u32) -> String {
     std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
+/// Where `ours` first differs from `theirs`, for a failure message naming `what`; `None` when they are the same.
+fn difference(what: &str, ours: &str, theirs: &str) -> Option<String> {
+    if ours == theirs {
+        return None;
+    }
+    let line = ours
+        .lines()
+        .zip(theirs.lines())
+        .position(|(a, b)| a != b)
+        .unwrap_or(0);
+    Some(format!(
+        "{what} line {}:\n  dx: {:?}\n  ms: {:?}",
+        line + 1,
+        ours.lines().nth(line).unwrap_or(""),
+        theirs.lines().nth(line).unwrap_or("")
+    ))
+}
+
 #[test]
 fn listings_are_microsofts() {
     let mut compared = 0;
@@ -69,19 +87,7 @@ fn listings_are_microsofts() {
                 continue;
             }
             compared += 1;
-            if ours != theirs {
-                let line = ours
-                    .lines()
-                    .zip(theirs.lines())
-                    .position(|(a, b)| a != b)
-                    .unwrap_or(0);
-                differing.push(format!(
-                    "{stem} flags 0x{flags:02x} line {}:\n  dx: {:?}\n  ms: {:?}",
-                    line + 1,
-                    ours.lines().nth(line).unwrap_or(""),
-                    theirs.lines().nth(line).unwrap_or("")
-                ));
-            }
+            differing.extend(difference(&format!("{stem} flags 0x{flags:02x}"), &ours, &theirs));
         }
     }
     assert!(
@@ -92,6 +98,27 @@ fn listings_are_microsofts() {
     );
     // 82 programs outside the gaps, each with 23 listings
     assert_eq!(compared, 1886);
+}
+
+/// The programs of another disassembler's tests (`tests/third-party/t7_dxbc`, see its README), against the listings
+/// Microsoft's disassembler wrote of them with no flags.
+#[test]
+fn third_party_listings_are_microsofts() {
+    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/third-party/t7_dxbc");
+    let mut containers: Vec<PathBuf> = std::fs::read_dir(&folder)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "dxbc"))
+        .collect();
+    containers.sort();
+    let mut differing = Vec::new();
+    for container in &containers {
+        let theirs = std::fs::read_to_string(container.with_extension("asm")).unwrap();
+        let ours = disassemble_with(&std::fs::read(container).unwrap(), &Options::default()).unwrap();
+        differing.extend(difference(&container.display().to_string(), &ours, &theirs));
+    }
+    assert!(differing.is_empty(), "{}", differing.join("\n"));
+    assert_eq!(containers.len(), 19);
 }
 
 #[test]
