@@ -902,9 +902,19 @@ impl Records<'_> {
             };
             return Err(error(word, detail));
         }
-        let shape = opcode.shape(version);
         let sm1 = version.major == 1;
         let length = usize::from(bits(token, 24, 15));
+        let shape = match (opcode, opcode.shape(version)) {
+            // 3.0's `sgn` reads one source, but Microsoft's assembler writes the three of 2.x (`sgn r0, c0, r1, r2`):
+            // the stated length tells which
+            (Opcode::Sgn, Shape::Operands { destination, .. }) if version.major == 3 && length == 4 => {
+                Shape::Operands {
+                    destination,
+                    sources: 3,
+                }
+            }
+            (_, shape) => shape,
+        };
         let predicated = token & 0x1000_0000 != 0;
         let coissue = token & 0x4000_0000 != 0;
         let control = bits(token, 16, 0xff);

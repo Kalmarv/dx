@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- `d3d9-reader`: Shader Model 1 and 2 listings match `D3DDisassemble` in the places they did not:
+  - the instruction-slot footer counts pixel 1.x's texture addressing operations as texture slots, vertex 1.1's
+    `exp`, `log` and `frc` as the macros they are, `sgn` as 3 slots, and one more arithmetic slot for a predicated
+    instruction;
+  - `breakp` is listed as Microsoft's disassembler writes it (`break`, then its predicate read as a destination);
+  - a `label` takes no instruction number;
+  - 3.0's `sgn` with the three sources Microsoft's assembler writes is read whole.
+- `d3d9-reader`: `tests/assembled.rs` compares the listings of 287 `D3DAssemble`d programs with `D3DDisassemble`'s,
+  with and without instruction numbering, all 574 identical. They cover every Shader Model 1 to 3 operation alone in
+  each version, the 105 one-feature programs of iridia-d3d9-ir's executor tests, predication and `breakp`.
+
 ## 0.5.1 (2026-11-06)
 
 - `dxbc-reader`: the fixture generator (`tests/disasm/generate.py`) keeps a stored container whose listings under

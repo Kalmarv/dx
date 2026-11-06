@@ -1,0 +1,6 @@
+ps_2_x
+dcl t0
+mov r1, c1
+mov r2, c2
+exp r0, c0.x
+mov oC0, r0

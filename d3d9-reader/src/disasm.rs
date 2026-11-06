@@ -137,11 +137,12 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
             }
             source = Some((*file, *line));
         }
-        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction and a `nop` have none), then the offset
+        // the number (`%4u: `, or `%4u  ` before an offset; a co-issued instruction, a `nop` and a `label` have none),
+        // then the offset
         let mut prefix = String::new();
         if options.numbering {
             match item {
-                Item::Instruction(i) if !i.coissue && i.opcode != Opcode::Nop => {
+                Item::Instruction(i) if !i.coissue && !matches!(i.opcode, Opcode::Nop | Opcode::Label) => {
                     let colon = if options.offsets { ' ' } else { ':' };
                     let _ = write!(prefix, "{slot:>4}{colon} ");
                     slot = slot.saturating_add(slots(i, &program).1);
@@ -472,6 +473,9 @@ fn mnemonic(i: &Instruction, program: &Program) -> String {
 }
 
 fn instruction(i: &Instruction, program: &Program) -> String {
+    if i.opcode == Opcode::BreakP {
+        return breakp(i, program);
+    }
     let mut args = Vec::new();
     if let Some(d) = &i.destination {
         args.push(destination(d, program));
@@ -487,6 +491,34 @@ fn instruction(i: &Instruction, program: &Program) -> String {
         suffixes(i.destination.as_ref()),
         args.join(", ")
     )
+}
+
+/// `breakp` as Microsoft's disassembler writes it: `break`, then its predicate source read as though its token were a
+/// destination's. The source's swizzle bits (16 to 23) are a write mask (16 to 19) and the result modifiers `_sat`,
+/// `_pp` and `_centroid` (20 to 22), and its modifier bits (24 to 27) a result shift, so `breakp p0.x` is listed
+/// `break p0.`, `breakp p0.y` `break_sat_centroid p0.xz` and `breakp !p0.x` `break_d8 p0.` (`D3DAssemble`d programs
+/// in `tests/assembled`).
+fn breakp(i: &Instruction, program: &Program) -> String {
+    let Some(p) = i.sources.first() else {
+        return "break".to_owned();
+    };
+    let bits = p.swizzle.iter().enumerate().fold(0u8, |bits, (lane, from)| {
+        let at = u32::try_from(lane).map_or(8, |l| l.saturating_mul(2));
+        bits | (from & 3).checked_shl(at).unwrap_or(0)
+    });
+    // the modifier's four bits as a signed shift: `!` (13) is -3, `_d8`
+    let shift = i8::try_from(p.modifier.code()).map_or(0, |m| if m >= 8 { m.wrapping_sub(16) } else { m });
+    let read = Destination {
+        word: p.word,
+        register: p.register,
+        mask: bits & 15,
+        saturate: bits & 16 != 0,
+        partial_precision: bits & 32 != 0,
+        centroid: bits & 64 != 0,
+        shift,
+        relative: None,
+    };
+    format!("break{} {}", suffixes(Some(&read)), destination(&read, program))
 }
 
 /// The usage names of `dcl_<usage><index>`.
@@ -590,21 +622,50 @@ fn general(value: f32) -> String {
 }
 
 /// The texture and arithmetic instruction slots an instruction takes, as Microsoft's listings count them: checked
-/// against every footer of a vs_3_0 and ps_3_0 corpus and against fixtures of one operation each, and of co-issue. `loop`, `endloop`,
-/// `call`, `callnz`, `ret`, `break`, `breakp` and `setp` take what Microsoft's instruction reference states, unchecked.
+/// against every footer of a vs_3_0 and ps_3_0 corpus, against `D3DAssemble`d programs of every operation alone in each
+/// version (`tests/assembled`), and of co-issue and predication. `loop`, `endloop`, `call`, `callnz` and `ret` take
+/// what Microsoft's instruction reference states, unchecked.
 fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
     // a co-issued instruction runs in the slot of the one before it, and a `nop` takes none
     if i.coissue || i.opcode == Opcode::Nop {
         return (0, 0);
     }
-    let pixel = program.version.stage == Stage::Pixel;
-    match i.opcode {
+    let v = program.version;
+    let pixel = v.stage == Stage::Pixel;
+    let pixel1 = pixel && v.major == 1;
+    let vertex1 = !pixel && v.major == 1;
+    let (texture, arithmetic): (u32, u32) = match i.opcode {
         Opcode::Tex => (1, 0),
+        // pixel 1.x's texture addressing operations, `texcrd` of 1.4 among them; `texkill`, `texdepth` and `bem` are
+        // arithmetic
+        Opcode::TexCoord
+        | Opcode::TexBem
+        | Opcode::TexBemL
+        | Opcode::TexReg2Ar
+        | Opcode::TexReg2Gb
+        | Opcode::TexReg2Rgb
+        | Opcode::TexM3x2Pad
+        | Opcode::TexM3x2Tex
+        | Opcode::TexM3x2Depth
+        | Opcode::TexM3x3Pad
+        | Opcode::TexM3x3Tex
+        | Opcode::TexM3x3Spec
+        | Opcode::TexM3x3VSpec
+        | Opcode::TexM3x3
+        | Opcode::TexDp3
+        | Opcode::TexDp3Tex
+            if pixel1 =>
+        {
+            (1, 0)
+        }
         Opcode::TexLdl => (2, 0),
         Opcode::TexLdd => (1, 2),
+        // vertex 1.1's full-precision `exp` and `log` and its `frc` are macros
+        Opcode::Exp | Opcode::Log if vertex1 => (0, 10),
+        Opcode::Frc if vertex1 => (0, 3),
         Opcode::SinCos => (0, 8),
         Opcode::M4x4 | Opcode::M3x4 => (0, 4),
-        Opcode::Nrm | Opcode::Pow | Opcode::M4x3 | Opcode::M3x3 => (0, 3),
+        Opcode::Nrm | Opcode::Pow | Opcode::M4x3 | Opcode::M3x3 | Opcode::Sgn => (0, 3),
         Opcode::If
         | Opcode::IfC
         | Opcode::BreakC
@@ -622,7 +683,10 @@ fn slots(i: &Instruction, program: &Program) -> (u32, u32) {
         Opcode::Dp2Add if pixel => (0, 2),
         Opcode::Label | Opcode::Phase => (0, 0),
         _ => (0, 1),
-    }
+    };
+    // a predicated instruction takes one arithmetic slot more, a predicated sample too
+    let predicate = u32::from(i.predicate.is_some());
+    (texture, arithmetic.saturating_add(predicate))
 }
 
 /// `// approximately N instruction slots used`, split into texture and arithmetic slots when the program samples.
