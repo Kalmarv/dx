@@ -102,7 +102,7 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
         println!("{without} files without a stored listing were skipped");
     }
     let mut sorted: Vec<_> = reasons.into_iter().collect();
-    sorted.sort_by(|a, b| b.1.0.cmp(&a.1.0));
+    sorted.sort_by_key(|a| std::cmp::Reverse(a.1.0));
     if !sorted.is_empty() {
         println!("\ndiffering, by the first differing line:");
     }
