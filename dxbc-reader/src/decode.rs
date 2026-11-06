@@ -259,7 +259,8 @@ pub struct Instruction {
     pub nonzero: bool,
     /// The operands, destination first where the instruction has one.
     pub operands: Vec<Operand>,
-    /// The function table index an `interface_call` stores before its operand; `None` for other instructions.
+    /// The call site an `interface_call` stores before its operand (the entry of the interface's function tables it
+    /// calls); `None` for other instructions.
     pub function: Option<u32>,
 }
 impl Instruction {
@@ -492,7 +493,29 @@ pub enum Declared {
         /// The custom data class.
         class: u32,
     },
-    /// A declaration this decoder does not type: stage-specific (geometry, tessellation, compute), interface tables.
+    /// `dcl_function_body fb<id>`: a function body of a program with class linkage.
+    FunctionBody(u32),
+    /// `dcl_function_table ft<id> = {fb..}`: the function bodies a class's table holds, one per call site.
+    FunctionTable {
+        /// The table's id.
+        id: u32,
+        /// The function bodies, by call site.
+        bodies: Vec<u32>,
+    },
+    /// `dcl_interface fp<id>[array][sites] = {ft..}`: an interface pointer, or an array of them.
+    Interface {
+        /// The interface pointer's id, its first where it is an array.
+        id: u32,
+        /// The pointer is indexed by a register (`dcl_interface_dynamicindexed`).
+        dynamic: bool,
+        /// The number of call sites, the length of each of its tables.
+        sites: u32,
+        /// The array length, 1 for one pointer.
+        length: u32,
+        /// The function tables of the classes that can be bound to it.
+        tables: Vec<u32>,
+    },
+    /// A declaration this decoder does not type: stage-specific (geometry, tessellation, compute).
     Other {
         /// The opcode.
         opcode: u16,
@@ -712,7 +735,7 @@ impl Cursor<'_> {
     }
 }
 
-/// `interface_call`, whose first word after its token is a function table index, not an operand.
+/// `interface_call`, whose first word after its token is a call site, not an operand.
 const INTERFACE_CALL: u16 = 120;
 
 fn return_codes(token: u32) -> ReturnCodes {
@@ -1077,6 +1100,47 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 slot: slot(&o)?,
                 stride: c.take()?,
                 range: range(&o, c)?,
+            }
+        }
+        144 => Declared::FunctionBody(c.take()?),
+        145 => {
+            let id = c.take()?;
+            let count = c.take()?;
+            let bodies = c.rest();
+            if bodies.len() != count as usize {
+                return Err(error(
+                    pos.saturating_add(2),
+                    format!(
+                        "dcl_function_table word 2 counts {count} function bodies, the declaration holds {}",
+                        bodies.len()
+                    ),
+                ));
+            }
+            Declared::FunctionTable { id, bodies }
+        }
+        146 => {
+            let id = c.take()?;
+            let sites = c.take()?;
+            let lengths = c.take()?;
+            let tables = c.rest();
+            // the array length in the high half, the table count in the low
+            let count = lengths & 0xffff;
+            if tables.len() != count as usize {
+                return Err(error(
+                    pos.saturating_add(3),
+                    format!(
+                        "dcl_interface word 3 counts {count} function tables in its low 16 bits, the declaration \
+                         holds {}",
+                        tables.len()
+                    ),
+                ));
+            }
+            Declared::Interface {
+                id,
+                dynamic: control & 1 != 0,
+                sites,
+                length: lengths >> 16,
+                tables,
             }
         }
         _ => Declared::Other {

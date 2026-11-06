@@ -661,6 +661,28 @@ impl Writer {
                 }
                 out.push_str(" }");
             }
+            Declared::FunctionBody(id) => {
+                let _ = write!(out, "dcl_function_body fb{id}");
+            }
+            Declared::FunctionTable { id, bodies } => {
+                let bodies: Vec<String> = bodies.iter().map(|b| format!("fb{b}")).collect();
+                let _ = write!(out, "dcl_function_table ft{id} = {{{}}}", bodies.join(", "));
+            }
+            Declared::Interface {
+                id,
+                dynamic,
+                sites,
+                length,
+                tables,
+            } => {
+                let tables: Vec<String> = tables.iter().map(|t| format!("ft{t}")).collect();
+                let dynamic = if *dynamic { "_dynamicindexed" } else { "" };
+                let _ = write!(
+                    out,
+                    "dcl_interface{dynamic} fp{id}[{length}][{sites}] = {{{}}}",
+                    tables.join(", ")
+                );
+            }
             Declared::CustomData { class } => {
                 let _ = write!(out, "customdata {class}");
             }
@@ -702,7 +724,7 @@ impl Writer {
         let _ = write!(out, "{prefix}{id}[{}:{upper}]", range.lower);
     }
 
-    /// The declarations this reader keeps as words: the stage declarations, hull phases and class linkage.
+    /// The declarations this reader keeps as words: the stage declarations and hull phases.
     fn other(&self, out: &mut String, opcode: u16, control: u32, words: &[u32]) {
         let first = words.first().copied().unwrap_or(0);
         let named = |names: &[&str], value: u32| -> String {
@@ -799,36 +821,6 @@ impl Writer {
             154 => {
                 let _ = write!(out, "dcl_hs_join_phase_instance_count {first}");
             }
-            144 => {
-                let _ = write!(out, "dcl_function_body fb{first}");
-            }
-            145 => {
-                let bodies: Vec<String> = words
-                    .get(2..)
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|b| format!("fb{b}"))
-                    .collect();
-                let _ = write!(out, "dcl_function_table ft{first} = {{{}}}", bodies.join(", "));
-            }
-            146 => {
-                // the interface's id, its expected table length, its array length and type count, then its tables
-                let length = words.get(2).copied().unwrap_or(0);
-                let tables: Vec<String> = words
-                    .get(3..)
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|t| format!("ft{t}"))
-                    .collect();
-                let dynamic = if control & 1 != 0 { "_dynamicindexed" } else { "" };
-                let _ = write!(
-                    out,
-                    "dcl_interface{dynamic} fp{first}[{}][{}] = {{{}}}",
-                    length >> 16,
-                    length & 0xffff,
-                    tables.join(", ")
-                );
-            }
             _ => {
                 let _ = write!(out, "{}", crate::opcode_name(opcode));
             }
@@ -889,8 +881,9 @@ impl Writer {
             }
             self.annotated(out, o, style, precision);
         }
+        // the call site after the interface pointer's indices, `fcall fp0[1][2]`
         if let Some(function) = i.function {
-            let _ = write!(out, ", {function}");
+            let _ = write!(out, "[{function}]");
         }
     }
 }

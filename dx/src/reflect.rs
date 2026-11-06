@@ -61,6 +61,45 @@ fn rdef_type(ty: &RdefType) -> Value {
     })
 }
 
+/// A first register and a count, `null` where there are none.
+fn registers([start, count]: [u32; 2]) -> Value {
+    if count == 0 {
+        Value::Null
+    } else {
+        json!({ "start": start, "count": count })
+    }
+}
+
+/// The class linkage tables of an `IFCE` part.
+fn interfaces(i: &dxbc_reader::Interfaces) -> Value {
+    json!({
+        "slot_count": i.slot_count,
+        "types": i.types.iter().enumerate().map(|(id, t)| json!({
+            "id": id,
+            "name": t.name,
+            "stride": t.stride,
+            "textures": t.textures,
+            "samplers": t.samplers,
+            "reserved": t.reserved,
+        })).collect::<Vec<_>>(),
+        "instances": i.instances.iter().map(|c| json!({
+            "name": c.name,
+            "type": c.ty,
+            "count": c.count,
+            "buffer": c.buffer,
+            "offset": c.offset,
+            "texture": c.texture,
+            "sampler": c.sampler,
+        })).collect::<Vec<_>>(),
+        "slots": i.slots.iter().map(|r| json!({
+            "span": r.span,
+            "types": r.types,
+            "tables": r.tables,
+        })).collect::<Vec<_>>(),
+        "reserved": i.reserved,
+    })
+}
+
 fn rdef(r: &Rdef) -> Value {
     json!({
         "target": format!("0x{:08x}", r.target),
@@ -99,6 +138,9 @@ fn rdef(r: &Rdef) -> Value {
                 "used": v.flags & 2 != 0,
                 "type": rdef_type(&v.ty),
                 "default": v.default.as_deref().map(words),
+                // the registers a class instance holds
+                "textures": registers(v.textures),
+                "samplers": registers(v.samplers),
             })).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     })
@@ -228,6 +270,7 @@ fn dxbc(bytes: &[u8]) -> Result<Value, String> {
         "statistics": statistics,
         "features": features,
         "level9": level9,
+        "interfaces": dxbc_reader::interfaces(bytes).map_err(fail)?.as_ref().map(interfaces),
     }))
 }
 

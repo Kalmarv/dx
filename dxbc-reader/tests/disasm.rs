@@ -7,13 +7,10 @@ use std::path::{Path, PathBuf};
 
 /// The programs whose listings differ for a reason this disassembler does not write yet. Each is checked to still
 /// differ, so the list cannot go stale.
-const GAPS: &[(&str, &str)] = &[
-    ("interfaces.ps50", "the class linkage tables of an IFCE part"),
-    (
-        "ps_sm5.debug",
-        "the source and variable locations of an SDBG part",
-    ),
-];
+const GAPS: &[(&str, &str)] = &[(
+    "ps_sm5.debug",
+    "the source and variable locations of an SPDB part (the PDB fxc /Zi embeds)",
+)];
 
 /// The flags words the listings were made with: no flags, and every flag Microsoft's disassembler accepts but the
 /// HTML one.
@@ -85,8 +82,8 @@ fn listings_are_microsofts() {
         differing.len(),
         differing.join("\n")
     );
-    // 65 programs outside the gaps, each with seven listings
-    assert_eq!(compared, 455);
+    // 79 programs outside the gaps, each with seven listings
+    assert_eq!(compared, 553);
 }
 
 #[test]

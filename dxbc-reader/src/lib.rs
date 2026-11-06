@@ -27,6 +27,7 @@ mod controls;
 pub mod decode;
 mod disasm;
 mod format;
+pub mod interfaces;
 pub mod level9;
 mod opcodes;
 pub mod reflection;
@@ -40,6 +41,7 @@ pub use decode::{
 };
 pub use disasm::{Options, disassemble, disassemble_with};
 pub use format::{OperandClass, OperandFormat, operand_format};
+pub use interfaces::{ClassInstance, ClassType, InterfaceSlots, Interfaces, interfaces};
 pub use level9::{ConstantMapping, Level9, RuntimeConstant, SamplerMapping, ScalarMapping, level9};
 pub use reflection::{
     Rdef, RdefBinding, RdefBuffer, RdefMember, RdefType, RdefVariable, SignatureElement,

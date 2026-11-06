@@ -2,9 +2,9 @@
 //! signatures, as the `RDEF` and signature parts state them.
 use std::fmt::Write;
 
-use crate::Statistics;
 use crate::decode::{Declared, Decoded, ProgramType};
 use crate::reflection::{Rdef, RdefBinding, RdefType, RdefVariable, SignatureElement};
+use crate::{Interfaces, Statistics};
 
 /// The column the `// Offset:` of a buffer member starts at.
 const OFFSET_COLUMN: usize = 40;
@@ -21,10 +21,13 @@ fn declarator(name: &str, ty: &RdefType) -> String {
 
 /// A line of the buffer definitions padded to the offset column, then its offset (and its size, for a variable
 /// of the buffer itself).
+/// An unused interface pointer has no slot (`u32::MAX`): its offset and size are `N/A`.
 fn member_line(out: &mut String, text: &str, offset: u32, size: Option<(u32, bool)>) {
-    let _ = write!(out, "{text:<OFFSET_COLUMN$}// Offset: {offset:>4}");
+    let none = offset == u32::MAX;
+    let shown = |n: u32| if none { "N/A".to_owned() } else { n.to_string() };
+    let _ = write!(out, "{text:<OFFSET_COLUMN$}// Offset: {:>4}", shown(offset));
     if let Some((size, unused)) = size {
-        let _ = write!(out, " Size: {size:>5}");
+        let _ = write!(out, " Size: {:>5}", shown(size));
         if unused {
             out.push_str(" [unused]");
         }
@@ -95,6 +98,7 @@ fn buffer_variables(out: &mut String, variables: &[RdefVariable]) {
         // D3D_SVF_USED
         let unused = v.flags & 2 == 0;
         variable(out, 3, &v.name, &v.ty, v.offset, Some((v.size, unused)));
+        registers(out, v);
         if let Some(default) = &v.default {
             out.push_str("//      =");
             for word in default.as_chunks::<4>().0 {
@@ -102,6 +106,35 @@ fn buffer_variables(out: &mut String, variables: &[RdefVariable]) {
             }
             out.push_str(" \n");
         }
+    }
+}
+
+/// The texture and sampler registers a class instance holds, on a line of their own at the offset column:
+/// `// Textures:  t1-t2, Samplers: s0-s1`.
+fn registers(out: &mut String, v: &RdefVariable) {
+    let range = |prefix: &str, [start, count]: [u32; 2]| {
+        if count > 1 {
+            format!(
+                "{prefix}{start}-{prefix}{}",
+                start.saturating_add(count).saturating_sub(1)
+            )
+        } else {
+            format!("{prefix}{start}")
+        }
+    };
+    let mut parts = Vec::new();
+    match v.textures[1] {
+        0 => {}
+        1 => parts.push(format!("{:<11}{}", "Texture:", range("t", v.textures))),
+        _ => parts.push(format!("{:<11}{}", "Textures:", range("t", v.textures))),
+    }
+    match v.samplers[1] {
+        0 => {}
+        1 => parts.push(format!("Sampler: {}", range("s", v.samplers))),
+        _ => parts.push(format!("Samplers: {}", range("s", v.samplers))),
+    }
+    if !parts.is_empty() {
+        let _ = writeln!(out, "{:OFFSET_COLUMN$}// {}", "", parts.join(", "));
     }
 }
 
@@ -339,6 +372,8 @@ pub(super) struct Header<'a> {
     pub inputs: Option<Elements<'a>>,
     pub outputs: Option<Elements<'a>>,
     pub patch: Option<Elements<'a>>,
+    /// The `IFCE` part of a program with class linkage.
+    pub interfaces: Option<&'a Interfaces>,
 }
 
 /// The comment block before the program.
@@ -369,5 +404,93 @@ pub(super) fn write(out: &mut String, h: &Header<'_>) {
         if stat.sample_frequency().is_some_and(|f| f != 0) {
             out.push_str("// Pixel Shader runs at sample frequency\n//\n");
         }
+    }
+    if let Some(interfaces) = h.interfaces {
+        classes(out, interfaces);
+    }
+}
+
+/// The class linkage tables of an `IFCE` part: the class types, the instances and the interface slots.
+fn classes(out: &mut String, ifce: &Interfaces) {
+    if !ifce.types.is_empty() {
+        out.push_str(
+            "//\n// Available Class Types:\n//\n\
+             // Name                             ID CB Stride Texture Sampler\n\
+             // ------------------------------ ---- --------- ------- -------\n",
+        );
+        for (id, t) in ifce.types.iter().enumerate() {
+            let _ = writeln!(
+                out,
+                "// {:<30} {id:>4} {:>9} {:>7} {:>7}",
+                t.name, t.stride, t.textures, t.samplers
+            );
+        }
+    }
+    if !ifce.instances.is_empty() {
+        out.push_str(
+            "//\n// Available Class Instances:\n//\n\
+             // Name                        Type CB CB Offset Texture Sampler\n\
+             // --------------------------- ---- -- --------- ------- -------\n",
+        );
+        let register = |r: Option<u16>| r.map_or_else(|| "-".to_owned(), |r| r.to_string());
+        for i in &ifce.instances {
+            let name = if i.count > 1 {
+                format!("{}[{}]", i.name, i.count)
+            } else {
+                i.name.clone()
+            };
+            let _ = writeln!(
+                out,
+                "// {name:<27} {:>4} {:>2} {:>9} {:>7} {:>7}",
+                i.ty,
+                register(i.buffer),
+                register(i.offset),
+                register(i.texture),
+                register(i.sampler)
+            );
+        }
+    }
+    if ifce.slots.is_empty() {
+        return;
+    }
+    let rule = "// +----------+---------+---------------------------------------\n";
+    let _ = write!(
+        out,
+        "//\n// Interface slots, {} total:\n//\n//             Slots\n{rule}",
+        ifce.slot_count
+    );
+    // Microsoft's disassembler writes eight entries a row and skips the ninth, and moves the first slot of the next
+    // record on by this record's span for every row it writes, not once
+    let mut slot: u32 = 0;
+    for record in &ifce.slots {
+        let mut start = 0;
+        let mut first = true;
+        while start < record.types.len() {
+            let end = record.types.len().min(start.saturating_add(8));
+            let label = if !first {
+                String::new()
+            } else if record.span > 1 {
+                format!(
+                    "{slot:>4}-{:<4}",
+                    slot.saturating_add(record.span).saturating_sub(1)
+                )
+            } else {
+                format!("{slot:>4}")
+            };
+            let mut types = String::new();
+            let mut tables = String::new();
+            for (t, f) in record.types.iter().zip(&record.tables).take(end).skip(start) {
+                let _ = write!(types, "{t:<5}");
+                let _ = write!(tables, "{f:<5}");
+            }
+            let _ = write!(
+                out,
+                "// | Type ID  |{label:<9}|{types}\n// | Table ID |         |{tables}\n"
+            );
+            slot = slot.saturating_add(record.span);
+            first = false;
+            start = start.saturating_add(9);
+        }
+        out.push_str(rule);
     }
 }

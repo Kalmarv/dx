@@ -15,9 +15,9 @@ const MAX_NAME: usize = 4096;
 /// The largest constant buffer, in bytes.
 const MAX_BUFFER_SIZE: usize = 65536;
 
-struct View<'a>(&'a [u8]);
+pub(crate) struct View<'a>(pub(crate) &'a [u8]);
 impl View<'_> {
-    fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
+    pub(crate) fn bytes(&self, at: usize, len: usize) -> Result<&[u8]> {
         let end = at.checked_add(len).ok_or_else(|| {
             error(
                 at / 4,
@@ -34,19 +34,19 @@ impl View<'_> {
             )
         })
     }
-    fn array<const N: usize>(&self, at: usize) -> Result<[u8; N]> {
+    pub(crate) fn array<const N: usize>(&self, at: usize) -> Result<[u8; N]> {
         self.bytes(at, N)?
             .try_into()
             .map_err(|_| error(at / 4, format!("{N} bytes at byte {at}")))
     }
-    fn u32(&self, at: usize) -> Result<u32> {
+    pub(crate) fn u32(&self, at: usize) -> Result<u32> {
         Ok(u32::from_le_bytes(self.array(at)?))
     }
-    fn u16(&self, at: usize) -> Result<u16> {
+    pub(crate) fn u16(&self, at: usize) -> Result<u16> {
         Ok(u16::from_le_bytes(self.array(at)?))
     }
     /// The byte `delta` bytes after `at`.
-    fn plus(&self, at: usize, delta: usize) -> Result<usize> {
+    pub(crate) fn plus(&self, at: usize, delta: usize) -> Result<usize> {
         at.checked_add(delta).ok_or_else(|| {
             error(
                 at / 4,
@@ -55,15 +55,15 @@ impl View<'_> {
         })
     }
     /// The 32-bit field `delta` bytes after `at`.
-    fn field(&self, at: usize, delta: usize) -> Result<u32> {
+    pub(crate) fn field(&self, at: usize, delta: usize) -> Result<u32> {
         self.u32(self.plus(at, delta)?)
     }
     /// The 16-bit field `delta` bytes after `at`.
-    fn field16(&self, at: usize, delta: usize) -> Result<u16> {
+    pub(crate) fn field16(&self, at: usize, delta: usize) -> Result<u16> {
         self.u16(self.plus(at, delta)?)
     }
     /// The start of record `i` of a table at `at` with records of `stride` bytes.
-    fn record(&self, at: usize, i: usize, stride: usize) -> Result<usize> {
+    pub(crate) fn record(&self, at: usize, i: usize, stride: usize) -> Result<usize> {
         i.checked_mul(stride)
             .and_then(|n| at.checked_add(n))
             .ok_or_else(|| {
@@ -74,7 +74,7 @@ impl View<'_> {
             })
     }
     /// The string at byte `at`, which ends inside the part.
-    fn string(&self, at: usize) -> Result<String> {
+    pub(crate) fn string(&self, at: usize) -> Result<String> {
         let tail = self.0.get(at..).ok_or_else(|| {
             error(
                 at / 4,
@@ -101,7 +101,7 @@ impl View<'_> {
             .map_err(|_| error(at / 4, format!("the string at byte {at} is not UTF-8")))
     }
     /// The indices of the `count` records of `stride` bytes at `at`, once the table is known to lie in the part.
-    fn table(&self, at: usize, count: usize, stride: usize) -> Result<std::ops::Range<usize>> {
+    pub(crate) fn table(&self, at: usize, count: usize, stride: usize) -> Result<std::ops::Range<usize>> {
         if count > MAX_RECORDS {
             return Err(error(
                 at / 4,
@@ -553,6 +553,11 @@ pub struct RdefVariable {
     pub ty: RdefType,
     /// The stored default value's `size` bytes, where the variable has one.
     pub default: Option<Vec<u8>>,
+    /// The first texture register and the number of them a class instance holds (Shader Model 5 records only;
+    /// `[u32::MAX, 0]` where it holds none, and for Shader Model 4 records).
+    pub textures: [u32; 2],
+    /// The first sampler register and the number of them a class instance holds, as `textures`.
+    pub samplers: [u32; 2],
 }
 
 /// A variable's type record (`D3D11_SHADER_TYPE_DESC`) as stored, and its members' types.
@@ -755,7 +760,9 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
             let q = v.record(entries, j, layout.variable)?;
             let start = v.field(q, 4)?;
             let len = v.field(q, 8)?;
-            if start.checked_add(len).is_none_or(|end| end > size) {
+            // an interface pointer buffer (2) counts its variables in slots, not bytes, and gives an unused one no
+            // slot (u32::MAX) and no size; its buffer size bounds nothing
+            if kind != 2 && start.checked_add(len).is_none_or(|end| end > size) {
                 return Err(error(
                     v.plus(q, 4)? / 4,
                     format!(
@@ -776,6 +783,16 @@ pub fn rdef(bytes: &[u8]) -> Result<Option<Rdef>> {
                     None
                 } else {
                     Some(v.bytes(default, len as usize)?.to_vec())
+                },
+                textures: if layout.variable >= 40 {
+                    [v.field(q, 24)?, v.field(q, 28)?]
+                } else {
+                    [u32::MAX, 0]
+                },
+                samplers: if layout.variable >= 40 {
+                    [v.field(q, 32)?, v.field(q, 36)?]
+                } else {
+                    [u32::MAX, 0]
                 },
             });
         }

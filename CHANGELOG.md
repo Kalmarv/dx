@@ -15,9 +15,19 @@
   `Options::from_flags` takes Microsoft's flags word: `0x40` leaves out the header, `0x04` numbers the instructions,
   `0x20` writes their offsets, `0x80` writes literals in hex (`0x02` and `0x10` change nothing in the text); it
   refuses `0x01` (an HTML listing) and `0x08`, which Microsoft's disassembler refuses too. The listings are identical to
-  Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 390 of Sekiro's, and for 455 listings of
-  65 fixture programs under seven flag words; a container with an `IFCE` part (class linkage) or an `SDBG` part
-  (debug locations) differs, in those tables only.
+  Microsoft's for all 2,443 programs of Riders Republic's shader pack and all 390 of Sekiro's, and for 553 listings of
+  79 fixture programs under seven flag words, class linkage included; a container with an `SPDB` part (the PDB
+  `fxc /Zi` embeds: source lines and variable locations) differs, in those annotations only.
+- `dxbc-reader`: `interfaces` reads the `IFCE` part of a program with class linkage: its class types, class instances
+  and interface slot records (`Interfaces`, `ClassType`, `ClassInstance`, `InterfaceSlots`). The listing writes them
+  as Microsoft's does, its quirks included (eight entries a slot row, the ninth skipped). `decode` types the class
+  linkage declarations (`Declared::FunctionBody`, `FunctionTable`, `Interface`), refusing one whose count word does
+  not match its length; they were `Declared::Other` before, a change for code that matched on them. The listing
+  writes `fcall fp#[array][call site]` and `dcl_interface fp#[array][call sites]`, where it wrote the call site as an
+  operand and the table count before. `RdefVariable` gains `textures` and `samplers`, the registers a class instance
+  holds (the `// Texture:` lines of the buffer definitions), and `rdef` reads an interface pointer buffer, whose
+  variables are counted in slots and an unused one has none, where it refused it. `dx reflect` writes the class
+  tables and those registers.
 - `dxbc-reader`: `level9` reads the `Aon9` part of a container compiled for a Direct3D 9 feature level
   (`ps_4_0_level_9_1` and the like): the Direct3D 9 program and the tables that map constant buffers, samplers and
   resources onto its registers (`Level9`, `ConstantMapping`, `ScalarMapping`, `SamplerMapping`, `RuntimeConstant`).
