@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-11-06)
 
 - `dxil-reader`: `disasm::disassemble` writes a DXIL container's listing as dxc 1.9.2609's `dxc -dumpbin` does, byte
   for byte: dxc's comment header (feature flags, signature parts, debug name, hash, the `PSV0` runtime information,
