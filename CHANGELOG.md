@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-11-06)
 
 - `dxbc-reader`: `/Zi` listings are Microsoft's where three new kinds of program made them differ:
   - inlinee lines of signature 1 (`CV_INLINEE_SOURCE_LINE_SIGNATURE_EX`, which an inlined function with code from an
