@@ -3,7 +3,7 @@
 //! metadata. Little-endian.
 //!
 //! ```text
-//! u32 runtime-info size (36, 48 or 52), then the runtime info
+//! u32 runtime-info size (36, 48, 52 or 56), then the runtime info
 //! u32 resource count; when it is not zero, u32 record size (16 or 24), then the records
 //! u32 string-table size, then the table
 //! u32 semantic-index count, then the indices (u32 each)
@@ -16,13 +16,15 @@
 //! then from 36 bytes the stage (u8), the uses-view-id flag (u8), a u16 (a geometry program's largest output vertex
 //! count; in the low byte a hull or domain program's patch-constant vector count), the input, output and
 //! patch-constant element counts (u8 each), the input vector count (u8) and four output vector counts (u8 each), from
-//! 48 bytes the thread group size (three u32), and at 52 bytes the offset of the entry point's name in the string table.
+//! 48 bytes the thread group size (three u32), at 52 bytes the offset of the entry point's name in the string table,
+//! and at 56 bytes the group-shared memory a compute, mesh or amplification program uses (u32).
 //! The stage-dependent 16 bytes are: vertex, whether an `SV_Position` output exists (word 3); pixel, whether it writes
 //! depth (byte 0) and whether it shades per sample (byte 1); hull, the input and output control point counts, the
 //! domain and the output primitive; domain, the input control point count; geometry, the input primitive, the output
 //! topology, the output stream mask and whether it writes a position. The record sizes follow the validator that wrote
 //! the part: validator 1.5 writes a 36-byte runtime info and 16-byte resource records, 1.6 writes 48 and 24, and 1.10
-//! writes 52 and 24 (the 16-byte records have no kind or flags). The reader reads these three sizes only.
+//! writes 52 and 24 (the 16-byte records have no kind or flags). The 56-byte runtime info is the fourth version of the
+//! layout in dxc's source (`PSVRuntimeInfo4`). The reader reads these four sizes only.
 //!
 //! Every field above was checked against the metadata of the same program in the stock containers of skate. (19,240
 //! with a `PSV0` part, validator 1.10) and Elden Ring (46,002; 10 with validator 1.5, 45,992 with 1.6): the layout
@@ -65,6 +67,10 @@ pub struct RuntimeInfo {
     pub num_threads: Option<[u32; 3]>,
     /// The offset of the entry point's name in the string table, from 52 bytes of runtime info.
     pub entry_name: Option<u32>,
+    /// The bytes of group-shared memory a compute, mesh or amplification program uses, from 56 bytes of runtime info.
+    pub group_shared_bytes: Option<u32>,
+    /// The size of the runtime info in bytes (36, 48, 52 or 56), which says which of its versions the part holds.
+    pub size: u32,
 }
 
 /// A resource record.
@@ -185,10 +191,10 @@ pub fn read(data: &[u8]) -> Result<Psv> {
 
     let info_size = count(0, "the runtime info size")?;
     let mut at = 4usize;
-    if !matches!(info_size, 36 | 48 | 52) {
+    if !matches!(info_size, 36 | 48 | 52 | 56) {
         return Err(error(
             0,
-            format!("PSV0: a runtime info of {info_size} bytes, where only 36, 48 and 52 are read"),
+            format!("PSV0: a runtime info of {info_size} bytes, where only 36, 48, 52 and 56 are read"),
         ));
     }
     let info = view
@@ -226,6 +232,12 @@ pub fn read(data: &[u8]) -> Result<Psv> {
         } else {
             None
         },
+        group_shared_bytes: if info_size >= 56 {
+            Some(info_word(13)?)
+        } else {
+            None
+        },
+        size: u32::try_from(info_size).unwrap_or(u32::MAX),
     };
     at = advance(at, info_size)?;
 

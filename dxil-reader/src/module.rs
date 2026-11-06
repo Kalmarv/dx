@@ -61,6 +61,11 @@ pub enum Type {
         name: Option<String>,
         /// The types of its fields, in order.
         elements: Vec<TypeId>,
+        /// Its fields are laid out without padding (`<{ ... }>`).
+        packed: bool,
+        /// A literal structure (`TYPE_CODE_STRUCT_ANON`), which is its body: two literal structures of the same fields
+        /// are one type. An identified one (`TYPE_CODE_STRUCT_NAMED`) is a type of its own, named or numbered.
+        literal: bool,
     },
     /// A named structure without a body.
     Opaque(Option<String>),
@@ -90,7 +95,7 @@ pub enum Constant {
     Aggregate(Vec<ValueId>),
     /// A constant array or vector of numbers, as stored (the bits of each element).
     Data(Vec<u64>),
-    /// A string constant, as stored.
+    /// An array of `i8` given as text: its bytes, with the terminating zero a `CST_CODE_CSTRING` record implies.
     String(Vec<u8>),
     /// A constant `getelementptr`: the base (a global) and its indices (module constants).
     Gep {
@@ -98,6 +103,10 @@ pub enum Constant {
         base: ValueId,
         /// The index constants.
         indices: Vec<ValueId>,
+        /// The type the first index steps over: the base's pointee.
+        source: TypeId,
+        /// `inbounds` (`CST_CODE_CE_INBOUNDS_GEP`).
+        inbounds: bool,
     },
     /// A constant cast of a module value (to the type of the constant).
     Cast {
@@ -114,7 +123,64 @@ pub enum Constant {
         lhs: ValueId,
         /// The right operand.
         rhs: ValueId,
+        /// The record's flags, as [`Instruction::flags`].
+        flags: u64,
     },
+    /// A constant comparison of module values, by its LLVM predicate (as [`Op::Compare`]).
+    Compare {
+        /// The predicate.
+        predicate: u64,
+        /// The left operand.
+        lhs: ValueId,
+        /// The right operand.
+        rhs: ValueId,
+    },
+}
+
+/// How a global value links (LLVM's `LinkageTypes`, decoded from the bitcode's linkage codes).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Linkage {
+    /// Visible to other modules (codes 0, 5, 6 and 15).
+    #[default]
+    External,
+    /// Appended to the same-named array of other modules (2).
+    Appending,
+    /// Local to the module (3).
+    Internal,
+    /// Weak, kept even where unreferenced (16).
+    WeakAny,
+    /// Weak, every definition equivalent (17).
+    WeakOdr,
+    /// Merged with other definitions, dropped where unreferenced (18).
+    LinkOnceAny,
+    /// As `LinkOnceAny`, every definition equivalent (19).
+    LinkOnceOdr,
+    /// A weak reference to an external symbol (7).
+    ExternWeak,
+    /// A tentative definition (8).
+    Common,
+    /// Local to the module and left out of its symbol table (9, 13 and 14).
+    Private,
+    /// Defined elsewhere, given here for optimisation (12).
+    AvailableExternally,
+}
+
+/// What the module states of a function or a global variable beyond its type: how it links, and the other properties
+/// of its `MODULE_CODE_FUNCTION` or `MODULE_CODE_GLOBALVAR` record.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GlobalProperties {
+    /// How it links.
+    pub linkage: Linkage,
+    /// Its visibility: 0 default, 1 hidden, 2 protected.
+    pub visibility: u8,
+    /// Its DLL storage class: 0 default, 1 `dllimport`, 2 `dllexport`.
+    pub dll_storage: u8,
+    /// Its address is not significant (`unnamed_addr`).
+    pub unnamed_addr: bool,
+    /// The section it is placed in, where the record names one.
+    pub section: Option<String>,
+    /// Its alignment in bytes; 0 where it states none.
+    pub alignment: u64,
 }
 
 /// A value the module numbers.
@@ -128,6 +194,12 @@ pub enum Value {
         declaration: bool,
         /// The attribute list it names (an index into [`Module::attribute_lists`]), where it names one.
         attributes: Option<usize>,
+        /// Its linkage and the other properties of its record.
+        properties: GlobalProperties,
+        /// Its calling convention (LLVM's `CallingConv::ID`; 0 is C's).
+        calling_conv: u64,
+        /// The garbage collector it names, where it names one.
+        gc: Option<String>,
     },
     /// A global variable.
     Global {
@@ -141,6 +213,12 @@ pub enum Value {
         constant: bool,
         /// LLVM's address space: 0 the default, 3 group shared. No other space occurs in the programs of the games read.
         address_space: u32,
+        /// Its linkage and the other properties of its record.
+        properties: GlobalProperties,
+        /// Its thread-local model: 0 none, 1 general dynamic, 2 local dynamic, 3 initial exec, 4 local exec.
+        thread_local: u8,
+        /// Its initial value may be set outside the module (`externally_initialized`).
+        externally_initialized: bool,
     },
     /// A constant.
     Constant(Constant),
@@ -162,6 +240,19 @@ pub enum Metadata {
     },
     /// Operands; `None` is a null operand.
     Node(Vec<Option<MetadataId>>),
+    /// A node of its own, never merged with a node of the same operands (`METADATA_DISTINCT_NODE`: the loop
+    /// identifiers `llvm.loop` names, whose first operand is the node itself).
+    Distinct(Vec<Option<MetadataId>>),
+}
+
+impl Metadata {
+    /// The operands of a node, distinct or not; `None` for a string or a value.
+    pub fn operands(&self) -> Option<&[Option<MetadataId>]> {
+        match self {
+            Metadata::Node(ops) | Metadata::Distinct(ops) => Some(ops),
+            Metadata::String(_) | Metadata::Value { .. } => None,
+        }
+    }
 }
 
 /// A binary operator code (LLVM's `BinaryOpcodes`).
@@ -221,6 +312,8 @@ pub enum CastOp {
     IntToPtr,
     /// Reinterpret the bits as another type.
     BitCast,
+    /// A pointer into another address space.
+    AddrSpaceCast,
 }
 
 /// An instruction, with the value ids (absolute) and block numbers it names.
@@ -307,6 +400,12 @@ pub enum Op {
         function: ValueId,
         /// The arguments, one per parameter.
         args: Vec<ValueId>,
+        /// The attribute list of the call site (an index into [`Module::attribute_lists`]), where it names one.
+        attributes: Option<usize>,
+        /// The calling convention (0 is C's).
+        calling_conv: u64,
+        /// Whether it is marked a tail call.
+        tail: TailCall,
     },
     /// The value from the predecessor block control came from: (value, block) pairs.
     Phi {
@@ -344,11 +443,23 @@ pub enum Op {
     Alloca {
         /// The type of the variable.
         ty: TypeId,
+        /// The number of variables (an integer value; the compilers write the constant `i32 1`).
+        size: ValueId,
+        /// The alignment in bytes; 0 where the record states none.
+        align: u64,
+        /// The variable is an argument passed in memory (`inalloca`).
+        inalloca: bool,
     },
     /// A load.
     Load {
         /// The pointer loaded from; the result type is the loaded type.
         pointer: ValueId,
+        /// The alignment in bytes; 0 where the record states none.
+        align: u64,
+        /// `volatile`.
+        volatile: bool,
+        /// The ordering of an atomic load (`FUNC_CODE_INST_LOADATOMIC`).
+        atomic: Option<Atomic>,
     },
     /// A store.
     Store {
@@ -356,6 +467,12 @@ pub enum Op {
         pointer: ValueId,
         /// The value stored.
         value: ValueId,
+        /// The alignment in bytes; 0 where the record states none.
+        align: u64,
+        /// `volatile`.
+        volatile: bool,
+        /// The ordering of an atomic store (`FUNC_CODE_INST_STOREATOMIC`).
+        atomic: Option<Atomic>,
     },
     /// `getelementptr`: the base pointer and its indices (the first steps over the pointer itself).
     Gep {
@@ -363,6 +480,10 @@ pub enum Op {
         base: ValueId,
         /// The indices.
         indices: Vec<ValueId>,
+        /// The type the first index steps over: the base's pointee, which the record states.
+        source: TypeId,
+        /// `inbounds`.
+        inbounds: bool,
     },
     /// `atomicrmw`: the operation (LLVM's code: 0 xchg, 1 add, 2 sub, 3 and, 4 nand, 5 or, 6 xor, 7 max, 8 min, 9 umax,
     /// 10 umin); the result is the value the pointer held.
@@ -373,6 +494,10 @@ pub enum Op {
         value: ValueId,
         /// The operation code.
         op: u64,
+        /// `volatile`.
+        volatile: bool,
+        /// Its ordering.
+        atomic: Atomic,
     },
     /// `cmpxchg`: the result is the pair (the value the pointer held, whether it was swapped).
     CmpXchg {
@@ -382,9 +507,57 @@ pub enum Op {
         compare: ValueId,
         /// The new value stored where the comparison holds.
         value: ValueId,
+        /// `volatile`.
+        volatile: bool,
+        /// `weak`: it may fail even where the comparison holds.
+        weak: bool,
+        /// The ordering where it swaps, and the scope of both.
+        success: Atomic,
+        /// The ordering where it does not.
+        failure: Ordering,
     },
     /// `fence`: ordering between invocations, which a lockstep reading does not have.
-    Fence,
+    Fence(Atomic),
+}
+
+/// The ordering of an atomic operation (LLVM's `AtomicOrdering`, by its bitcode code 0 to 6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Ordering {
+    /// Not atomic (0).
+    NotAtomic,
+    /// `unordered` (1).
+    Unordered,
+    /// `monotonic` (2).
+    Monotonic,
+    /// `acquire` (3).
+    Acquire,
+    /// `release` (4).
+    Release,
+    /// `acq_rel` (5).
+    AcquireRelease,
+    /// `seq_cst` (6).
+    SequentiallyConsistent,
+}
+
+/// The ordering of an atomic operation and the invocations it orders against.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Atomic {
+    /// The ordering.
+    pub ordering: Ordering,
+    /// Only against the invocation itself (`singlethread`); otherwise against all.
+    pub single_thread: bool,
+}
+
+/// Whether a call is marked a tail call.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TailCall {
+    /// Not marked.
+    #[default]
+    None,
+    /// `tail`.
+    Tail,
+    /// `musttail`.
+    MustTail,
 }
 
 impl Op {
@@ -410,15 +583,17 @@ impl Op {
             Op::Switch { value, cases, .. } => std::iter::once(*value)
                 .chain(cases.iter().map(|(c, _)| *c))
                 .collect(),
-            Op::Load { pointer } => vec![*pointer],
-            Op::Store { pointer, value } | Op::AtomicRmw { pointer, value, .. } => vec![*pointer, *value],
-            Op::Gep { base, indices } => std::iter::once(*base).chain(indices.iter().copied()).collect(),
+            Op::Load { pointer, .. } => vec![*pointer],
+            Op::Store { pointer, value, .. } | Op::AtomicRmw { pointer, value, .. } => vec![*pointer, *value],
+            Op::Gep { base, indices, .. } => std::iter::once(*base).chain(indices.iter().copied()).collect(),
             Op::CmpXchg {
                 pointer,
                 compare,
                 value,
+                ..
             } => vec![*pointer, *compare, *value],
-            Op::Branch { .. } | Op::Unreachable | Op::Alloca { .. } | Op::Fence => Vec::new(),
+            Op::Alloca { size, .. } => vec![*size],
+            Op::Branch { .. } | Op::Unreachable | Op::Fence(_) => Vec::new(),
         }
     }
 
@@ -447,6 +622,10 @@ pub struct Instruction {
     pub block: usize,
     /// Bit offset of its record.
     pub at: usize,
+    /// The optimisation flags its record states (0 for none): for an integer `add`, `sub`, `mul` or `shl` bit 0 is
+    /// `nuw` and bit 1 `nsw`; for `udiv`, `sdiv`, `lshr` and `ashr` bit 0 is `exact`; for a float operation or
+    /// comparison they are the fast-math flags (bit 0 `fast`, then `nnan`, `ninf`, `nsz` and `arcp`).
+    pub flags: u64,
     /// The instruction carries the `dx.precise` attachment, which the compiler writes for HLSL's `precise`: the value
     /// is not to be fused or reassociated. In skate.'s stock programs it is on calls only: 88,541 `tertiary` (mad),
     /// 13,005 `loadInput`, 3,546 `unary`, 1,421 `dot3`, 331 `legacyF16ToF32`, 307 `binary`, 213 `dot4` and 105 `dot2`,
@@ -528,6 +707,30 @@ pub struct Function {
     pub local_types: Vec<TypeId>,
     /// The metadata attached to the function itself (the attachment records of the body that name no instruction).
     pub attachments: Vec<Attachment>,
+    /// The body's symbol table: the names of its values (arguments and instruction results, by absolute id).
+    pub names: Vec<(ValueId, String)>,
+    /// The names of its basic blocks that have one.
+    pub block_names: Vec<(usize, String)>,
+    /// The use-list orders of its basic blocks (`USELIST_CODE_BB`): each block and the position its uses take, in the
+    /// order LLVM would otherwise keep them (the most recent first). They are the order of its predecessors.
+    pub block_use_orders: Vec<(usize, Vec<u64>)>,
+}
+
+impl Function {
+    /// The body's name for one of its values, where its symbol table has one.
+    pub fn name(&self, value: ValueId) -> Option<&str> {
+        self.names
+            .iter()
+            .find(|(v, _)| *v == value)
+            .map(|(_, n)| n.as_str())
+    }
+    /// The name of a basic block, where it has one.
+    pub fn block_name(&self, block: usize) -> Option<&str> {
+        self.block_names
+            .iter()
+            .find(|(b, _)| *b == block)
+            .map(|(_, n)| n.as_str())
+    }
 }
 
 /// A module: its types, values, metadata and function bodies.
@@ -540,8 +743,15 @@ pub struct Module {
     pub values: Vec<Value>,
     /// Each value's type.
     pub value_types: Vec<TypeId>,
-    /// The symbol table: the name of the values that have one.
+    /// The module's symbol table: the names of the module values that have one (a function body's own are in its
+    /// [`Function::names`]).
     pub names: Vec<(ValueId, String)>,
+    /// The target triple (`dxil-ms-dx`), where the module states one.
+    pub triple: Option<String>,
+    /// The data layout, where the module states one.
+    pub datalayout: Option<String>,
+    /// The module's inline assembly, where it has any.
+    pub asm: Option<String>,
     /// The metadata records, by [`MetadataId`].
     pub metadata: Vec<Metadata>,
     /// The bit of the bitcode each metadata record (by id) starts at, for the locations of reflection errors.
@@ -670,8 +880,11 @@ impl Module {
                 11 => Type::Array(op(r, 0)?, self.ty(op(r, 1)?, r.at)?),
                 12 => Type::Vector(op(r, 0)?, self.ty(op(r, 1)?, r.at)?),
                 16 => Type::Metadata,
+                // STRUCT_ANON and STRUCT_NAMED: [packed, element types...]
                 18 | 20 => Type::Struct {
                     name: if r.code == 20 { struct_name.take() } else { None },
+                    packed: op(r, 0)? != 0,
+                    literal: r.code == 18,
                     elements: r
                         .operands
                         .get(1..)
@@ -723,20 +936,37 @@ impl Module {
                         .map(|&v| usize::try_from(v).map_err(|_| error(r.at, "value id")))
                         .collect::<Result<_>>()?,
                 ),
-                8 | 9 => Constant::String(text(&r.operands, r.at)?),
+                // STRING and CSTRING, whose terminating zero is not stored
+                8 => Constant::String(text(&r.operands, r.at)?),
+                9 => {
+                    let mut bytes = text(&r.operands, r.at)?;
+                    bytes.push(0);
+                    Constant::String(bytes)
+                }
                 22 => Constant::Data(r.operands.clone()),
                 // CE_GEP and CE_INBOUNDS_GEP: [source type,] then (type, value) pairs, the first the base
                 12 | 20 => {
-                    let ops = r
-                        .operands
-                        .get(usize::from(r.operands.len() % 2 == 1)..)
-                        .unwrap_or_default();
+                    let explicit = r.operands.len() % 2 == 1;
+                    let ops = r.operands.get(usize::from(explicit)..).unwrap_or_default();
                     let (pairs, rest) = ops.as_chunks::<2>();
-                    let ([_, base], true) = (
+                    let ([base_ty, base], true) = (
                         pairs.first().unwrap_or(&[0, 0]),
                         rest.is_empty() && !pairs.is_empty(),
                     ) else {
                         return Err(error(r.at, "constant getelementptr operands"));
+                    };
+                    let source = if explicit {
+                        self.ty(op(r, 0)?, r.at)?
+                    } else {
+                        match self.type_at(self.ty(*base_ty, r.at)?, r.at)? {
+                            Type::Pointer(pointee, _) => *pointee,
+                            _ => {
+                                return Err(error(
+                                    r.at,
+                                    "a constant getelementptr of a value that is not a pointer",
+                                ));
+                            }
+                        }
                     };
                     Constant::Gep {
                         base: id(*base)?,
@@ -745,6 +975,8 @@ impl Module {
                             .skip(1)
                             .map(|[_, index]| id(*index))
                             .collect::<Result<_>>()?,
+                        source,
+                        inbounds: r.code == 20,
                     }
                 }
                 // CE_BINOP: [opcode, lhs, rhs, flags?]
@@ -752,6 +984,13 @@ impl Module {
                     op: binary(op(r, 0)?, r.at)?,
                     lhs: id(op(r, 1)?)?,
                     rhs: id(op(r, 2)?)?,
+                    flags: r.operands.get(3).copied().unwrap_or(0),
+                },
+                // CE_CMP: [operand type, lhs, rhs, predicate]
+                17 => Constant::Compare {
+                    lhs: id(op(r, 1)?)?,
+                    rhs: id(op(r, 2)?)?,
+                    predicate: op(r, 3)?,
                 },
                 // CE_CAST: [opcode, operand type, operand]
                 11 => Constant::Cast {
@@ -761,7 +1000,10 @@ impl Module {
                 other => {
                     return Err(error(
                         r.at,
-                        format!("constant record {other} (constant expressions are not supported)"),
+                        format!(
+                            "constant record {other} ({} is not supported)",
+                            constant_record(other)
+                        ),
                     ));
                 }
             };
@@ -786,19 +1028,24 @@ impl Module {
                     });
                     self.metadata_at.push(r.at);
                 }
+                // NODE and DISTINCT_NODE: [metadata id + 1, or 0 for null...]
                 3 | 5 => {
-                    self.metadata.push(Metadata::Node(
-                        r.operands
-                            .iter()
-                            .map(|&v| {
-                                if v == 0 {
-                                    Ok(None)
-                                } else {
-                                    md(v.saturating_sub(1), r.at).map(Some)
-                                }
-                            })
-                            .collect::<Result<_>>()?,
-                    ));
+                    let ops = r
+                        .operands
+                        .iter()
+                        .map(|&v| {
+                            if v == 0 {
+                                Ok(None)
+                            } else {
+                                md(v.saturating_sub(1), r.at).map(Some)
+                            }
+                        })
+                        .collect::<Result<_>>()?;
+                    self.metadata.push(if r.code == 3 {
+                        Metadata::Node(ops)
+                    } else {
+                        Metadata::Distinct(ops)
+                    });
                     self.metadata_at.push(r.at);
                 }
                 4 => name = Some(utf8(text(&r.operands, r.at)?, r.at)?),
@@ -819,6 +1066,15 @@ impl Module {
                     }
                     self.kinds
                         .push((id, String::from_utf8_lossy(&bytes).into_owned()));
+                }
+                7 | 12..=32 => {
+                    return Err(error(
+                        r.at,
+                        format!(
+                            "metadata record {other}: debug information is not supported",
+                            other = r.code
+                        ),
+                    ));
                 }
                 other => return Err(error(r.at, format!("metadata record {other}"))),
             }
@@ -923,23 +1179,25 @@ impl Module {
                 _ => None,
             })
     }
+}
 
-    fn read_symbols(&mut self, block: &Block, base: usize) -> Result<()> {
-        for r in block.records() {
-            match r.code {
-                1 | 3 => {
-                    let value = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "value id"))?;
-                    let skip = if r.code == 3 { 2 } else { 1 };
-                    let n = utf8(text(r.operands.get(skip..).unwrap_or_default(), r.at)?, r.at)?;
-                    let id = base.checked_add(value).ok_or_else(|| error(r.at, "value id"))?;
-                    self.names.push((id, n));
-                }
-                2 => {} // basic-block names
-                other => return Err(error(r.at, format!("symbol record {other}"))),
-            }
+/// A symbol table's names: of values `[value id, name...]` (`VST_ENTRY`, and `VST_FNENTRY` with an offset before the
+/// name) and of basic blocks `[block, name...]` (`VST_BBENTRY`).
+type Symbols = (Vec<(ValueId, String)>, Vec<(usize, String)>);
+
+fn read_symbols(block: &Block) -> Result<Symbols> {
+    let (mut values, mut blocks) = (Vec::new(), Vec::new());
+    for r in block.records() {
+        let id = usize::try_from(op(r, 0)?).map_err(|_| error(r.at, "value id"))?;
+        let skip = if r.code == 3 { 2 } else { 1 };
+        let name = utf8(text(r.operands.get(skip..).unwrap_or_default(), r.at)?, r.at)?;
+        match r.code {
+            1 | 3 => values.push((id, name)),
+            2 => blocks.push((id, name)),
+            other => return Err(error(r.at, format!("symbol record {other}"))),
         }
-        Ok(())
     }
+    Ok((values, blocks))
 }
 
 /// Function-body decoding state: relative value numbering (module version 1).
@@ -985,9 +1243,9 @@ impl Body<'_> {
         let next = u32::try_from(self.next()).map_err(|_| error(at, "too many values"))?;
         Ok(next.wrapping_sub(relative) as usize)
     }
-    /// The type of a value defined before this point, or of a forward reference by the type given.
-    fn pointer_to(&mut self, t: TypeId) -> TypeId {
-        self.m.intern(Type::Pointer(t, 0))
+    /// The pointer to `t` in address space `space`.
+    fn pointer_to(&mut self, t: TypeId, space: u32) -> TypeId {
+        self.m.intern(Type::Pointer(t, space))
     }
     /// The index a constant integer value stands for, if it is one defined in the module or this function.
     fn constant_index(&self, v: ValueId) -> Option<usize> {
@@ -1005,6 +1263,37 @@ impl Body<'_> {
     }
 }
 
+/// An alignment as records store it: 0 for none, otherwise the log2 of the bytes plus one.
+fn alignment(stored: u64, at: usize) -> Result<u64> {
+    match stored {
+        0 => Ok(0),
+        n if n <= 30 => Ok(1u64.wrapping_shl(u32::try_from(n).unwrap_or(0).wrapping_sub(1))),
+        _ => Err(error(at, "alignment")),
+    }
+}
+fn ordering(code: u64, at: usize) -> Result<Ordering> {
+    Ok(match code {
+        0 => Ordering::NotAtomic,
+        1 => Ordering::Unordered,
+        2 => Ordering::Monotonic,
+        3 => Ordering::Acquire,
+        4 => Ordering::Release,
+        5 => Ordering::AcquireRelease,
+        6 => Ordering::SequentiallyConsistent,
+        other => return Err(error(at, format!("atomic ordering {other}"))),
+    })
+}
+/// An ordering and a scope (0 single thread, 1 all).
+fn atomic(ordering_code: u64, scope: u64, at: usize) -> Result<Atomic> {
+    Ok(Atomic {
+        ordering: ordering(ordering_code, at)?,
+        single_thread: match scope {
+            0 => true,
+            1 => false,
+            other => return Err(error(at, format!("synchronisation scope {other}"))),
+        },
+    })
+}
 fn binary(code: u64, at: usize) -> Result<BinaryOp> {
     Ok(match code {
         0 => BinaryOp::Add,
@@ -1037,17 +1326,99 @@ fn cast(code: u64, at: usize) -> Result<CastOp> {
         9 => CastOp::PtrToInt,
         10 => CastOp::IntToPtr,
         11 => CastOp::BitCast,
+        12 => CastOp::AddrSpaceCast,
         other => return Err(error(at, format!("cast opcode {other}"))),
     })
 }
+/// The linkage and other properties of a global variable's or function's record, from the operands at the indices given
+/// (they differ between the two records). A field past the record's end is its default; a comdat is refused, and so
+/// is a linkage code that implies one (1, 4, 10 and 11, in a record without the comdat field).
+#[expect(clippy::too_many_arguments, reason = "the field positions of the two records")]
+fn global_properties(
+    r: &Record,
+    linkage: usize,
+    alignment_at: usize,
+    section: usize,
+    visibility: usize,
+    unnamed_addr: usize,
+    dll_storage: usize,
+    comdat: usize,
+    sections: &[String],
+) -> Result<GlobalProperties> {
+    let raw = op(r, linkage)?;
+    let decoded = match raw {
+        0 | 5 | 6 | 15 => Linkage::External,
+        2 => Linkage::Appending,
+        3 => Linkage::Internal,
+        7 => Linkage::ExternWeak,
+        8 => Linkage::Common,
+        9 | 13 | 14 => Linkage::Private,
+        12 => Linkage::AvailableExternally,
+        1 | 16 => Linkage::WeakAny,
+        10 | 17 => Linkage::WeakOdr,
+        4 | 18 => Linkage::LinkOnceAny,
+        11 | 19 => Linkage::LinkOnceOdr,
+        _ => Linkage::External,
+    };
+    let field = |i: usize| r.operands.get(i).copied();
+    if field(comdat).map_or(matches!(raw, 1 | 4 | 10 | 11), |c| c != 0) {
+        return Err(error(r.at, "a global value in a comdat is not supported"));
+    }
+    let local = matches!(decoded, Linkage::Internal | Linkage::Private);
+    Ok(GlobalProperties {
+        linkage: decoded,
+        // local linkage has the default visibility, whatever the record says
+        visibility: match field(visibility).unwrap_or(0) {
+            _ if local => 0,
+            v @ 0..=2 => u8::try_from(v).unwrap_or(0),
+            _ => 0,
+        },
+        // a record without the field says it by the old linkage codes 5 (dllimport) and 6 (dllexport)
+        dll_storage: match field(dll_storage) {
+            Some(v @ 0..=2) => u8::try_from(v).unwrap_or(0),
+            Some(_) => 0,
+            None => match raw {
+                5 => 1,
+                6 => 2,
+                _ => 0,
+            },
+        },
+        unnamed_addr: field(unnamed_addr).is_some_and(|v| v != 0),
+        section: match op(r, section)? {
+            0 => None,
+            n => Some(
+                usize::try_from(n.saturating_sub(1))
+                    .ok()
+                    .and_then(|n| sections.get(n))
+                    .cloned()
+                    .ok_or_else(|| error(r.at, "a global value names a section the module lacks"))?,
+            ),
+        },
+        alignment: alignment(op(r, alignment_at)?, r.at)?,
+    })
+}
+
+/// What a constants record this reader refuses holds.
+fn constant_record(code: u64) -> &'static str {
+    match code {
+        5 => "an integer wider than 64 bits",
+        13 => "a constant select",
+        14 => "a constant extractelement",
+        15 => "a constant insertelement",
+        16 | 19 => "a constant shufflevector",
+        18 => "inline assembly (old form)",
+        21 => "a block address",
+        23 | 30 => "inline assembly",
+        _ => "an unknown constant",
+    }
+}
+
 /// The name of a function-body record code this reader refuses.
 fn refused(code: u64) -> &'static str {
     match code {
         4 | 30 => "getelementptr (old form)",
         13 => "invoke",
-        41 => "load (atomic)",
         23 => "va_arg",
-        24 | 42 | 45 => "store (atomic)",
         31 => "indirectbr",
         37 => "cmpxchg (old form)",
         59 => "atomicrmw (new form)",
@@ -1120,19 +1491,50 @@ impl Module {
         };
         let mut instructions = Vec::new();
         let mut function_attachments = Vec::new();
+        let (mut names, mut block_names, mut block_use_orders) = (Vec::new(), Vec::new(), Vec::new());
         for e in &block.elements {
             let r = match e {
                 crate::bitstream::Element::Block(b) => {
                     match b.id {
                         CONSTANTS => body.m.read_constants(b)?,
-                        VALUE_SYMTAB => body.m.read_symbols(b, 0)?,
+                        VALUE_SYMTAB => {
+                            let (values, blocks) = read_symbols(b)?;
+                            names.extend(values);
+                            block_names.extend(blocks);
+                        }
                         METADATA_ATTACHMENT => read_attachments(
                             body.m.precise_kind,
                             b,
                             &mut instructions,
                             &mut function_attachments,
                         )?,
-                        METADATA | USELIST => {}
+                        METADATA => {
+                            if let Some(r) = b.records().next() {
+                                return Err(error(
+                                    r.at,
+                                    "metadata of a function body (function-local metadata) is not supported",
+                                ));
+                            }
+                        }
+                        // the use-list orders: of basic blocks [position..., block] (they order its predecessors),
+                        // and of values [position..., value], which say nothing a listing shows
+                        USELIST => {
+                            for r in b.records() {
+                                let (last, order) = r
+                                    .operands
+                                    .split_last()
+                                    .filter(|(_, order)| order.len() >= 2)
+                                    .ok_or_else(|| error(r.at, "use-list order"))?;
+                                match r.code {
+                                    1 => {}
+                                    2 => block_use_orders.push((
+                                        usize::try_from(*last).map_err(|_| error(r.at, "use-list block"))?,
+                                        order.to_vec(),
+                                    )),
+                                    other => return Err(error(r.at, format!("use-list record {other}"))),
+                                }
+                            }
+                        }
                         other => return Err(error(b.at, format!("block {other} in a function"))),
                     }
                     continue;
@@ -1140,6 +1542,7 @@ impl Module {
                 crate::bitstream::Element::Record(r) => r,
             };
             let mut i = 0;
+            let mut flags = 0;
             let (op, ty): (Op, Option<TypeId>) = match r.code {
                 1 => {
                     body.blocks = usize::try_from(op(r, 0)?)
@@ -1148,33 +1551,39 @@ impl Module {
                         .ok_or_else(|| error(r.at, "basic block count"))?;
                     continue;
                 }
-                33 | 35 => continue, // debug locations
+                33 | 35 => {
+                    return Err(error(r.at, "debug locations are not supported"));
+                }
+                // BINOP: [lhs with its type, rhs, opcode, flags?]
                 2 => {
                     let (lhs, t) = body.value_type(r, &mut i)?;
                     let rhs = body.value(r, &mut i)?;
                     let o = binary(op(r, i)?, r.at)?;
+                    flags = r.operands.get(i.saturating_add(1)).copied().unwrap_or(0);
                     (Op::Binary { op: o, lhs, rhs }, Some(t))
                 }
+                // CAST: [value with its type, target type, opcode]
                 3 => {
-                    let value = body.value(r, &mut i)?;
+                    let (value, _) = body.value_type(r, &mut i)?;
                     let to = body.m.ty(op(r, i)?, r.at)?;
                     let o = cast(op(r, i.saturating_add(1))?, r.at)?;
                     (Op::Cast { op: o, value }, Some(to))
                 }
+                // CMP and CMP2: [lhs with its type, rhs, predicate, fast-math flags?]
                 9 | 28 => {
                     let (lhs, t) = body.value_type(r, &mut i)?;
                     let rhs = body.value(r, &mut i)?;
                     let predicate = op(r, i)?;
-                    let bool_ty = match body.m.type_at(t, r.at)? {
-                        Type::Vector(..) => {
-                            return Err(error(r.at, "vector comparison"));
-                        }
-                        _ => body
-                            .m
-                            .types
-                            .iter()
-                            .position(|x| *x == Type::Integer(1))
-                            .ok_or_else(|| error(r.at, "no i1 type for a comparison"))?,
+                    flags = r.operands.get(i.saturating_add(1)).copied().unwrap_or(0);
+                    // i1, or a vector of i1 for vectors
+                    let lanes = match body.m.type_at(t, r.at)? {
+                        Type::Vector(n, _) => Some(*n),
+                        _ => None,
+                    };
+                    let flag = body.m.intern(Type::Integer(1));
+                    let bool_ty = match lanes {
+                        Some(n) => body.m.intern(Type::Vector(n, flag)),
+                        None => flag,
                     };
                     (Op::Compare { predicate, lhs, rhs }, Some(bool_ty))
                 }
@@ -1251,13 +1660,27 @@ impl Module {
                         Some(t),
                     )
                 }
+                // CALL: [attribute list + 1 or 0, calling convention and flags, function type if explicit, callee with
+                // its type, arguments]
                 34 => {
-                    i = 1; // paramattrs
+                    let attributes = usize::try_from(op(r, 0)?)
+                        .map_err(|_| error(r.at, "call attribute list"))?
+                        .checked_sub(1);
+                    if attributes.is_some_and(|a| a >= body.m.attribute_lists.len()) {
+                        return Err(error(r.at, "a call names an attribute list the module lacks"));
+                    }
+                    i = 1;
                     let cc = op(r, i)?;
                     i = i.saturating_add(1);
-                    if cc & (1 << 17) != 0 {
-                        i = i.saturating_add(1); // fast-math flags
-                    }
+                    // bit 0 tail, bit 14 musttail, bit 15 an explicit function type, the convention from bit 1
+                    let tail = if cc & (1 << 14) != 0 {
+                        TailCall::MustTail
+                    } else if cc & 1 != 0 {
+                        TailCall::Tail
+                    } else {
+                        TailCall::None
+                    };
+                    let calling_conv = (cc >> 1) & 0x1FFF;
                     let explicit = if cc & (1 << 15) != 0 {
                         let t = body.m.ty(op(r, i)?, r.at)?;
                         i = i.saturating_add(1);
@@ -1290,7 +1713,16 @@ impl Module {
                     if i != r.operands.len() {
                         return Err(error(r.at, "call operands left over"));
                     }
-                    (Op::Call { function, args }, Some(ret))
+                    (
+                        Op::Call {
+                            function,
+                            args,
+                            attributes,
+                            calling_conv,
+                            tail,
+                        },
+                        Some(ret),
+                    )
                 }
                 16 => {
                     let t = body.m.ty(op(r, 0)?, r.at)?;
@@ -1358,6 +1790,9 @@ impl Module {
                             .filter(|&b| b < body.blocks)
                             .ok_or_else(|| error(r.at, "switch target"))
                     };
+                    if op(r, 0)? >> 16 == 0x4B5 {
+                        return Err(error(r.at, "switch with case ranges is not supported"));
+                    }
                     i = 1;
                     let value = body.value(r, &mut i)?;
                     let default = block(op(r, i)?)?;
@@ -1386,49 +1821,144 @@ impl Module {
                     )
                 }
                 15 => (Op::Unreachable, None),
+                // ALLOCA: [type, size type, size (an absolute id), alignment with flags: bit 5 inalloca, bit 6 the
+                // type is the allocated one rather than a pointer to it]
                 19 => {
-                    // [allocated type, size type, size (absolute id), alignment]
-                    let ty = body.m.ty(op(r, 0)?, r.at)?;
-                    (Op::Alloca { ty }, Some(body.pointer_to(ty)))
-                }
-                20 => {
-                    let (pointer, pt) = body.value_type(r, &mut i)?;
-                    let _ = pt;
-                    let ty = body.m.ty(op(r, i)?, r.at)?;
-                    (Op::Load { pointer }, Some(ty))
-                }
-                44 => {
-                    let (pointer, _) = body.value_type(r, &mut i)?;
-                    let (value, _) = body.value_type(r, &mut i)?;
-                    (Op::Store { pointer, value }, None)
-                }
-                // atomicrmw (LLVM 3.7): [pointer with its type, value, operation, volatile, ordering, scope]
-                38 => {
-                    let (pointer, _) = body.value_type(r, &mut i)?;
-                    let value = body.value(r, &mut i)?;
-                    let op = op(r, i)?;
-                    let ty = body.m.value_types.get(value).copied();
-                    let ty = match ty {
-                        Some(t) if value < body.next() => t,
-                        _ => return Err(error(r.at, "an atomicrmw of a value defined later")),
+                    let stated = body.m.ty(op(r, 0)?, r.at)?;
+                    let packed = op(r, 3)?;
+                    let ty = if packed & (1 << 6) != 0 {
+                        stated
+                    } else {
+                        match body.m.type_at(stated, r.at)? {
+                            Type::Pointer(t, _) => *t,
+                            _ => {
+                                return Err(error(
+                                    r.at,
+                                    "an alloca of the old form whose type is not a pointer",
+                                ));
+                            }
+                        }
                     };
-                    (Op::AtomicRmw { pointer, value, op }, Some(ty))
+                    let size = usize::try_from(op(r, 2)?).map_err(|_| error(r.at, "alloca size"))?;
+                    (
+                        Op::Alloca {
+                            ty,
+                            size,
+                            align: alignment(packed & !((1 << 5) | (1 << 6)), r.at)?,
+                            inalloca: packed & (1 << 5) != 0,
+                        },
+                        Some(body.pointer_to(ty, 0)),
+                    )
                 }
-                // cmpxchg: [pointer with its type, compare with its type, new value, volatile, orderings, ...]; the
-                // result is a structure of the value and a flag
+                // LOAD: [pointer with its type, loaded type if explicit, alignment, volatile], and LOADATOMIC with the
+                // ordering and scope after them
+                20 | 41 => {
+                    let (pointer, pt) = body.value_type(r, &mut i)?;
+                    let tail = if r.code == 20 { 2 } else { 4 };
+                    let ty = if r.operands.len() == i.saturating_add(tail).saturating_add(1) {
+                        let t = body.m.ty(op(r, i)?, r.at)?;
+                        i = i.saturating_add(1);
+                        t
+                    } else {
+                        match body.m.type_at(pt, r.at)? {
+                            Type::Pointer(t, _) => *t,
+                            _ => return Err(error(r.at, "a load from a value that is not a pointer")),
+                        }
+                    };
+                    if r.operands.len() != i.saturating_add(tail) {
+                        return Err(error(r.at, "load operands"));
+                    }
+                    let atomic = if r.code == 41 {
+                        Some(atomic(
+                            op(r, i.saturating_add(2))?,
+                            op(r, i.saturating_add(3))?,
+                            r.at,
+                        )?)
+                    } else {
+                        None
+                    };
+                    (
+                        Op::Load {
+                            pointer,
+                            align: alignment(op(r, i)?, r.at)?,
+                            volatile: op(r, i.saturating_add(1))? != 0,
+                            atomic,
+                        },
+                        Some(ty),
+                    )
+                }
+                // STORE: [pointer with its type, value with its type, alignment, volatile], STOREATOMIC with the
+                // ordering and scope after them; the old forms (24, 42) give the value without a type
+                24 | 42 | 44 | 45 => {
+                    let (pointer, _) = body.value_type(r, &mut i)?;
+                    let value = if matches!(r.code, 44 | 45) {
+                        body.value_type(r, &mut i)?.0
+                    } else {
+                        body.value(r, &mut i)?
+                    };
+                    let tail = if matches!(r.code, 24 | 44) { 2 } else { 4 };
+                    if r.operands.len() != i.saturating_add(tail) {
+                        return Err(error(r.at, "store operands"));
+                    }
+                    let atomic = if matches!(r.code, 42 | 45) {
+                        Some(atomic(
+                            op(r, i.saturating_add(2))?,
+                            op(r, i.saturating_add(3))?,
+                            r.at,
+                        )?)
+                    } else {
+                        None
+                    };
+                    (
+                        Op::Store {
+                            pointer,
+                            value,
+                            align: alignment(op(r, i)?, r.at)?,
+                            volatile: op(r, i.saturating_add(1))? != 0,
+                            atomic,
+                        },
+                        None,
+                    )
+                }
+                // ATOMICRMW: [pointer with its type, value, operation, volatile, ordering, scope]
+                38 => {
+                    let (pointer, pt) = body.value_type(r, &mut i)?;
+                    let value = body.value(r, &mut i)?;
+                    let ty = match body.m.type_at(pt, r.at)? {
+                        Type::Pointer(t, _) => *t,
+                        _ => return Err(error(r.at, "an atomicrmw on a value that is not a pointer")),
+                    };
+                    (
+                        Op::AtomicRmw {
+                            pointer,
+                            value,
+                            op: op(r, i)?,
+                            volatile: op(r, i.saturating_add(1))? != 0,
+                            atomic: atomic(op(r, i.saturating_add(2))?, op(r, i.saturating_add(3))?, r.at)?,
+                        },
+                        Some(ty),
+                    )
+                }
+                // CMPXCHG: [pointer with its type, compare with its type, new value, volatile, success ordering, scope,
+                // failure ordering, weak]; the result is a structure of the value and a flag
                 46 => {
                     let (pointer, _) = body.value_type(r, &mut i)?;
                     let (compare, ty) = body.value_type(r, &mut i)?;
                     let value = body.value(r, &mut i)?;
-                    let flag = body
-                        .m
-                        .types
-                        .iter()
-                        .position(|t| *t == Type::Integer(1))
-                        .ok_or_else(|| error(r.at, "a cmpxchg without a boolean type"))?;
+                    if r.operands.len() != i.saturating_add(5) {
+                        return Err(error(
+                            r.at,
+                            "cmpxchg without its failure ordering and weak flag (an old form)",
+                        ));
+                    }
+                    let success = atomic(op(r, i.saturating_add(1))?, op(r, i.saturating_add(2))?, r.at)?;
+                    let failure = ordering(op(r, i.saturating_add(3))?, r.at)?;
+                    let flag = body.m.intern(Type::Integer(1));
                     let pair = Type::Struct {
                         name: None,
                         elements: vec![ty, flag],
+                        packed: false,
+                        literal: true,
                     };
                     let result = body.m.intern(pair);
                     (
@@ -1436,16 +1966,27 @@ impl Module {
                             pointer,
                             compare,
                             value,
+                            volatile: op(r, i)? != 0,
+                            weak: op(r, i.saturating_add(4))? != 0,
+                            success,
+                            failure,
                         },
                         Some(result),
                     )
                 }
-                36 => (Op::Fence, None),
+                // FENCE: [ordering, scope]
+                36 => (Op::Fence(atomic(op(r, 0)?, op(r, 1)?, r.at)?), None),
                 43 => {
                     // [inbounds, source element type, then each operand with its type when a forward reference]
                     i = 2;
+                    let inbounds = op(r, 0)? != 0;
                     let source = body.m.ty(op(r, 1)?, r.at)?;
-                    let (base, _) = body.value_type(r, &mut i)?;
+                    let (base, base_ty) = body.value_type(r, &mut i)?;
+                    // the result points into the base's address space
+                    let space = match body.m.type_at(base_ty, r.at)? {
+                        Type::Pointer(_, space) => *space,
+                        _ => return Err(error(r.at, "getelementptr of a value that is not a pointer")),
+                    };
                     let mut indices = Vec::new();
                     while i < r.operands.len() {
                         indices.push(body.value_type(r, &mut i)?.0);
@@ -1470,7 +2011,15 @@ impl Module {
                             _ => return Err(error(r.at, "getelementptr into a scalar")),
                         };
                     }
-                    (Op::Gep { base, indices }, Some(body.pointer_to(t)))
+                    (
+                        Op::Gep {
+                            base,
+                            indices,
+                            source,
+                            inbounds,
+                        },
+                        Some(body.pointer_to(t, space)),
+                    )
                 }
                 other => {
                     return Err(error(
@@ -1496,6 +2045,7 @@ impl Module {
                 result,
                 block: body.block,
                 at: r.at,
+                flags,
                 precise: false,
                 attachments: Vec::new(),
             });
@@ -1520,7 +2070,7 @@ impl Module {
             if let Some(b) = inst.op.blocks().into_iter().find(|b| *b >= blocks) {
                 return Err(error(inst.at, format!("basic block {b} of {blocks}")));
             }
-            if let Op::Call { function, args } = &inst.op {
+            if let Op::Call { function, args, .. } = &inst.op {
                 if *function >= end {
                     return Err(error(inst.at, format!("callee {function} of {end} values")));
                 }
@@ -1553,6 +2103,9 @@ impl Module {
             locals,
             local_types,
             attachments: function_attachments,
+            names,
+            block_names,
+            block_use_orders,
         })
     }
 
@@ -1568,24 +2121,30 @@ impl Module {
         };
         let mut bodies: Vec<ValueId> = Vec::new();
         let mut version = None;
+        let (mut sections, mut gcs) = (Vec::new(), Vec::new());
         for e in &module.elements {
             match e {
                 crate::bitstream::Element::Record(r) => match r.code {
                     1 => version = Some(op(r, 0)?),
-                    2..=6 | 11 | 13 | 16 => {} // triple, datalayout, asm, section, deplib, gc, source file
+                    2 => m.triple = Some(utf8(text(&r.operands, r.at)?, r.at)?),
+                    3 => m.datalayout = Some(utf8(text(&r.operands, r.at)?, r.at)?),
+                    4 => m.asm = Some(utf8(text(&r.operands, r.at)?, r.at)?),
+                    5 => sections.push(utf8(text(&r.operands, r.at)?, r.at)?),
+                    11 => gcs.push(utf8(text(&r.operands, r.at)?, r.at)?),
+                    6 | 13 | 16 => {} // deplib, the symbol table's offset, source file
                     7 => {
                         // GLOBALVAR: [type, flags (bit 0 constant, bit 1 explicit type, from bit 2 the address space),
-                        // initial value + 1 or 0, ...]
+                        // initial value + 1 or 0, linkage, alignment, section, visibility, thread local, unnamed_addr,
+                        // externally initialized, DLL storage, comdat]
                         let t = m.ty(op(r, 0)?, r.at)?;
                         let flags = op(r, 1)?;
-                        let address_space =
-                            u32::try_from(flags >> 2).map_err(|_| error(r.at, "address space"))?;
-                        let (ty, value_ty) = if flags & 2 != 0 {
-                            let pointer = m.intern(Type::Pointer(t, address_space));
-                            (pointer, t)
+                        let (ty, value_ty, address_space) = if flags & 2 != 0 {
+                            let space =
+                                u32::try_from(flags >> 2).map_err(|_| error(r.at, "address space"))?;
+                            (m.intern(Type::Pointer(t, space)), t, space)
                         } else {
                             match m.type_at(t, r.at)? {
-                                Type::Pointer(inner, _) => (t, *inner),
+                                Type::Pointer(inner, space) => (t, *inner, *space),
                                 _ => return Err(error(r.at, "a global whose type is not a pointer")),
                             }
                         };
@@ -1596,6 +2155,7 @@ impl Module {
                                     .map_err(|_| error(r.at, "initial value id"))?,
                             ),
                         };
+                        let properties = global_properties(r, 3, 4, 5, 6, 8, 10, 11, &sections)?;
                         m.push(
                             Value::Global {
                                 ty,
@@ -1603,13 +2163,21 @@ impl Module {
                                 init,
                                 constant: flags & 1 != 0,
                                 address_space,
+                                properties,
+                                thread_local: u8::try_from(r.operands.get(7).copied().unwrap_or(0))
+                                    .ok()
+                                    .filter(|&t| t <= 4)
+                                    .ok_or_else(|| error(r.at, "thread-local model"))?,
+                                externally_initialized: r.operands.get(9).is_some_and(|&v| v != 0),
                             },
                             ty,
                             r.at,
                         )?;
                     }
                     8 => {
-                        // FUNCTION: [function type, cc, isproto, ...]
+                        // FUNCTION: [function type, calling convention, declaration, linkage, attribute list + 1 or 0,
+                        // alignment, section, visibility, gc, unnamed_addr, prologue, DLL storage, comdat, prefix,
+                        // personality]
                         let t = m.ty(op(r, 0)?, r.at)?;
                         let pointer = m.intern(Type::Pointer(t, 0));
                         let declaration = op(r, 2)? != 0;
@@ -1619,11 +2187,35 @@ impl Module {
                             .get(4)
                             .and_then(|&n| usize::try_from(n).ok())
                             .and_then(|n| n.checked_sub(1));
+                        for (field, what) in [
+                            (10, "prologue data"),
+                            (13, "prefix data"),
+                            (14, "a personality function"),
+                        ] {
+                            if r.operands.get(field).is_some_and(|&v| v != 0) {
+                                return Err(error(r.at, format!("a function with {what} is not supported")));
+                            }
+                        }
+                        let gc = match r.operands.get(8).copied().unwrap_or(0) {
+                            0 => None,
+                            n => Some(
+                                usize::try_from(n.saturating_sub(1))
+                                    .ok()
+                                    .and_then(|n| gcs.get(n))
+                                    .cloned()
+                                    .ok_or_else(|| {
+                                        error(r.at, "a function names a garbage collector the module lacks")
+                                    })?,
+                            ),
+                        };
                         let v = m.push(
                             Value::Function {
                                 ty: t,
                                 declaration,
                                 attributes,
+                                properties: global_properties(r, 3, 5, 6, 7, 9, 11, 12, &sections)?,
+                                calling_conv: op(r, 1)?,
+                                gc,
                             },
                             pointer,
                             r.at,
@@ -1641,7 +2233,16 @@ impl Module {
                     TYPES => m.read_types(b)?,
                     CONSTANTS => m.read_constants(b)?,
                     METADATA => m.read_metadata(b)?,
-                    VALUE_SYMTAB => m.read_symbols(b, 0)?,
+                    VALUE_SYMTAB => {
+                        let (values, blocks) = read_symbols(b)?;
+                        if let Some((_, name)) = blocks.first() {
+                            return Err(error(
+                                b.at,
+                                format!("a basic block name ({name}) in the module's symbol table"),
+                            ));
+                        }
+                        m.names.extend(values);
+                    }
                     FUNCTION => {
                         if version != Some(1) {
                             return Err(error(b.at, "only relative value ids (module version 1)"));

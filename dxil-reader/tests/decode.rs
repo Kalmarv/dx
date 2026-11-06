@@ -108,7 +108,6 @@ fn a_pointer_type_keeps_its_address_space() {
             spaces.contains(&3),
             "{name}: group shared globals are in space 3, found {spaces:?}"
         );
-        // the type table has pointers to one pointee in both spaces: two types, not one
         let pointers: Vec<_> = m
             .types
             .iter()
@@ -117,16 +116,20 @@ fn a_pointer_type_keeps_its_address_space() {
                 _ => None,
             })
             .collect();
-        assert!(
-            pointers
-                .iter()
-                .any(|&(to, space)| space == 3 && pointers.contains(&(to, 0))),
-            "{name}: {pointers:?}"
-        );
         let mut seen = std::collections::BTreeSet::new();
         assert!(
             pointers.iter().all(|p| seen.insert(*p)),
             "{name}: a pointer type is in the table twice"
         );
+        // the type table of the -Od build has pointers to one pointee in both spaces (i32 addrspace(3)* and the i32* of
+        // @dx.nothing.a): two types, not one
+        if name == "compute_basic.od.dxil" {
+            assert!(
+                pointers
+                    .iter()
+                    .any(|&(to, space)| space == 3 && pointers.contains(&(to, 0))),
+                "{name}: {pointers:?}"
+            );
+        }
     }
 }

@@ -53,7 +53,11 @@ fn the_flags_are_the_eight_bytes_of_the_sfi0_part_and_the_program_part_says_what
     assert_eq!(dxil.bytecode, Bytecode::Dxil);
     assert_eq!(
         dxil.names(),
-        ["Raw and Structured buffers", "Minimum-precision data types", "Sampler feedback"]
+        [
+            "Raw and Structured buffers",
+            "Minimum-precision data types",
+            "Sampler feedback"
+        ]
     );
     assert_eq!(dxil.unnamed(), 0);
     assert_eq!(flags(1 << 21, b"SHEX").unwrap().unnamed(), 1 << 21);

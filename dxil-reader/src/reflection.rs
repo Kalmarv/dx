@@ -75,9 +75,9 @@ struct Node<'a> {
 impl<'a> Node<'a> {
     /// The node `id`; where it is not a node the error is at the bit `at` (the record that refers to it).
     fn new(m: &'a Module, at: usize, id: MetadataId, what: &'static str) -> Result<Self> {
-        match m.metadata.get(id) {
-            Some(Metadata::Node(ops)) => Ok(Node { m, id, ops, what }),
-            _ => Err(error(at, format!("{what}: expected a metadata node"))),
+        match m.metadata.get(id).and_then(Metadata::operands) {
+            Some(ops) => Ok(Node { m, id, ops, what }),
+            None => Err(error(at, format!("{what}: expected a metadata node"))),
         }
     }
     fn bit(&self) -> usize {
@@ -235,7 +235,22 @@ pub fn num_threads(m: &Module) -> Result<Option<[u32; 3]>> {
 /// entry point states none (the properties are null, or have no tag 0). The compiler writes the tag in nearly every
 /// entry point of the games read; this reader attaches no meaning to its bits.
 pub fn shader_flags(m: &Module) -> Result<Option<u64>> {
-    let entry = the_entry(m)?;
+    flags_of(the_entry(m)?)
+}
+
+/// The shader flags of the module as dxc's `DxilModule` reads them: those of the first entry of `dx.entryPoints`, which
+/// for a library is the entry without a function that states the library's own properties.
+pub fn module_shader_flags(m: &Module) -> Result<Option<u64>> {
+    let (at, entries) =
+        named(m, "dx.entryPoints").ok_or_else(|| error(m.at, "the module has no dx.entryPoints metadata"))?;
+    let first = entries
+        .first()
+        .ok_or_else(|| error(at, "dx.entryPoints lists no entry point"))?;
+    flags_of(Node::new(m, at, *first, "entry point")?)
+}
+
+/// The flags (properties tag 0) of an entry point.
+fn flags_of(entry: Node<'_>) -> Result<Option<u64>> {
     let Some(properties) = entry.maybe(4) else {
         return Ok(None);
     };
@@ -860,11 +875,31 @@ pub struct FieldAnnotation {
     pub matrix: Option<(u32, u32, u32)>,
 }
 
+/// A struct type's annotation in `dx.typeAnnotations`: its size in a constant buffer and its fields.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructAnnotation {
+    /// The struct's size in bytes as a constant buffer lays it out (the annotation's first operand).
+    pub size: u32,
+    /// The annotation of each field, in the struct's order.
+    pub fields: Vec<FieldAnnotation>,
+}
+
 /// Fields of a struct type from `dx.typeAnnotations` (field tag 6 the name, 3 the constant-buffer offset, 7 the
 /// component type). Empty when the module has no annotation for it.
 pub fn fields(m: &Module, t: TypeId) -> Result<Vec<FieldAnnotation>> {
+    Ok(struct_annotation(m, t)?.map(|a| a.fields).unwrap_or_default())
+}
+
+/// The annotation `dx.typeAnnotations` states for a struct type (kind 0, then pairs of a struct-typed value and its
+/// annotation: the size, one node per field, and from DXIL 1.5 a node of template arguments after them), where it
+/// states one.
+pub fn struct_annotation(m: &Module, t: TypeId) -> Result<Option<StructAnnotation>> {
     let Some((at, annotations)) = named(m, "dx.typeAnnotations") else {
-        return Ok(Vec::new());
+        return Ok(None);
+    };
+    let field_count = match m.types.get(t) {
+        Some(Type::Struct { elements, .. }) => elements.len(),
+        _ => return Ok(None),
     };
     for &a in annotations {
         let a = Node::new(m, at, a, "type annotations")?;
@@ -885,12 +920,17 @@ pub fn fields(m: &Module, t: TypeId) -> Result<Vec<FieldAnnotation>> {
                 continue;
             }
             let annotation = a.node(*annotation, "struct annotation")?;
-            // The first operand is the struct's own record; the fields follow.
-            let fields = annotation
-                .ops
-                .get(1..)
-                .ok_or_else(|| annotation.fail("a struct annotation without its first operand"))?;
-            return fields
+            // an empty struct's annotation is its size alone
+            let fields = match annotation.ops.len() {
+                1 => &[][..],
+                n if n == field_count.saturating_add(1) || n == field_count.saturating_add(2) => {
+                    annotation.ops.get(1..=field_count).unwrap_or_default()
+                }
+                n => {
+                    return Err(annotation.fail(format!("{n} operands for a struct of {field_count} fields")));
+                }
+            };
+            let fields = fields
                 .iter()
                 .map(|f| {
                     let f = annotation.node(*f, "field annotation")?;
@@ -922,15 +962,74 @@ pub fn fields(m: &Module, t: TypeId) -> Result<Vec<FieldAnnotation>> {
                         matrix,
                     })
                 })
-                .collect();
+                .collect::<Result<Vec<_>>>()?;
+            return Ok(Some(StructAnnotation {
+                size: annotation.number(0, "struct size")?,
+                fields,
+            }));
         }
     }
-    Ok(Vec::new())
+    Ok(None)
+}
+
+/// The shader model `dx.shaderModel` states: the kind as dxc's targets name it (`ps`, `vs`, `lib`, `ms`, ...) and the
+/// major and minor version.
+pub fn shader_model(m: &Module) -> Result<Option<(String, u32, u32)>> {
+    let Some((at, [model])) = named(m, "dx.shaderModel") else {
+        return Ok(None);
+    };
+    let model = Node::new(m, at, *model, "dx.shaderModel")?;
+    Ok(Some((
+        model.string_of(model.op(0)?, "shader kind")?,
+        model.number(1, "shader model major")?,
+        model.number(2, "shader model minor")?,
+    )))
+}
+
+/// The serialised view-id state `dx.viewIdState` holds (an `i32` array: the input scalar count, then per stream the
+/// output scalar count and its dependency tables), where the module has it.
+pub fn view_id_state(m: &Module) -> Result<Option<Vec<u32>>> {
+    let Some((at, [state])) = named(m, "dx.viewIdState") else {
+        return Ok(None);
+    };
+    let state = Node::new(m, at, *state, "dx.viewIdState")?;
+    let value = match state.op(0)?.and_then(|i| m.metadata.get(i)) {
+        Some(Metadata::Value { value, .. }) => *value,
+        _ => return Err(state.fail("expected an array constant")),
+    };
+    let len = match m.value_types.get(value).and_then(|t| m.types.get(*t)) {
+        Some(Type::Array(n, _)) => {
+            usize::try_from(*n).map_err(|_| state.fail("an array past the address space"))?
+        }
+        _ => return Err(state.fail("expected an i32 array")),
+    };
+    let word = |v: &Value| -> Result<u32> {
+        match v {
+            // the low 32 bits of the sign-extended value
+            Value::Constant(Constant::Integer(v)) => Ok(u32::try_from(v & 0xFFFF_FFFF).unwrap_or(0)),
+            Value::Constant(Constant::Null) => Ok(0),
+            _ => Err(state.fail("an element that is not an integer constant")),
+        }
+    };
+    match m.values.get(value) {
+        Some(Value::Constant(Constant::Null)) => Ok(Some(vec![0; len])),
+        Some(Value::Constant(Constant::Data(words))) => {
+            Ok(Some(words.iter().map(|w| (w & 0xFFFF_FFFF) as u32).collect()))
+        }
+        Some(Value::Constant(Constant::Aggregate(ids))) => ids
+            .iter()
+            .map(|id| word(m.values.get(*id).unwrap_or(&Value::Local)))
+            .collect::<Result<Vec<_>>>()
+            .map(Some),
+        _ => Err(state.fail("expected an array constant")),
+    }
 }
 
 /// One element of an `ISG1`/`OSG1`/`PSG1` part as stored.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SignatureElement {
+    /// The geometry stream the element is written to (0 for every other element).
+    pub stream: u32,
     /// The semantic name.
     pub name: String,
     /// The semantic index.
@@ -1011,6 +1110,7 @@ pub fn signature(part: &[u8]) -> Result<Vec<SignatureElement>> {
             )
             .map_err(|x| error(bit(e), x.to_string()))?;
         out.push(SignatureElement {
+            stream: field(e, 0)?,
             name: name.to_owned(),
             index: field(e, 8)?,
             system_value: field(e, 12)?,

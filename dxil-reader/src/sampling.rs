@@ -145,7 +145,7 @@ pub fn texture_reads(m: &Module) -> Result<Vec<TextureRead>> {
             .filter_map(|(at, i)| i.result.map(|(id, _)| (id, at)))
             .collect();
         for (at, instruction) in f.instructions.iter().enumerate() {
-            let Op::Call { function, args } = &instruction.op else {
+            let Op::Call { function, args, .. } = &instruction.op else {
                 continue;
             };
             let is_operation = *operations

@@ -109,10 +109,7 @@ fn an_attribute_group_keeps_its_slot() {
         .map(|g| (g.slot, g.attributes.clone()))
         .collect();
     assert!(groups.contains(&(2, vec![Attribute::Enum(11)])));
-    assert!(groups.contains(&(
-        dxil_reader::module::FUNCTION_SLOT,
-        vec![Attribute::Enum(18)]
-    )));
+    assert!(groups.contains(&(dxil_reader::module::FUNCTION_SLOT, vec![Attribute::Enum(18)])));
     // every list names groups the module has
     for list in &m.attribute_lists {
         for id in list {
@@ -152,7 +149,7 @@ fn the_metadata_attached_to_instructions_is_kept() {
     let inst = &m.functions[0].instructions[30];
     assert!(!inst.precise);
     let node = m.attachment(&inst.attachments, "dx.controlflow.hints").unwrap();
-    let Metadata::Node(ops) = &m.metadata[node] else {
+    let Metadata::Distinct(ops) = &m.metadata[node] else {
         panic!("{:?}", m.metadata[node]);
     };
     assert_eq!(ops.len(), 3);

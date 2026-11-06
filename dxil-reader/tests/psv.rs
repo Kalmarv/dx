@@ -150,7 +150,7 @@ fn a_part_of_another_layout_or_cut_short_is_refused() {
         psv::read(&set(0, 24))
             .unwrap_err()
             .to_string()
-            .contains("only 36, 48 and 52")
+            .contains("only 36, 48, 52 and 56")
     );
     // the resource record size is the word after the count that follows the 52 bytes of runtime info
     assert!(

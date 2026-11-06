@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 //! Bytes and metadata a compiler never writes: each must be an error that names where the bad record is, not a panic, an
 //! over-allocation or a silently repaired value.
-use dxil_reader::module::{Constant, Metadata, Module, Value};
+use dxil_reader::module::{Constant, Metadata, Module, Type, Value};
 use dxil_reader::{bitstream, reflection};
 
 /// Bits, least significant first, as LLVM's bitstream writer emits them.
@@ -85,9 +85,18 @@ fn an_array_of_literals_longer_than_the_stream_is_refused_before_it_is_allocated
     assert_eq!(record.operands, [7, 7, 7]);
 }
 
-/// A module whose `dx.typeAnnotations` holds one struct annotation for type 5 with these operands.
+/// A module whose `dx.typeAnnotations` holds one struct annotation for type 5 (a struct without fields) with these
+/// operands.
 fn annotated(annotation: Vec<Option<usize>>) -> Module {
+    let mut types = vec![Type::Integer(32); 5];
+    types.push(Type::Struct {
+        name: None,
+        elements: Vec::new(),
+        packed: false,
+        literal: false,
+    });
     Module {
+        types,
         values: vec![Value::Constant(Constant::Integer(0))],
         metadata: vec![
             Metadata::Value { ty: 0, value: 0 },
@@ -108,8 +117,12 @@ fn a_struct_annotation_without_operands_is_an_error_at_its_record() {
     let e = reflection::fields(&annotated(Vec::new()), 5).unwrap_err();
     assert_eq!(e.bit, 400, "{e}");
     assert!(e.detail.contains("struct annotation"), "{e}");
-    // with its first operand and no fields it is empty
-    assert!(reflection::fields(&annotated(vec![None]), 5).unwrap().is_empty());
+    // with its first operand (the size) and no fields it is empty
+    assert!(
+        reflection::fields(&annotated(vec![Some(0)]), 5)
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
