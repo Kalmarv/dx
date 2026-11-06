@@ -1,0 +1,44 @@
+      cs_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_constantbuffer CB0[1], immediateIndexed
+      dcl_uav_raw u0
+      dcl_uav_structured u1, 4
+      dcl_uav_typed_buffer (float,float,float,float) u2
+      dcl_input vThreadIDInGroupFlattened
+      dcl_input vThreadGroupID.xy
+      dcl_input vThreadIDInGroup.xyz
+      dcl_input vThreadID.xyz
+      dcl_temps 2
+      dcl_tgsm_structured g0, 4, 64
+      dcl_tgsm_raw g1, 4
+      dcl_thread_group 8, 4, 2
+   0: if_z vThreadIDInGroupFlattened.x
+   1:   store_raw g1.x, l(0), l(0)
+   2: endif 
+   3: sync_g_t
+   4: imul null, r0.xy, vThreadID.xyxx, l(100, 10, 0, 0)
+   5: iadd r0.x, r0.y, r0.x
+   6: iadd r0.x, r0.x, vThreadID.z
+   7: store_structured g0.x, vThreadIDInGroupFlattened.x, l(0), r0.x
+   8: atomic_iadd g1, l(0), vThreadIDInGroupFlattened.x
+   9: sync_g_t
+  10: atomic_iadd u1, l(0, 0, 0, 0), l(1)
+  11: ishl r0.y, vThreadGroupID.y, l(1)
+  12: iadd r0.y, r0.y, vThreadGroupID.x
+  13: iadd r0.z, vThreadIDInGroupFlattened.x, l(1)
+  14: ishl r0.w, r0.y, l(6)
+  15: iadd r0.z, r0.w, r0.z
+  16: iadd r0.w, -vThreadIDInGroupFlattened.x, l(63)
+  17: ld_structured r0.w, r0.w, l(1, 2, 3, 4), g0.xxxx
+  18: ld_raw r1.x, l(1, 2, 3, 4), g1.xxxx
+  19: iadd r0.w, r0.w, r1.x
+  20: store_structured u1.x, r0.z, l(0), r0.w
+  21: imad r0.z, r0.y, l(64), vThreadIDInGroupFlattened.x
+  22: ishl r0.w, vThreadIDInGroupFlattened.x, l(2)
+  23: imad r0.y, r0.y, l(256), r0.w
+  24: xor r0.x, r0.x, cb0[0].x
+  25: store_raw u0.x, r0.y, r0.x
+  26: utof r1.xyz, vThreadIDInGroup.xyzx
+  27: utof r1.w, vThreadIDInGroupFlattened.x
+  28: store_uav_typed u2.xyzw, r0.zzzz, r1.xyzw
+  29: ret 

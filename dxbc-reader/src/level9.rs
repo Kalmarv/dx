@@ -1,6 +1,7 @@
 //! The `Aon9` part of a container compiled for a Direct3D 9 feature level (`ps_4_0_level_9_1` and the like): the
 //! Shader Model 2 program the runtime runs on such hardware, and the tables that map the Shader Model 4 program's
-//! constant buffers, samplers and resources onto Direct3D 9 registers.
+//! constant buffers, samplers and resources onto Direct3D 9 registers. An XNA build's `XNAP` (prepass) and `XNAS` parts
+//! have the same layout, each with its own program and tables.
 //!
 //! The layout below was read from containers fxc 10.0.26100.4654 built for every combination the tables have (no
 //! constants, float/int/uint/bool constants from several buffers, loops over int constants, branches on bool
@@ -86,6 +87,8 @@ pub struct Level9 {
 
 struct Part<'a> {
     data: &'a [u8],
+    /// The part's kind, for errors.
+    kind: &'static str,
 }
 
 impl Part<'_> {
@@ -94,20 +97,20 @@ impl Part<'_> {
             .get(at..at.saturating_add(2))
             .and_then(|b| b.try_into().ok())
             .map(u16::from_le_bytes)
-            .ok_or_else(|| error(at / 4, format!("the Aon9 part ends before byte {at}")))
+            .ok_or_else(|| error(at / 4, format!("the {} part ends before byte {at}", self.kind)))
     }
     fn u32(&self, at: usize) -> Result<u32> {
         self.data
             .get(at..at.saturating_add(4))
             .and_then(|b| b.try_into().ok())
             .map(u32::from_le_bytes)
-            .ok_or_else(|| error(at / 4, format!("the Aon9 part ends before byte {at}")))
+            .ok_or_else(|| error(at / 4, format!("the {} part ends before byte {at}", self.kind)))
     }
     fn byte(&self, at: usize) -> Result<u8> {
         self.data
             .get(at)
             .copied()
-            .ok_or_else(|| error(at / 4, format!("the Aon9 part ends before byte {at}")))
+            .ok_or_else(|| error(at / 4, format!("the {} part ends before byte {at}", self.kind)))
     }
     /// The byte offsets of the rows of the table whose count and offset are at byte `at`, each checked to lie in the
     /// part.
@@ -119,7 +122,8 @@ impl Part<'_> {
             return Err(error(
                 at / 4,
                 format!(
-                    "a table of {count} rows of {row} bytes at byte {offset} runs past the Aon9 part's {} bytes",
+                    "a table of {count} rows of {row} bytes at byte {offset} runs past the {} part's {} bytes",
+                    self.kind,
                     self.data.len()
                 ),
             ));
@@ -146,16 +150,24 @@ impl Part<'_> {
 /// The `Aon9` part: `None` for a container without one. Refuses a container [`parts`] refuses, a part whose stated
 /// size is not its own, and a program or table that runs past the part; errors name the part's word.
 pub fn level9(bytes: &[u8]) -> Result<Option<Level9>> {
+    part(bytes, "Aon9")
+}
+
+/// The part of kind `kind` (`Aon9`, `XNAP` or `XNAS`), read as [`level9`] reads the `Aon9` part.
+pub(crate) fn part(bytes: &[u8], kind: &'static str) -> Result<Option<Level9>> {
     let directory = parts(bytes)?;
-    let Some(chunk) = directory.iter().find(|c| &c.kind == b"Aon9") else {
+    let Some(chunk) = directory.iter().find(|c| c.kind == kind.as_bytes()) else {
         return Ok(None);
     };
-    let part = Part { data: chunk.data };
+    let part = Part {
+        data: chunk.data,
+        kind,
+    };
     let size = part.u32(0)?;
     if usize::try_from(size).ok() != Some(part.data.len()) {
         return Err(error(
             0,
-            format!("the Aon9 part states {size} bytes but has {}", part.data.len()),
+            format!("the {kind} part states {size} bytes but has {}", part.data.len()),
         ));
     }
     let length = usize::try_from(part.u32(8)?).unwrap_or(usize::MAX);
@@ -168,7 +180,7 @@ pub fn level9(bytes: &[u8]) -> Result<Option<Level9>> {
             error(
                 2,
                 format!(
-                    "a program of {length} bytes at byte {offset} runs past the Aon9 part's {} bytes",
+                    "a program of {length} bytes at byte {offset} runs past the {kind} part's {} bytes",
                     part.data.len()
                 ),
             )

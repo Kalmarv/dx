@@ -6,8 +6,11 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Style {
     /// By what the bits look like: an integer where they are a zero, a denormal, an infinity or a NaN as a float, a
-    /// float otherwise (`mov`, `movc`, the addresses of loads).
+    /// float otherwise (the addresses of loads), with a space after each comma.
     Typeless,
+    /// As [`Style::Typeless`], with no space after the commas: the values a move or a store copies (`mov`, `movc`,
+    /// `store_structured`, ...) and a debug message's operands.
+    Data,
     /// As floats.
     Float,
     /// As integers.
@@ -19,7 +22,7 @@ pub(crate) fn value(bits: u32, style: Style) -> String {
     match style {
         Style::Float => float(bits),
         Style::Integer => integer(bits),
-        Style::Typeless => {
+        Style::Typeless | Style::Data => {
             let exponent = (bits >> 23) & 0xff;
             // -0.0 is written as a float
             if (exponent == 0 || exponent == 0xff) && bits != 0x8000_0000 {

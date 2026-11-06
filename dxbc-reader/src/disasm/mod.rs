@@ -129,8 +129,11 @@ pub fn disassemble_with(container: &[u8], options: &Options) -> Result<String> {
                     != container.get(4..20),
             },
         );
-        if let Some(part) = crate::level9(container)? {
-            level9::write(&mut out, &part, options)?;
+        // a level 9 build's part, then an XNA build's two, in this order whatever the container's
+        for kind in ["Aon9", "XNAP", "XNAS"] {
+            if let Some(part) = crate::level9::part(container, kind)? {
+                level9::write(&mut out, kind, &part, options)?;
+            }
         }
     }
     let annotations = match directory.iter().any(|c| &c.kind == b"SPDB") && options.debug_info {

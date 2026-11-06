@@ -57,6 +57,12 @@
   messages and exit code (`fail/BUILD/NAME.txt`).
 - `dxbc-reader`: eight new fixture programs of the six sources above and their 184 listings (`tests/disasm`; 5,037 listings of 219
   programs, 114 of them `/Zi` builds).
+- `dxbc-reader`: three more rules of Microsoft's listings, found over Wine's, vkd3d's and vkd3d-proton's tests. A
+  `dcl_globalFlags` with no flags is `dcl_globalFlagsnone`. The four-component immediate of a load (`ld_structured`,
+  `ld_raw`) has a space after each comma, where a move's and a store's have none. An XNA build's `XNAP` and `XNAS`
+  parts are listed after the level 9 program as the `Aon9` part is (its tables, then its program), as "XNA Prepass
+  shader bytecode" and "XNA shader bytecode", in that order whatever the container's; before, dx listed neither. Four
+  patched fixtures (`examples/patched_fixtures.rs`) and their 92 listings, which the listing before this differs from.
 
 ## 0.8.0 (2026-11-06)
 

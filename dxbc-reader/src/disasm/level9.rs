@@ -1,13 +1,14 @@
 //! A feature level 9 container's part of the listing: the `Aon9` part's mapping tables, then its Direct3D 9 program
-//! as `d3d9_reader` writes it. Each section is `//`, its title, `//`, then its tables, each closed by `//`; a section
-//! with no rows is left out.
+//! as `d3d9_reader` writes it, and the same for an XNA build's `XNAP` and `XNAS` parts. Each section is `//`, its
+//! title, `//`, then its tables, each closed by `//`; a section with no rows is left out.
 use crate::level9::{Level9, ScalarMapping};
 use crate::{Result, error};
 use std::fmt::Write;
 
 const CONVERSIONS: [&str; 4] = ["FLT", "BOOL", "INT", "UINT"];
 
-pub(super) fn write(out: &mut String, part: &Level9, options: &super::Options) -> Result<()> {
+/// The listing of the part of kind `kind` (`Aon9`, `XNAP` or `XNAS`).
+pub(super) fn write(out: &mut String, kind: &str, part: &Level9, options: &super::Options) -> Result<()> {
     if !(part.booleans.is_empty() && part.integers.is_empty() && part.constants.is_empty()) {
         out.push_str("//\n// Constant buffer to DX9 shader constant mappings:\n//\n");
         scalars(out, 'b', &part.booleans);
@@ -72,7 +73,12 @@ pub(super) fn write(out: &mut String, part: &Level9, options: &super::Options) -
         }
         out.push_str("//\n");
     }
-    out.push_str("//\n// Level9 shader bytecode:\n//\n");
+    let title = match kind {
+        "XNAP" => "XNA Prepass shader bytecode",
+        "XNAS" => "XNA shader bytecode",
+        _ => "Level9 shader bytecode",
+    };
+    let _ = write!(out, "//\n// {title}:\n//\n");
     // the program's lines take the container listing's numbering, offsets, hex literals and debug information
     let mut d3d9 = d3d9_reader::Options::default();
     d3d9.numbering = options.numbering;
@@ -83,7 +89,7 @@ pub(super) fn write(out: &mut String, part: &Level9, options: &super::Options) -
         let word = usize::try_from(part.program_offset / 4).unwrap_or(usize::MAX);
         error(
             word.saturating_add(e.word),
-            format!("the Aon9 part's Direct3D 9 program: {}", e.detail),
+            format!("the {kind} part's Direct3D 9 program: {}", e.detail),
         )
     })?;
     out.push_str(&listing);

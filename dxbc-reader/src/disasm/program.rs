@@ -182,6 +182,7 @@ fn style(opcode: u16) -> Style {
         | "msad"
         | "case"
         | "switch" => Style::Integer,
+        "mov" | "movc" | "swapc" | "store_raw" | "store_structured" | "store_uav_typed" => Style::Data,
         _ => Style::Typeless,
     }
 }
@@ -300,7 +301,7 @@ impl Writer {
     fn body(&self, out: &mut String, o: &Operand, style: Style) {
         match o.register {
             Register::Immediate => {
-                let separator = if style == Style::Typeless { "," } else { ", " };
+                let separator = if style == Style::Data { "," } else { ", " };
                 let count = if o.components == 1 { 1 } else { 4 };
                 let values: Vec<String> = o
                     .immediate
@@ -570,9 +571,13 @@ impl Writer {
             }
         };
         match &d.kind {
-            Declared::GlobalFlags(bits) => {
-                let _ = write!(out, "dcl_globalFlags {}", global_flags(*bits));
-            }
+            // with no flags, Microsoft writes the word `none` against the name
+            Declared::GlobalFlags(bits) => match global_flags(*bits) {
+                flags if flags.is_empty() => out.push_str("dcl_globalFlagsnone"),
+                flags => {
+                    let _ = write!(out, "dcl_globalFlags {flags}");
+                }
+            },
             Declared::Temps(n) => {
                 let _ = write!(out, "dcl_temps {n}");
             }
@@ -767,7 +772,7 @@ impl Writer {
                 let _ = write!(out, "{name} \"{}\"", message_text(text));
                 for o in operands {
                     out.push_str(", ");
-                    self.operand(out, o, Style::Typeless);
+                    self.operand(out, o, Style::Data);
                 }
             }
             Declared::CustomData { class } => {

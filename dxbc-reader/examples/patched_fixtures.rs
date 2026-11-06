@@ -7,6 +7,14 @@
 //!   listing has no debug-layer note.
 //! - `doubles_one.ps50.dxbc`, from `ps_doubles.ps50.dxbc`: the first 64-bit immediate made one component of one word,
 //!   which Microsoft reads as a single word.
+//! - `globalflags_none.cs.dxbc`, from `compute_basic.dxbc`: the `dcl_globalFlags` declaration's flags made none, which
+//!   Microsoft writes as `dcl_globalFlagsnone`.
+//! - `load_immediates.cs.dxbc`, from `compute_basic.dxbc`: the one-component immediates of its `ld_structured` and
+//!   `ld_raw` made four components (1, 2, 3, 4), which Microsoft writes with a space after each comma, as a load's
+//!   address, where it writes a move's and a store's values without one.
+//! - `xna_parts.ps93.dxbc` and `xna_parts_swapped.ps93.dxbc`, from `level9.mapped.ps93.dxbc`: copies of its `Aon9`
+//!   part added as `XNAS` and `XNAP` parts (in that order before the `Aon9` part, as a Wine test container has them,
+//!   and in the other), the parts of an XNA build, which Microsoft lists after the level 9 program.
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -17,6 +25,12 @@ const MESSAGE: u32 = 4;
 /// An operand token of a four-component 64-bit immediate, and of a one-component one.
 const IMMEDIATE64: u32 = 0x5002;
 const IMMEDIATE64_ONE: u32 = 0x5001;
+/// An operand token of a one-component 32-bit immediate, and of a four-component one.
+const IMMEDIATE32_ONE: u32 = 0x4001;
+const IMMEDIATE32: u32 = 0x4002;
+const DCL_GLOBAL_FLAGS: u32 = 0x6a;
+const LD_RAW: u32 = 0xa5;
+const LD_STRUCTURED: u32 = 0xa7;
 
 fn words(bytes: &[u8]) -> Vec<u32> {
     bytes
@@ -100,6 +114,67 @@ fn one_word_double(from: &Path, to: &Path) -> Result<()> {
     write(&container, kind, &program, to)
 }
 
+fn no_global_flags(from: &Path, to: &Path) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let (at, _) = instructions(&program)?
+        .into_iter()
+        .find(|&(at, _)| program[at] & 0x7ff == DCL_GLOBAL_FLAGS)
+        .ok_or("no dcl_globalFlags")?;
+    // the flags are the control bits, 11 to 23
+    program[at] &= !(0x1fff << 11);
+    write(&container, kind, &program, to)
+}
+
+fn four_component_load_immediates(from: &Path, to: &Path) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let mut patched = 0;
+    // from the end, so the earlier instructions keep their starts
+    for (start, length) in instructions(&program)?.into_iter().rev() {
+        if !matches!(program[start] & 0x7ff, LD_RAW | LD_STRUCTURED) {
+            continue;
+        }
+        let Some(operand) = (1..length)
+            .map(|i| start + i)
+            .find(|&i| program[i] == IMMEDIATE32_ONE)
+        else {
+            continue;
+        };
+        program[operand] = IMMEDIATE32;
+        program.splice(operand + 1..operand + 2, [1, 2, 3, 4]);
+        program[start] = program[start] & !(0x7f << 24) | ((length as u32 + 3) << 24);
+        program[1] += 3;
+        patched += 1;
+    }
+    if patched != 2 {
+        return Err(format!("{patched} loads with a one-component immediate, where the source has 2").into());
+    }
+    write(&container, kind, &program, to)
+}
+
+fn xna_parts(from: &Path, to: &Path, order: [[u8; 4]; 2]) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let parts = dxcontainer::chunks(&container)?;
+    let level9 = parts
+        .iter()
+        .position(|c| &c.kind == b"Aon9")
+        .ok_or("no Aon9 part")?;
+    let mut out = parts.clone();
+    for (n, kind) in order.into_iter().enumerate() {
+        out.insert(
+            level9 + n,
+            dxcontainer::Chunk {
+                kind,
+                data: parts[level9].data,
+            },
+        );
+    }
+    std::fs::write(to, dxcontainer::serialize(&out)?)?;
+    println!("wrote {}", to.display());
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let tests = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let (disasm, fixtures) = (tests.join("disasm"), tests.join("fixtures"));
@@ -110,5 +185,24 @@ fn main() -> Result<()> {
     one_word_double(
         &disasm.join("ps_doubles.ps50.dxbc"),
         &fixtures.join("doubles_one.ps50.dxbc"),
+    )?;
+    no_global_flags(
+        &fixtures.join("compute_basic.dxbc"),
+        &fixtures.join("globalflags_none.cs.dxbc"),
+    )?;
+    four_component_load_immediates(
+        &fixtures.join("compute_basic.dxbc"),
+        &fixtures.join("load_immediates.cs.dxbc"),
+    )?;
+    let level9 = disasm.join("level9.mapped.ps93.dxbc");
+    xna_parts(
+        &level9,
+        &fixtures.join("xna_parts.ps93.dxbc"),
+        [*b"XNAS", *b"XNAP"],
+    )?;
+    xna_parts(
+        &level9,
+        &fixtures.join("xna_parts_swapped.ps93.dxbc"),
+        [*b"XNAP", *b"XNAS"],
     )
 }
