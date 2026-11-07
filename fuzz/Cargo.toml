@@ -1,0 +1,56 @@
+# Fuzz targets of the readers (cargo-fuzz, a nightly toolchain): see README.md here. Not a workspace member, so the
+# stable checks and CI leave it alone.
+[package]
+name = "dx-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-or-later"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+d3d9-reader = { path = "../d3d9-reader" }
+dxbc-reader = { path = "../dxbc-reader" }
+dxcontainer = { path = "../dxcontainer" }
+dxil-reader = { path = "../dxil-reader" }
+rsx-reader = { path = "../rsx-reader" }
+
+[workspace]
+
+[[bin]]
+name = "container"
+path = "fuzz_targets/container.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dxbc"
+path = "fuzz_targets/dxbc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "d3d9"
+path = "fuzz_targets/d3d9.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dxil"
+path = "fuzz_targets/dxil.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rsx"
+path = "fuzz_targets/rsx.rs"
+test = false
+doc = false
+bench = false

@@ -20,6 +20,20 @@ The library crates read byte slices and nothing else: no file, environment or pr
 refusal or record needs a test with hand-built bytes; a new format feature needs a fixture or a hand-laid example, with the
 source it was compiled from (the HLSL beside the shader fixtures).
 
+## Fuzzing
+
+`fuzz/` holds [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) targets for the five readers: no input may panic,
+hang or exhaust memory, and the container reader writes back what it read. It is its own workspace on a nightly
+toolchain, outside CI. Before a push that changes a reader, run every target for a minute (they run at the same time, so
+it takes a minute):
+
+```sh
+bash fuzz/run.sh 60
+```
+
+The weekly run is `bash fuzz/run.sh 1500`. What a target finds becomes a fixture under the reader's `tests/fuzz/`, with
+the test that reads it and the fix; `fuzz/README.md` has the rest.
+
 ## Generated code
 
 `dxil-reader/src/disasm/ops.rs` is written by `cargo xtask dxil-ops --source <DirectXShaderCompiler checkout at
@@ -32,10 +46,11 @@ and compares instead of writing.
 1. Raise the version in the workspace and in the crates' dependencies on each other (a patch, 0.x.Y, for fixes and data
    or manifest additions; a minor, 0.X.0, for new API or any breaking change before 1.0; then `cargo check`, so
    `Cargo.lock` follows) and put the change's CHANGELOG lines under a `## <version> (<date>)` heading, in one commit.
-2. Run the tests with the real data: `cargo test --workspace --release` with `GAME_DATA` naming a configuration whose
-   `[run]` has `require = 'gate'`. There an input marked gate (`tests/inputs/README.md` of each crate: Microsoft's and
-   dxc's listings of games' programs and of the fxc sweep) that is missing fails its test, where an everyday
-   configuration skips it. CI has no real data, so this run is the only one that compares them.
+2. Run the fuzz targets for a minute (`bash fuzz/run.sh 60`) and the tests with the real data: `cargo test --workspace
+   --release` with `GAME_DATA` naming a configuration whose `[run]` has `require = 'gate'`. There an input marked gate
+   (`tests/inputs/README.md` of each crate: Microsoft's and dxc's listings of games' programs and of the fxc sweep) that
+   is missing fails its test, where an everyday configuration skips it. CI has no real data, so this run is the only one
+   that compares them.
 3. Push it to main. Once every check has passed, release-plz publishes each crate whose version crates.io does not have
    yet (trusted publishing: no token is stored anywhere), tags the commit `v<version>` and creates the GitHub Release
    with that CHANGELOG section as its notes. Then dist (`.github/workflows/release.yml`) builds the binaries and
