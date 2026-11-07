@@ -1,5 +1,6 @@
-"""Re-list every kept finding of a run (findings/<kind>/<stem>.dxbc) with the current dxlist, under each flags word
-Microsoft's listing was kept for, and print the ones that still differ with their first difference."""
+"""recheck.py OUT: list every kept finding of a run (OUT/findings/<kind>/<stem>.dxbc or .bin) again with the current
+dxlist, under each flags word Microsoft's listing was kept for, and print the ones that still differ with their first
+difference. Windows Python, run with -I."""
 import collections
 import glob
 import os
@@ -7,15 +8,16 @@ import shutil
 import subprocess
 import sys
 
-import differ
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import differ  # noqa: E402
 
 run = sys.argv[1]
 work = os.path.join(run, "recheck")
 shutil.rmtree(work, ignore_errors=True)
 os.makedirs(work)
 origin = {}
-for p in glob.glob(os.path.join(run, "findings", "*", "*.dxbc")):
-    stem = os.path.basename(p)[:-5]
+for p in glob.glob(os.path.join(run, "findings", "*", "*.dxbc")) + glob.glob(os.path.join(run, "findings", "*", "*.bin")):
+    stem = os.path.splitext(os.path.basename(p))[0]
     shutil.copy(p, work)
     origin[stem] = os.path.dirname(p)
 flags = sorted({os.path.basename(p).split(".")[-2] for p in glob.glob(os.path.join(run, "findings", "*", "*.ms.*.txt"))})

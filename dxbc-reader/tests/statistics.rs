@@ -85,14 +85,17 @@ fn no_part_no_counters_and_a_bitcode_part_or_a_ragged_one_is_refused() {
 }
 
 /// The fixtures of `examples/patched_fixtures.rs` whose counters do not describe what the decoder reads: two with
-/// their `dcl_temps` counts made negative, and edits of class programs (`classes_calls.ps50` and
-/// `classes_resources.ps50.zi` in `tests/disasm`), whose instruction counter fxc does not write as the number of their
-/// instructions (41 of 51, 57 of 68).
-const EDITED: [&str; 4] = [
+/// their `dcl_temps` counts made negative, and edits of class programs (`classes_calls.ps50`,
+/// `classes_resources.ps50.zi` and `classes_arrays2d.ps50` in `tests/disasm`), whose instruction counter fxc does not
+/// write as the number of their instructions (41 of 51, 57 of 68, 58 of 66), nor for the /Zi build with subroutines
+/// `zi_names.ps50.zi` (53 of 56).
+const EDITED: [&str; 6] = [
     "indices_negated.ps50.dxbc",
     "indices_negated.ps51.dxbc",
     "interface_id.ps50.dxbc",
     "labels.ps50.zi.dxbc",
+    "conditionals_continuec.ps50.dxbc",
+    "saturated_calls.ps50.zi.dxbc",
 ];
 
 #[test]

@@ -12,7 +12,7 @@
 //!   - 0x02 changes nothing;
 //!   - 0x04, 0x20 and 0x24 put a prefix of spaces, a number, an offset and colons before lines and change nothing else;
 //!   - 0x40 leaves the program's lines as they are and drops comments;
-//!   - 0x80 changes only `def` lines.
+//!   - 0x80 changes only `def` lines, whatever result modifiers follow the mnemonic (`def_sat`).
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
@@ -67,11 +67,11 @@ fn relates(plain: &str, flagged: &str, flags: u32) -> Result<(), String> {
             .ok_or("0x40 changed the program's lines".into()),
         0x80 => {
             same_length()?;
-            match f
-                .iter()
-                .zip(&p)
-                .find(|(a, b)| a != b && !b.trim_start().starts_with("def "))
-            {
+            let def = |line: &str| {
+                let mnemonic = line.trim_start().split(' ').next().unwrap_or_default();
+                mnemonic == "def" || mnemonic.starts_with("def_")
+            };
+            match f.iter().zip(&p).find(|(a, b)| a != b && !def(b)) {
                 Some((a, b)) => Err(format!("0x80 changed {b:?} to {a:?}")),
                 None => Ok(()),
             }
@@ -116,7 +116,7 @@ fn the_flag_relations_hold_for_microsofts_listings() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 6 * 74);
+    assert_eq!(checked, 6 * 77);
 }
 
 /// Changes to a committed program's words: which program, and the bytes (where, as a fraction of its length, and the

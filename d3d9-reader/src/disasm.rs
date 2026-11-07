@@ -310,9 +310,9 @@ fn header(out: &mut String, table: &ConstantTable) {
     if constants.is_empty() {
         return;
     }
-    constants.sort_by(|a, b| a.name.as_bytes().cmp(b.name.as_bytes()));
+    // the parameters in the table's order (fxc writes it sorted by name); a uniform with a range in two register sets
+    // is one parameter
     out.push_str("//\n// Parameters:\n//\n");
-    // a uniform with a range in two register sets is one parameter
     let mut parameters = constants.clone();
     parameters.dedup_by(|a, b| a.name == b.name);
     let parameters: Vec<(&Type, &str)> = parameters.iter().map(|c| (&c.ty, c.name.as_str())).collect();
@@ -445,12 +445,7 @@ fn source(s: &Source, program: &Program) -> String {
         Modifier::Not => "!",
         _ => "",
     };
-    let swizzled = if s.register.kind == RegisterType::Sampler {
-        String::new()
-    } else {
-        swizzle(s.swizzle)
-    };
-    format!("{sign}{body}{swizzled}{}", precision(s.precision))
+    format!("{sign}{body}{}{}", swizzle(s.swizzle), precision(s.precision))
 }
 
 /// An operand's minimum precision as the listing writes it after the operand.
@@ -625,6 +620,8 @@ fn declaration(d: &crate::Declaration, program: &Program) -> String {
     )
 }
 
+/// A `def`, `defi` or `defb`, whose destination Microsoft writes as any other: its result modifiers after the mnemonic
+/// and a mask that is not all four lanes.
 fn definition(literal: &Literal, register_: &Destination, program: &Program, options: &Options) -> String {
     let (op, values) = match literal {
         Literal::Float(f) => (
@@ -647,9 +644,9 @@ fn definition(literal: &Literal, register_: &Destination, program: &Program, opt
         Literal::Bool(b) => ("defb", (if *b != 0 { "true" } else { "false" }).to_owned()),
     };
     format!(
-        "{op} {}{}, {values}",
-        register(register_.register, program),
-        precision(register_.precision)
+        "{op}{} {}, {values}",
+        suffixes(Some(register_)),
+        destination(register_, program)
     )
 }
 

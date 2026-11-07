@@ -102,11 +102,11 @@ Shader Model 4's, 5.0's and 5.1's are refused. Shader Model 6 is `dxil-reader`'s
 
 `cargo test -p dxbc-reader`: token streams assembled by hand (a vertex program, typed declarations, an instruction's
 controls and extended tokens, the refusals by name) and the committed fixtures in `tests/fixtures` and `tests/disasm`,
-compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end; twenty-three in `tests/fixtures`
+compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end; thirty in `tests/fixtures`
 are fxc builds edited into programs fxc does not write (`examples/patched_fixtures.rs` makes them). `tests/disasm.rs` compares
 the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
-change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 5,773 listings of 251
-programs, 115 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 5,934 listings of 258
+programs, 117 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
 `tests/spdb.rs` changes every byte of two `/Zi` builds' `SPDB` parts and checks each is written or refused without a
 panic. No game files are needed for these.
 

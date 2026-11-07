@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.10.1 (2026-11-07)
+
+Fixes for what the first weekly differential run (seed 20261107) found: 13 programs Microsoft's `D3DDisassemble`
+(d3dcompiler_47 10.0.26100.4654) listed differently. Ten now list as Microsoft's do, each rule with a fixture and its
+listings from that disassembler; 0.10.0 lists 165 of the new fixtures' 230 listings differently and refuses 23. The
+other three are malformed input Microsoft lists by reading past it, and are refused with the reason.
+
+- `dxbc-reader`: a conditional's immediate (`if`, `breakc`, `continuec`, `retc`, `discard`, `callc`) is written as an
+  integer, as Microsoft writes it (`discard_nz l(0xbf800000)`); before, by what its bits looked like (`l(-1.000000)`).
+  Fixtures `conditionals.ps50`, `conditionals_continuec.ps50` and `conditionals_retc.gs50`.
+- `dxbc-reader`: the register of a relative index is written with one component: the one a four-component scalar
+  selection names, and `x` for any other selection or component count (`x0[r0.x + 0]` for a register selected by the
+  mask `yz`). Fixture `relative_index.ps50`.
+- `dxbc-reader`: the opcodes the format reserves (107, 209, 218 and 235, `reserved0`) take no operands:
+  `Instruction::operands` is empty and the words after the opcode tokens are skipped, as Microsoft's disassembler
+  skips them. The listing names 107 `jmp` and the others nothing, with their control bits and extended groups
+  (`jmp_sat `, ` [precise(xz)] `, `_aoffimmi(1,2,3) `). Before, the words were read as operands. Fixture
+  `reserved.ps50`.
+- `dxbc-reader`: in a `/Zi` build, the variable locations after an `else` and after a `call` are labelled
+  (`Prior locations:`, `Post-call locations:`) by the opcode, so `else_sat` and `call_sat` keep the label. Fixtures
+  `saturated_calls.ps50.zi` and `saturated_else.vs93.zi`.
+- `dxbc-reader`: refused, as Microsoft's listing reads the words after them as what is missing: a `call` or `label`
+  with no operand and a `callc` with fewer than two, and a `dcl_maxout`, `dcl_hs_max_tessfactor`, hull-phase instance
+  count or `dcl_gsinstances` with no word for its value. In `tests/decode.rs`.
+- `d3d9-reader`: the register a `def`, `defi` or `defb` defines is written as any destination is, with its result
+  modifiers after the mnemonic (`def_sat_pp_centroid`, `defi_x2`, `defb_d2`) and a mask that is not all four lanes
+  (`c0.x`, `i0.`). Fixture `versions.definitions.ps30`.
+- `d3d9-reader`: a sampler source's swizzle is written (`texld r0, t0, s0.wwxx`); before, it was left out. Fixture
+  `pixel.samplers.ps2a`.
+- `d3d9-reader`: the header's Parameters are in the constant table's order, as Microsoft lists them; fxc writes the
+  table sorted by name, the order dx gave them. Adjacent constants of one name are still one parameter. Fixture
+  `pixel.order.ps30`.
+- `d3d9-reader`: a `DBUG` comment whose line records do not follow the program is refused: fxc writes a record for each
+  declaration, definition and instruction, in stream order, at its byte offset. Microsoft's disassembler follows no one
+  rule for such a table: the first record's offset moved past the program drops every note and `#line`, the last
+  one's drops its `#line` and keeps its note, two offsets swapped drop a `#line`, and an offset a byte off keeps its
+  note. In `tests/stream.rs`.
+- Tests: the corpora tests and the slim gate read a folder tree's files one at a time (reads of many files at once
+  from a network share failed at random with Windows error 1450) and the rest from zips, on primase-testdata 0.2.5
+  (the Elden Ring dxc listings are a zip there).
+- Differential: a program Microsoft's disassembler spends 3 s on is set aside as a hang, where it was 10 s: none of
+  the first weekly run's 126 hangs finished in 120 s, and a program's listings under every flags word take at most
+  0.44 s, so hangs were most of the run. The weekly run of seed 20261107 took 1,671 s with the old patience and
+  805 s with 3 s (its special edits 1,053 s and 478 s), on a set of programs a little different, as the new fixtures
+  are among the edits' sources. `recheck.py` lists Direct3D 9 findings (`.bin`) as well.
+
 ## 0.10.0 (2026-11-07)
 
 Rules of Microsoft's listings found by a differential: dx against `D3DDisassemble` (d3dcompiler_47 10.0.26100.4654)

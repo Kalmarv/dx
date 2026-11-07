@@ -92,9 +92,12 @@ def ms_worker(folder, listing):
     os.remove(os.path.join(folder, ".current"))
 
 
-def list_ms(folder, stems, patience=10):
+def list_ms(folder, stems, patience=3):
     """Microsoft's listings of every program, in worker processes. One D3DDisassemble crashes on, or spends more than
-    `patience` seconds on, is set aside, and the rest are listed: returns those crashed and those hung."""
+    `patience` seconds on, is set aside, and the rest are listed: returns those crashed and those hung. A program's
+    listings under every flags word take at most 0.44 s (a 100 KB class program; 3 ms the median), and none of a run's
+    126 hangs finished in 120 s, so the patience is what a hang costs: 3 s, not the 10 s that made hangs most of a
+    weekly run's time."""
     crashed, hung, left = [], [], list(stems)
     current = os.path.join(folder, ".current")
     while left:

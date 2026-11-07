@@ -22,6 +22,9 @@ fn mnemonic(opcode: u16) -> &'static str {
         "sample_pos" => "samplepos",
         "sample_info" => "sampleinfo",
         "interface_call" => "fcall",
+        // the opcodes the format reserves: the first is `jmp`, the others have no name
+        "reserved0" if opcode == 107 => "jmp",
+        "reserved0" => "",
         // the tiled-resource variants that also return a status
         "gather4_feedback" => "gather4_s",
         "gather4_c_feedback" => "gather4_c_s",
@@ -188,7 +191,14 @@ fn style(opcode: u16) -> Style {
         | "usubb"
         | "msad"
         | "case"
-        | "switch" => Style::Integer,
+        | "switch"
+        // the conditionals test their value's bits
+        | "if"
+        | "breakc"
+        | "continuec"
+        | "retc"
+        | "discard"
+        | "callc" => Style::Integer,
         "mov" | "movc" | "swapc" | "store_raw" | "store_structured" | "store_uav_typed" => Style::Data,
         _ => Style::Typeless,
     }
@@ -362,7 +372,18 @@ impl Writer {
                 let _ = write!(out, "{}", index.base.cast_signed());
             }
             Some(relative) => {
-                self.operand(out, relative, Style::Integer);
+                // the register of a relative index is written with one component: the one a four-component scalar
+                // selection names, and x for any other selection or component count
+                let lane = match (relative.components, &relative.selection) {
+                    (4, Selection::Scalar(lane)) => *lane,
+                    _ => 0,
+                };
+                let one = Operand {
+                    components: 4,
+                    selection: Selection::Scalar(lane),
+                    ..relative.as_ref().clone()
+                };
+                self.operand(out, &one, Style::Integer);
                 let _ = write!(out, " + {}", index.base.cast_signed());
             }
         }
@@ -1256,9 +1277,13 @@ pub(super) fn write(
             && let starting = a.after(at, offset(next))
             && !starting.is_empty()
         {
-            let label = match bare.split(' ').next() {
-                Some("else") => "Prior locations: ",
-                Some("call") => "Post-call locations: ",
+            // by the opcode, whatever its control bits add to the text (`else_sat`)
+            let label = match row {
+                Row::Instruction(i) => match crate::opcode_name(i.opcode) {
+                    "else" => "Prior locations: ",
+                    "call" => "Post-call locations: ",
+                    _ => "",
+                },
                 _ => "",
             };
             let end = starting

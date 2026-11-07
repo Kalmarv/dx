@@ -360,3 +360,56 @@ fn malformed_streams_microsoft_lists_as_garbage_are_refused() {
         assert_eq!((at, why.as_str()), (word, wanted));
     }
 }
+
+#[test]
+fn a_debug_line_table_that_does_not_follow_the_program_is_refused() {
+    // fxc writes a line record for each declaration, definition and instruction, in stream order, with its byte
+    // offset. Microsoft's disassembler lists a table that breaks this by no one rule: the first record's offset past
+    // the program drops every note and `#line`, the last one's drops its `#line` and keeps its note, two records'
+    // offsets swapped drop the first's `#line`, and an offset a byte off keeps its note
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/disasm/debug.tinted.ps20.od.bin"
+    );
+    let original = std::fs::read(path).unwrap();
+    let word = |bytes: &[u8], n: usize| u32::from_le_bytes(bytes[4 * n..4 * n + 4].try_into().unwrap());
+    // the DBUG comment's offsets are from the word after its FourCC (word 2); header word 6 is the line table's offset
+    assert_eq!(&original[8..12], b"DBUG");
+    let table = 3 + word(&original, 3 + 6) as usize / 4;
+    // record n's offset is its second word
+    let offset = |n: usize| table + 2 * n + 1;
+    read(&original).unwrap();
+    let edited = |edits: &[(usize, u32)]| {
+        let mut bytes = original.clone();
+        for &(n, value) in edits {
+            bytes[4 * n..4 * n + 4].copy_from_slice(&value.to_le_bytes());
+        }
+        refusal(&bytes)
+    };
+    let (dcl, texld) = (word(&original, offset(0)), word(&original, offset(2)));
+    let mul = word(&original, offset(3));
+    assert_eq!(
+        edited(&[(offset(0), 0x3300_0000 | dcl)]),
+        (
+            dcl as usize / 4,
+            format!(
+                "DBUG line record 0 has offset {:#x}, where its record starts at {dcl:#x}",
+                0x3300_0000 | dcl
+            )
+        )
+    );
+    assert_eq!(
+        edited(&[(offset(2), mul), (offset(3), texld)]),
+        (
+            texld as usize / 4,
+            format!("DBUG line record 2 has offset {mul:#x}, where its record starts at {texld:#x}")
+        )
+    );
+    assert_eq!(
+        edited(&[(offset(0), dcl + 1)]).1,
+        format!(
+            "DBUG line record 0 has offset {:#x}, where its record starts at {dcl:#x}",
+            dcl + 1
+        )
+    );
+}

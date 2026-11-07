@@ -174,6 +174,42 @@ fn unreadable_tokens_are_errors_naming_the_word() {
 }
 
 #[test]
+fn instructions_and_declarations_short_of_their_words_are_refused() {
+    // Microsoft's disassembler lists both by reading the words after them: a `callc` with its condition and no label,
+    // a `call` and a `label` with no operand, and a stage declaration with no value
+    let label = [10 << 12 | 1 << 20, 0];
+    // a one-component temp, r0
+    let condition = [1 | 1 << 20, 0];
+    for (body, detail) in [
+        (
+            instruction(5, &condition),
+            "callc has 1 operands where it takes 2",
+        ),
+        (instruction(4, &[]), "call has 0 operands where it takes 1"),
+        (instruction(44, &[]), "label has 0 operands where it takes 1"),
+        (instruction(206, &[]), "has no word for its value"),
+        (instruction(94, &[]), "has no word for its value"),
+        (instruction(153, &[]), "has no word for its value"),
+    ] {
+        let e = dxbc_reader::decode(&stream(0x20050, &[body, instruction(62, &[])])).unwrap_err();
+        assert!(e.detail.contains(detail), "{e}");
+    }
+    // with their words they decode
+    let whole = stream(
+        0x20050,
+        &[
+            instruction(206, &[2]),
+            instruction(5, &[condition.as_slice(), label.as_slice()].concat()),
+            instruction(4, &label),
+            instruction(62, &[]),
+            instruction(44, &label),
+            instruction(62, &[]),
+        ],
+    );
+    dxbc_reader::decode(&whole).unwrap();
+}
+
+#[test]
 fn a_geometry_program_s_instance_count_is_a_declaration() {
     // gs_5_0: dcl_gs_instance_count 2 (a declaration whose one word is the count, not an operand); ret
     let d = dxbc_reader::decode(&stream(0x20050, &[instruction(206, &[2]), instruction(62, &[])])).unwrap();

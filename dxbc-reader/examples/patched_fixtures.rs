@@ -43,6 +43,19 @@
 //!   of a kind; Microsoft writes the last one's group once for each.
 //! - `labels.ps50.zi.dxbc`, from `classes_resources.ps50.zi.dxbc`: every `label` given a saturate or a precise bit,
 //!   which do not keep Microsoft from naming the file on a function body's `#line`.
+//! - `relative_index.ps50.dxbc`, from `indices.ps50.dxbc`: the registers of its relative indices given other component
+//!   counts and selections (`RELATIVE_SELECTIONS`); Microsoft writes such a register with one component.
+//! - `conditionals.ps50.dxbc`, `conditionals_continuec.ps50.dxbc` and `conditionals_retc.gs50.dxbc`, from
+//!   `ps_sampling.ps50.dxbc`, `classes_arrays2d.ps50.dxbc` and `gs_streams.gs50.dxbc`: conditionals (`breakc`, `if`,
+//!   `discard`, and a `breakc` made a `continuec` and a `retc`) given an immediate, most of them with bits that look
+//!   like a float, which Microsoft writes as an integer.
+//! - `reserved.ps50.dxbc`, from `ps_sampling.ps50.dxbc`: four arithmetic instructions given the opcodes the format
+//!   reserves (107, 209, 218, 235), the second saturated, the third precise and the fourth with an extended token of
+//!   sample offsets over its first operand token. Microsoft writes no operand of them, the first named `jmp` and the
+//!   others nothing.
+//! - `saturated_calls.ps50.zi.dxbc` and `saturated_else.vs93.zi.dxbc`, from `zi_names.ps50.zi.dxbc` and
+//!   `level9.twice.vs93.zi.dxbc`: every `call` and every `else` saturated; Microsoft still labels the variable
+//!   locations after them (`Post-call locations`, `Prior locations`).
 //! - `message_strings.vs50.dxbc`, from `messages.vs50.dxbc`: the first message's character count made the bytes its
 //!   string has, leaving no room for the zero (Microsoft's `undecipherable custom data`), the second's 0 and the
 //!   third's string given a zero in its third byte; Microsoft reads a string to its zero, whatever its count.
@@ -165,6 +178,24 @@ const SCALAR_Z: u32 = 0x02a;
 const MASK_X: u32 = 0x012;
 const MASK_XYZW: u32 = 0x0f2;
 const LABEL: u32 = 44;
+/// The component counts and selections the relative indices of `relative_index.ps50.dxbc` are given: four components
+/// by the scalar `w`, by the swizzle `wyxx` and by the mask `yz`, one component and none. Microsoft writes the
+/// register with the scalar's component, and with `x` for the others.
+const RELATIVE_SELECTIONS: [u32; 5] = [0x03a, SWIZZLE_WYXX, 0x062, 0x001, 0x000];
+/// The conditionals of the `conditionals` fixtures.
+const BREAKC: u32 = 3;
+const CONTINUEC: u32 = 8;
+const DISCARD: u32 = 13;
+const IF: u32 = 31;
+const RETC: u32 = 63;
+/// The opcodes the format reserves, and the arithmetic opcodes `reserved.ps50.dxbc` writes them over (`add`, `mad`,
+/// `mov`, `mul`).
+const RESERVED: [u32; 4] = [107, 209, 218, 235];
+const ARITHMETIC: [u32; 4] = [0, 50, 54, 56];
+/// An extended opcode token of sample offsets (1, 2, 3).
+const OFFSETS_123: u32 = 1 | 1 << 9 | 2 << 13 | 3 << 17;
+const CALL: u32 = 4;
+const ELSE: u32 = 18;
 
 /// The register types of operands that hold values rather than name a register.
 const TYPE_IMMEDIATE32: u32 = 4;
@@ -214,9 +245,17 @@ fn declaration(opcode: u32) -> bool {
     matches!(opcode, 88..=106 | 143..=162 | 206)
 }
 
-/// The word after the operand at word `at`, with the words of its immediate indices (a register's number among them,
-/// and the constant added to a relative index) pushed to `indices`, its relative indices' included.
-fn operand(program: &[u32], mut at: usize, indices: &mut Vec<usize>) -> Result<usize> {
+/// The words of operands an edit picks from.
+#[derive(Default)]
+struct Found {
+    /// Immediate indices: a register's number among them, and the constant added to a relative index.
+    indices: Vec<usize>,
+    /// The operand tokens of the registers relative indices add.
+    relatives: Vec<usize>,
+}
+
+/// The word after the operand at word `at`, with its words pushed to `found`, its relative indices' included.
+fn operand(program: &[u32], mut at: usize, found: &mut Found) -> Result<usize> {
     let token = *program.get(at).ok_or("an operand past the program's end")?;
     at += 1;
     // the extended operand tokens
@@ -242,7 +281,7 @@ fn operand(program: &[u32], mut at: usize, indices: &mut Vec<usize>) -> Result<u
         let representation = token >> (22 + 3 * dimension) & 7;
         match representation {
             0 | 3 => {
-                indices.push(at);
+                found.indices.push(at);
                 at += 1;
             }
             1 | 4 => at += 2,
@@ -250,10 +289,28 @@ fn operand(program: &[u32], mut at: usize, indices: &mut Vec<usize>) -> Result<u
             other => return Err(format!("index representation {other} at word {at}").into()),
         }
         if matches!(representation, 2..=4) {
-            at = operand(program, at, indices)?;
+            found.relatives.push(at);
+            at = operand(program, at, found)?;
         }
     }
     Ok(at)
+}
+
+/// The operands of the instruction (not a declaration) at `start`, their words pushed to `found`.
+fn instruction_operands(program: &[u32], start: usize, length: usize, found: &mut Found) -> Result<()> {
+    let end = start + length;
+    let mut at = after_opcode(program, start);
+    // an interface call's first word is its call site
+    if program[start] & 0x7ff == INTERFACE_CALL {
+        at += 1;
+    }
+    while at < end {
+        at = operand(program, at, found)?;
+    }
+    if at != end {
+        return Err(format!("the operands of the instruction at word {start} run past its end").into());
+    }
+    Ok(())
 }
 
 /// The first word of an instruction after its opcode token and extended opcode tokens.
@@ -388,46 +445,125 @@ fn negated_numbers(from: &Path, to: &Path) -> Result<()> {
     let (kind, mut program) = program(&container)?;
     // the version token's low byte: Shader Model 5.1 declares a binding's space
     let sm51 = program[0] & 0xff == 0x51;
-    let mut numbers = Vec::new();
+    let mut found = Found::default();
     for (start, length) in instructions(&program)? {
         let opcode = program[start] & 0x7ff;
         let end = start + length;
         match opcode {
             CUSTOMDATA | DCL_GLOBAL_FLAGS => {}
-            DCL_TEMPS => numbers.push(start + 1),
-            DCL_INDEXABLE_TEMP => numbers.extend([start + 1, start + 2]),
+            DCL_TEMPS => found.indices.push(start + 1),
+            DCL_INDEXABLE_TEMP => found.indices.extend([start + 1, start + 2]),
             DCL_INDEX_RANGE => {
-                let count = operand(&program, start + 1, &mut numbers)?;
-                numbers.push(count);
+                let count = operand(&program, start + 1, &mut found)?;
+                found.indices.push(count);
             }
             _ if declaration(opcode) => {
-                let after = operand(&program, start + 1, &mut numbers)?;
+                let after = operand(&program, start + 1, &mut found)?;
                 if sm51 && BINDINGS.contains(&opcode) {
-                    numbers.push(end - 1);
+                    found.indices.push(end - 1);
                     if opcode == DCL_CONSTANT_BUFFER {
-                        numbers.push(after);
+                        found.indices.push(after);
                     }
                 }
             }
-            _ => {
-                let mut at = after_opcode(&program, start);
-                // an interface call's first word is its call site
-                if opcode == INTERFACE_CALL {
-                    at += 1;
-                }
-                while at < end {
-                    at = operand(&program, at, &mut numbers)?;
-                }
-                if at != end {
-                    return Err(
-                        format!("the operands of the instruction at word {start} run past its end").into(),
-                    );
-                }
-            }
+            _ => instruction_operands(&program, start, length, &mut found)?,
         }
     }
-    for at in numbers {
+    for at in found.indices {
         program[at] = !program[at];
+    }
+    write(&container, kind, &program, to)
+}
+
+/// The register of each relative index of the instructions given, in order, the component count and selection of
+/// `RELATIVE_SELECTIONS`.
+fn relative_selections(from: &Path, to: &Path) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let mut found = Found::default();
+    for (start, length) in instructions(&program)? {
+        let opcode = program[start] & 0x7ff;
+        if opcode != CUSTOMDATA && !declaration(opcode) {
+            instruction_operands(&program, start, length, &mut found)?;
+        }
+    }
+    if found.relatives.len() < RELATIVE_SELECTIONS.len() {
+        return Err(format!(
+            "{} relative indices, where the edit takes {}",
+            found.relatives.len(),
+            RELATIVE_SELECTIONS.len()
+        )
+        .into());
+    }
+    for (at, selection) in found.relatives.into_iter().zip(RELATIVE_SELECTIONS) {
+        program[at] = program[at] & !0xfff | selection;
+    }
+    write(&container, kind, &program, to)
+}
+
+/// For each of `edits` (an opcode, the opcode written over it, a value), the next three-word instruction of that
+/// opcode, a conditional whose one operand is a register with one index, made the opcode written with a one-component
+/// immediate of the value.
+/// Every instruction of `opcode` saturated.
+fn saturated(from: &Path, to: &Path, opcode: u32) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let found: Vec<usize> = instructions(&program)?
+        .into_iter()
+        .filter(|&(at, _)| program[at] & 0x7ff == opcode)
+        .map(|(at, _)| at)
+        .collect();
+    if found.is_empty() {
+        return Err(format!("no opcode {opcode}").into());
+    }
+    for at in found {
+        program[at] |= SATURATE << 11;
+    }
+    write(&container, kind, &program, to)
+}
+
+fn reserved_opcodes(from: &Path, to: &Path) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let found: Vec<usize> = instructions(&program)?
+        .into_iter()
+        .filter(|&(at, length)| {
+            length >= 2 && program[at] & 0x8000_0000 == 0 && ARITHMETIC.contains(&(program[at] & 0x7ff))
+        })
+        .map(|(at, _)| at)
+        .take(RESERVED.len())
+        .collect();
+    let [plain, saturated, precise, extended] = found[..] else {
+        return Err(format!("{} arithmetic instructions, where the edit takes 4", found.len()).into());
+    };
+    let retyped = |token: u32, opcode: u32| token & 0x7f00_0000 | opcode;
+    program[plain] = retyped(program[plain], RESERVED[0]);
+    program[saturated] = retyped(program[saturated], RESERVED[1]) | SATURATE << 11;
+    program[precise] = retyped(program[precise], RESERVED[2]) | 5 << 8 << 11;
+    program[extended] = retyped(program[extended], RESERVED[3]) | 0x8000_0000;
+    program[extended + 1] = OFFSETS_123;
+    write(&container, kind, &program, to)
+}
+
+fn conditional_values(from: &Path, to: &Path, edits: &[(u32, u32, u32)]) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let mut free: Vec<usize> = instructions(&program)?
+        .into_iter()
+        .filter(|&(at, length)| {
+            length == 3 && program[at] & 0x8000_0000 == 0 && program[at + 1] >> 20 & 3 == 1
+        })
+        .map(|(at, _)| at)
+        .collect();
+    for &(opcode, written, value) in edits {
+        let n = free
+            .iter()
+            .position(|&at| program[at] & 0x7ff == opcode)
+            .ok_or_else(|| format!("no three-word instruction of opcode {opcode} left"))?;
+        let at = free.remove(n);
+        program[at] = program[at] & !0x7ff | written;
+        program[at + 1] = IMMEDIATE32_ONE;
+        program[at + 2] = value;
     }
     write(&container, kind, &program, to)
 }
@@ -653,7 +789,43 @@ fn main() -> Result<()> {
         let dimension = (fixture == "controls.ps50").then_some((SAMPLE, 20));
         controls(&from, &fixtures.join(format!("{fixture}.dxbc")), edits, dimension)?;
     }
+    relative_selections(
+        &disasm.join("indices.ps50.dxbc"),
+        &fixtures.join("relative_index.ps50.dxbc"),
+    )?;
     let sampling = disasm.join("ps_sampling.ps50.dxbc");
+    // values a float would be written for, a negative zero and integers beyond ten thousand
+    conditional_values(
+        &sampling,
+        &fixtures.join("conditionals.ps50.dxbc"),
+        &[
+            (BREAKC, BREAKC, 0x8000_0000),
+            (IF, IF, 0x3f80_0000),
+            (IF, IF, 0xffff_d8ef),
+            (DISCARD, DISCARD, 0xbf80_0000),
+        ],
+    )?;
+    conditional_values(
+        &disasm.join("classes_arrays2d.ps50.dxbc"),
+        &fixtures.join("conditionals_continuec.ps50.dxbc"),
+        &[(BREAKC, CONTINUEC, 0x4000_0000)],
+    )?;
+    conditional_values(
+        &disasm.join("gs_streams.gs50.dxbc"),
+        &fixtures.join("conditionals_retc.gs50.dxbc"),
+        &[(BREAKC, RETC, 0x4120_0000)],
+    )?;
+    reserved_opcodes(&sampling, &fixtures.join("reserved.ps50.dxbc"))?;
+    saturated(
+        &disasm.join("zi_names.ps50.zi.dxbc"),
+        &fixtures.join("saturated_calls.ps50.zi.dxbc"),
+        CALL,
+    )?;
+    saturated(
+        &disasm.join("level9.twice.vs93.zi.dxbc"),
+        &fixtures.join("saturated_else.vs93.zi.dxbc"),
+        ELSE,
+    )?;
     selections(
         &sampling,
         &fixtures.join("selections.ps50.dxbc"),

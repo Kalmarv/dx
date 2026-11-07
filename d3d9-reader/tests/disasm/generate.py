@@ -180,6 +180,21 @@ def ctab_types(data):
     return bytes(data)
 
 
+def ctab_order(data):
+    """pixel.ps30 with the first letter of each parameter's name made z, y, x, ... in the table's order and the middle
+    one's name made empty, so that the table is no longer sorted by name: Microsoft lists the parameters in the table's
+    order."""
+    data = bytearray(data)
+    assert data[4:6] == b"\xfe\xff" and data[8:12] == b"CTAB"
+    base = 12
+    count, info = struct.unpack_from("<II", data, base + 12)
+    assert count > 2, count
+    for n in range(count):
+        name = struct.unpack_from("<I", data, base + info + 20 * n)[0]
+        data[base + name] = 0 if n == count // 2 else ord("z") - n
+    return bytes(data)
+
+
 def instructions(data):
     """The (word, opcode, length) of each instruction of an SM2 or SM3 program's tokens, comments left out."""
     words = struct.unpack(f"<{len(data) // 4}I", data)
@@ -231,11 +246,49 @@ def min_precision(data):
     return bytes(data)
 
 
+def definitions(data):
+    """versions.opcodes.ps30 with the register of its first `def` given every result modifier (`_sat_pp_centroid`) and
+    the mask x, its `defi`'s the shift x2 and an empty mask and its `defb`'s the shift d2 and the mask yz, which
+    Microsoft writes as any destination's."""
+    data = bytearray(data)
+    edits = {0x51: (7 << 20, 0x1), 0x30: (1 << 24, 0x0), 0x2F: (0xF << 24, 0x6)}
+    for at, opcode, _ in instructions(data):
+        if opcode in edits:
+            bits, mask = edits.pop(opcode)
+            token = struct.unpack_from("<I", data, 4 * (at + 1))[0]
+            struct.pack_into("<I", data, 4 * (at + 1), token & ~(0xFFF << 16) | bits | mask << 16)
+    assert not edits, edits
+    return bytes(data)
+
+
+def sampler_swizzles(data):
+    """pixel.ps2a with the sampler sources of its texture loads given the swizzles wwxx, xxxx and yzxw in turn, which
+    Microsoft writes as any source's (the compiler writes xyzw, written as nothing)."""
+    data = bytearray(data)
+    swizzles = [0x0F, 0x00, 0xC9]
+    n = 0
+    for at, opcode, length in instructions(data):
+        # a dcl's register is its second word, a destination
+        if opcode == 0x1F:
+            continue
+        for word in range(at + 2, at + length + 1):
+            token = struct.unpack_from("<I", data, 4 * word)[0]
+            # a parameter token of register type 10, a sampler: bits 28 to 30 and 11 to 12
+            if token & 0x80000000 and (token >> 28 & 7 | (token >> 11 & 3) << 3) == 10:
+                struct.pack_into("<I", data, 4 * word, token & ~(0xFF << 16) | swizzles[n % 3] << 16)
+                n += 1
+    assert n >= 3, n
+    return bytes(data)
+
+
 # Programs written from a built one with bytes changed, for what the compiler never writes: name -> (built, change).
 PATCHED = {
     "ctab.types.ps30": ("ctab.many.ps30", ctab_types),
     "pixel.specials.ps30": ("pixel.flow.ps30", def_specials),
     "pixel.precision.ps30": ("pixel.ps30", min_precision),
+    "versions.definitions.ps30": ("versions.opcodes.ps30", definitions),
+    "pixel.samplers.ps2a": ("pixel.ps2a", sampler_swizzles),
+    "pixel.order.ps30": ("pixel.ps30", ctab_order),
 }
 
 
@@ -294,13 +347,14 @@ def main():
                 print(f"FAIL {os.path.basename(out)}: {r.stderr.strip() or r.stdout.strip()}")
                 continue
             built.append(out)
-    for name, (source, change) in PATCHED.items():
-        out = os.path.join(here, name + ".bin")
-        open(out, "wb").write(change(open(os.path.join(here, source + ".bin"), "rb").read()))
-        built.append(out)
+    # the hand-built programs first, as some are patched
     for name, words in HAND_BUILT.items():
         out = os.path.join(here, name + ".bin")
         open(out, "wb").write(struct.pack(f"<{len(words)}I", *words))
+        built.append(out)
+    for name, (source, change) in PATCHED.items():
+        out = os.path.join(here, name + ".bin")
+        open(out, "wb").write(change(open(os.path.join(here, source + ".bin"), "rb").read()))
         built.append(out)
     for path in built:
         data = open(path, "rb").read()

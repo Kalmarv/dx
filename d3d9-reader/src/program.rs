@@ -546,6 +546,8 @@ fn start(bytes: &[u8], whole: bool) -> Result<Records<'_>> {
         done: false,
         constants: None,
         debug: None,
+        unlocated: Vec::new(),
+        located: 0,
     })
 }
 
@@ -576,6 +578,11 @@ pub struct Records<'a> {
     done: bool,
     constants: Option<ConstantTable>,
     debug: Option<DebugInfo>,
+    /// The words of the declarations, definitions and instructions read and not yet checked against their line
+    /// records: those before the `DBUG` comment (all of them in a program without one).
+    unlocated: Vec<usize>,
+    /// The line records checked.
+    located: usize,
 }
 
 impl Records<'_> {
@@ -604,7 +611,16 @@ impl Iterator for Records<'_> {
         if self.done {
             return None;
         }
-        match self.record() {
+        let read = self.record().and_then(|item| {
+            match &item {
+                Some(Item::Comment(_)) => {}
+                Some(other) => self.unlocated.push(other.word()),
+                None => self.located_all()?,
+            }
+            self.locate()?;
+            Ok(item)
+        });
+        match read {
             Ok(Some(item)) => Some(Ok(item)),
             Ok(None) => {
                 self.done = true;
@@ -620,6 +636,61 @@ impl Iterator for Records<'_> {
                 self.done = true;
                 Some(Err(e))
             }
+        }
+    }
+}
+
+impl Records<'_> {
+    /// Checks the declarations, definitions and instructions read against the `DBUG` comment's line records, once it
+    /// has been read. fxc writes a record for each, in stream order, with its byte offset; Microsoft's disassembler
+    /// lists a table that breaks this in ways that follow no one rule (a record's offset past the program can drop
+    /// every note and `#line`, or one `#line` and none of the notes), so such a table is refused.
+    fn locate(&mut self) -> Result<()> {
+        let Some(debug) = &self.debug else {
+            return Ok(());
+        };
+        for word in std::mem::take(&mut self.unlocated) {
+            let n = self.located;
+            let offset = word.saturating_mul(4);
+            match debug.lines.get(n) {
+                Some(line) if usize::try_from(line.offset).is_ok_and(|o| o == offset) => {}
+                Some(line) => {
+                    return Err(error(
+                        word,
+                        format!(
+                            "DBUG line record {n} has offset {:#x}, where its record starts at {offset:#x}",
+                            line.offset
+                        ),
+                    ));
+                }
+                None => {
+                    return Err(error(
+                        word,
+                        format!(
+                            "DBUG has {} line records, none for this record",
+                            debug.lines.len()
+                        ),
+                    ));
+                }
+            }
+            self.located = n.saturating_add(1);
+        }
+        Ok(())
+    }
+
+    /// At `END`: whether every line record has had its record.
+    fn located_all(&mut self) -> Result<()> {
+        self.locate()?;
+        match &self.debug {
+            Some(debug) if debug.lines.len() != self.located => Err(error(
+                self.at.saturating_sub(1),
+                format!(
+                    "DBUG has {} line records, where the program has {} declarations, definitions and instructions",
+                    debug.lines.len(),
+                    self.located
+                ),
+            )),
+            _ => Ok(()),
         }
     }
 }

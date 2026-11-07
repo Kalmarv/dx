@@ -259,7 +259,8 @@ pub struct Instruction {
     pub saturate: bool,
     /// A conditional (`if`, `breakc`, `continuec`) taken when its operand is nonzero (`_nz`), else when zero (`_z`).
     pub nonzero: bool,
-    /// The operands, destination first where the instruction has one.
+    /// The operands, destination first where the instruction has one; none for an opcode the format reserves (107,
+    /// 209, 218, 235), whose words after the opcode tokens Microsoft's disassembler skips.
     pub operands: Vec<Operand>,
     /// The call site an `interface_call` stores before its operand (the entry of the interface's function tables it
     /// calls); `None` for other instructions.
@@ -805,6 +806,12 @@ impl Cursor<'_> {
 
 /// `interface_call`, whose first word after its token is a call site, not an operand.
 const INTERFACE_CALL: u16 = 120;
+const CALL: u16 = 4;
+const CALLC: u16 = 5;
+const LABEL: u16 = 44;
+/// The opcodes the format reserves (`reserved0`): Microsoft's disassembler reads no operand of them and skips the words
+/// after their opcode tokens.
+const RESERVED: [u16; 4] = [107, 209, 218, 235];
 
 /// `D3D10_SB_NAME_MASK`: the bits of a declaration's name token that hold its `D3D_NAME`.
 const NAME: u32 = 0xffff;
@@ -1026,7 +1033,8 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
             let function = (opcode == INTERFACE_CALL).then(|| c.take()).transpose()?;
             let format = operand_format(opcode);
             let mut operands = Vec::new();
-            while c.at < c.words.len() && format.is_none_or(|f| operands.len() < f.operands()) {
+            let reads = !RESERVED.contains(&opcode);
+            while reads && c.at < c.words.len() && format.is_none_or(|f| operands.len() < f.operands()) {
                 operands.push(c.operand(0)?);
             }
             // fxc leaves words after the operands of some instructions, which Microsoft's disassembler skips: zeros after
@@ -1051,6 +1059,26 @@ pub fn decode(words: &[u32]) -> Result<Decoded> {
                         ),
                     ));
                 }
+            }
+            // `call`, `callc` and `label` have no operand format, as their operands are a label and a condition rather
+            // than registers a program declares, but they have a count: with fewer operands, Microsoft's disassembler
+            // reads the words after the instruction as the missing ones.
+            let taken = match opcode {
+                CALL | LABEL => Some(1),
+                CALLC => Some(2),
+                _ => None,
+            };
+            if let Some(taken) = taken
+                && operands.len() < taken
+            {
+                return Err(error(
+                    at,
+                    format!(
+                        "{} has {} operands where it takes {taken}",
+                        opcode_name(opcode),
+                        operands.len()
+                    ),
+                ));
             }
             if let Some(format) = format
                 && operands.len() != format.operands()
@@ -1283,6 +1311,14 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 length: lengths >> 16,
                 tables,
             }
+        }
+        // the stage declarations that hold a value (`dcl_maxout`, `dcl_hs_max_tessfactor`, the hull phases' instance
+        // counts, `dcl_gsinstances`): without its word, Microsoft's disassembler writes the word after the declaration
+        94 | 152 | 153 | 154 | 206 if c.at == c.words.len() => {
+            return Err(error(
+                pos,
+                format!("{} has no word for its value", opcode_name(opcode)),
+            ));
         }
         _ => Declared::Other {
             opcode,
