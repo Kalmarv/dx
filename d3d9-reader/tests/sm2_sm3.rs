@@ -7,8 +7,8 @@ mod common;
 
 use common::*;
 use d3d9_reader::{
-    Comparison, Declared, Literal, Modifier, Opcode, Register, RegisterType, Relative, TextureType, read,
-    records,
+    Comparison, Declared, Literal, Modifier, Opcode, Precision, Register, RegisterType, Relative,
+    TextureType, disassemble, read, records,
 };
 
 fn r(kind: RegisterType, number: u32) -> Register {
@@ -512,4 +512,88 @@ fn records_stop_at_the_first_refusal_and_keep_what_came_before() {
     );
     assert!(stream.next().is_none());
     assert_eq!(read(&bytes).unwrap_err().word, 4);
+}
+
+/// Bits 14 to 15 of an operand token are its minimum precision (`D3DSP_MIN_PRECISION`), which fxc writes in a feature
+/// level 9 program's Direct3D 9 part: on a declared or defined register, a destination and a source; a relative-address
+/// or predicate token's mean nothing. The listing is `D3DDisassemble`'s of these tokens.
+#[test]
+fn minimum_precision_is_read_and_listed_after_the_operand() {
+    let precision = |p: u32| p << 14;
+    let bytes = program(
+        0xfffe_0300,
+        &[
+            op(31, &[0x8000_0000, dst(INPUT, 0, 15) | precision(1)]),
+            op(31, &[0x8000_0000, dst(OUTPUT, 0, 15)]),
+            op(
+                81,
+                &[dst(CONST, 1, 15) | precision(2), 0x3f80_0000, 0, 0, 0x3f80_0000],
+            ),
+            op(
+                1,
+                &[
+                    dst(TEMP, 0, 15) | precision(1),
+                    src(INPUT, 0, 0xe4, 0) | precision(2),
+                ],
+            ),
+            op(46, &[dst(ADDR, 0, 1), src(INPUT, 0, 0, 0)]),
+            // the relative-address token's precision is ignored
+            op(
+                1,
+                &[
+                    dst(TEMP, 1, 15),
+                    src(CONST, 2, 0xe4, 1) | 0x2000 | precision(1),
+                    src(ADDR, 0, 0, 0) | precision(3),
+                ],
+            ),
+            op(
+                94 | 1 << 16,
+                &[
+                    dst(PREDICATE, 0, 15),
+                    src(INPUT, 0, 0xe4, 0),
+                    src(CONST, 1, 0xe4, 0),
+                ],
+            ),
+            // a predicated mov: its predicate's precision is ignored, and 3 names none
+            vec![
+                1 | 3 << 24 | 1 << 28,
+                dst(TEMP, 2, 15) | precision(3),
+                src(PREDICATE, 0, 0xe4, 0) | precision(1),
+                src(TEMP, 0, 0xe4, 0),
+            ],
+            op(1, &[dst(OUTPUT, 0, 15), src(TEMP, 0, 0xe4, 0) | precision(2)]),
+        ],
+    );
+    let p = read(&bytes).unwrap();
+    let d: Vec<_> = p.declarations().collect();
+    assert_eq!(d[0].destination.precision, Precision::Min16);
+    let i: Vec<_> = p.instructions().collect();
+    assert_eq!(
+        (i[0].destination.unwrap().precision, i[0].sources[0].precision),
+        (Precision::Min16, Precision::Min2_8)
+    );
+    assert_eq!(i[4].destination.unwrap().precision, Precision::Unnamed);
+    assert_eq!(i[4].predicate.unwrap().precision, Precision::Min16);
+    assert_eq!(
+        disassemble(&bytes).unwrap(),
+        [
+            "    vs_3_0",
+            "    dcl_position v0 {min16f}",
+            "    dcl_position o0",
+            "    def c1 {min2_8f}, 1, 0, 0, 1",
+            "    mov r0 {min16f}, v0 {min2_8f}",
+            "    mova a0.x, v0.x",
+            "    mov r1, -c2[a0.x] {min16f}",
+            "    setp_gt p0, v0, c1",
+            "    (p0) mov r2, r0",
+            "    mov o0, r0 {min2_8f}",
+            "",
+            "// approximately 7 instruction slots used",
+            "",
+        ]
+        .join(
+            "
+"
+        )
+    );
 }

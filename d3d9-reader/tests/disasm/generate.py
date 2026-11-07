@@ -180,8 +180,63 @@ def ctab_types(data):
     return bytes(data)
 
 
+def instructions(data):
+    """The (word, opcode, length) of each instruction of an SM2 or SM3 program's tokens, comments left out."""
+    words = struct.unpack(f"<{len(data) // 4}I", data)
+    at, out = 1, []
+    while at < len(words) and words[at] != 0xFFFF:
+        token = words[at]
+        if token & 0xFFFF == 0xFFFE:
+            at += 1 + (token >> 16 & 0x7FFF)
+            continue
+        out.append((at, token & 0xFFFF, token >> 24 & 15))
+        at += 1 + (token >> 24 & 15)
+    return out
+
+
+def def_specials(data):
+    """pixel.flow.ps30 with the values of its three `def`s made infinities, quiet and signaling NaNs of both signs
+    (0xffc00000, which Microsoft writes as -1.#IND, among them), the largest and smallest bits of a NaN, a denormal and
+    -0, which the compiler never writes in a Shader Model 3 program."""
+    data = bytearray(data)
+    values = [
+        [0x7F800000, 0xFF800000, 0x7FC00000, 0xFFC00000],
+        [0x7FA00000, 0xFFA00000, 0x7F800001, 0xFF800001],
+        [0x7FFFFFFF, 0xFFFFFFFF, 0x00000001, 0x80000000],
+    ]
+    defs = [at for at, opcode, _ in instructions(data) if opcode == 0x51]
+    assert len(defs) == 3, defs
+    for at, four in zip(defs, values):
+        struct.pack_into("<4I", data, 4 * (at + 2), *four)
+    return bytes(data)
+
+
+def min_precision(data):
+    """pixel.ps30 with the minimum precision bits (14 and 15) of every parameter token set, to 1, 2 and 3 in turn:
+    destinations, sources and a `dcl`'s and `def`'s register, which Microsoft's listing writes after the operand
+    ({min16f}, {min2_8f}, nothing). A `dcl`'s usage token is left: its bits 14 and 15 are reserved, and Microsoft
+    writes a `dcl vFace` whose usage token has them as `dcl_position vFace`."""
+    data = bytearray(data)
+    n = 0
+    for at, opcode, length in instructions(data):
+        # a def's, defi's or defb's words after its register are values, whose bit 31 is no parameter token's
+        first = at + 2 if opcode == 0x1F else at + 1
+        last = at + 1 if opcode in (0x51, 0x30, 0x2F) else at + length
+        for word in range(first, last + 1):
+            token = struct.unpack_from("<I", data, 4 * word)[0]
+            if token & 0x80000000:
+                struct.pack_into("<I", data, 4 * word, token & ~0xC000 | (n % 3 + 1) << 14)
+                n += 1
+    assert n > 20, n
+    return bytes(data)
+
+
 # Programs written from a built one with bytes changed, for what the compiler never writes: name -> (built, change).
-PATCHED = {"ctab.types.ps30": ("ctab.many.ps30", ctab_types)}
+PATCHED = {
+    "ctab.types.ps30": ("ctab.many.ps30", ctab_types),
+    "pixel.specials.ps30": ("pixel.flow.ps30", def_specials),
+    "pixel.precision.ps30": ("pixel.ps30", min_precision),
+}
 
 
 def disassembler(path):

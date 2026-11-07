@@ -46,8 +46,8 @@ fn listings_are_microsofts() {
         differing.join("\n")
     );
     // 41 vs_2_0, vs_2_a, vs_3_0, ps_2_0, ps_2_a, ps_2_b and ps_3_0 programs (10 of them /Zi builds) and 8 vs_1_1 and
-    // ps_1_1 to ps_1_4 ones built by fxc or by hand, one with its constant table's types changed, and for each of the
-    // 11 versions one program with every instruction and one with every register, dcl usage and instruction flag,
-    // each with 23 listings
-    assert_eq!(compared, 1656);
+    // ps_1_1 to ps_1_4 ones built by fxc or by hand, three with bytes changed (a constant table's types, `def` values
+    // that are infinities and NaNs, minimum precision on every operand), and for each of the 11 versions one program
+    // with every instruction and one with every register, dcl usage and instruction flag, each with 23 listings
+    assert_eq!(compared, 1702);
 }

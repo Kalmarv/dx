@@ -1,5 +1,89 @@
 # Changelog
 
+## 0.10.0 (2026-11-07)
+
+Rules of Microsoft's listings found by a differential: dx against `D3DDisassemble` (d3dcompiler_47 10.0.26100.4654)
+on generated HLSL and on fxc builds with chosen words edited and the digest redone. Each rule has a fixture with its
+listings from that disassembler. Of the 27 new DXBC fixtures' 621 listings, 0.9.1 lists 446 differently (in 22 of
+the fixtures) and refuses 32 (`level9_min16`'s two wherever the header is written); in Direct3D 9 it lists
+`pixel.specials.ps30` differently and refuses `pixel.precision.ps30`.
+
+- Breaking, `d3d9-reader`: an operand's minimum precision (`D3DSP_MIN_PRECISION`, bits 14 to 15 of a destination or
+  source token, which fxc writes in a feature level 9 program's Direct3D 9 part for a `min16float` value) reads as
+  `Destination::precision` and `Source::precision` (new `Precision`), and the listing writes it after the operand
+  (`{min16f}`, `{min2_8f}`, nothing for 3); before, the operand was refused ("sets reserved bits 14 to 15"). A
+  predicate's bits 14 to 15 are read and not written, as Microsoft's listing leaves them out. New fixtures
+  `pixel.precision.ps30` (`pixel.ps30` with a precision on every operand but the `dcl` usage tokens) and, in
+  `dxbc-reader`, `level9_min16` (`ps_4_0_level_9_1` and `9_3`). A `dcl` usage token with bits 14 to 15 set is still
+  refused: Microsoft's listing then writes `dcl vFace` as `dcl_position vFace`.
+- `d3d9-reader`: a `def` value that is an infinity or NaN is written as MSVC's `%g` writes it, `1.#INF`, `-1.#INF`,
+  `-1.#IND` for the default NaN (0xffc00000) and `1.#QNAN` for another; before, `inf`, `-inf` and `NaN`. New fixture
+  `pixel.specials.ps30` (`pixel.flow.ps30` with infinities, NaNs, a denormal and -0 as its `def` values; fxc refuses
+  such literals, X4579).
+- Breaking, `dxbc-reader`: `Reflection::system_value_name` returns a `&'static str`, and a system value no
+  `D3D_NAME` names is `NONE`, as Microsoft writes it. The name of a `dcl_input_*_siv`/`_sgv` and `dcl_output_siv`/
+  `_sgv` declaration is the low 16 bits of its token (`D3D10_SB_NAME_MASK`; the rest is reserved), and a name
+  Microsoft's listing has no word for is written empty.
+- Breaking, `dxbc-reader`: a shader message (`printf`, `errorf`) is read as Microsoft reads it.
+  `Declared::ShaderMessage` gains `characters`, the character count the message states, and its `text` is the
+  string up to its first zero byte, whatever the count. A message whose count is not less than the bytes after its
+  operands is `Declared::CustomData { class: 4 }`, listed `undecipherable custom data` and numbered and counted as
+  an instruction, as Microsoft does before it reads the operands. A string with no zero byte in the block is
+  refused: Microsoft's listing then runs on into the bytes after the block, and differs from run to run. Fixture
+  `message_strings` (an undecipherable message, a count of 0, a zero byte inside a string).
+- Breaking, `dxbc-reader`: the binding declarations (`Declared::Sampler`, `Resource`, `ResourceRaw`,
+  `ResourceStructured`, `UavTyped`, `UavRaw`, `UavStructured`) and `GroupSharedRaw` and `GroupSharedStructured` have
+  their `operand`, and the new `Declared::operand()` gives the operand of every declaration that has one. In Shader
+  Model 4 and 5.0 the listing writes a binding declaration's selection after its register (`t0.wyxx`, `s0.z`, `u4.x`),
+  as Microsoft does; Shader Model 5.1's binding declarations have none; `dcl_tgsm_raw` and `dcl_tgsm_structured` write
+  theirs in both. Fixtures `selections` (pixel and compute).
+- `dxbc-reader`: an instruction's control bits are written as Microsoft writes them, on every instruction: `_sat`
+  (bit 13) after the extended suffixes (`_aoffimmi`, `_indexable`) and before `_nz`/`_z`, the sync flags and the
+  rest, `sync` included (`sync_sat_ugroup_g_t`); ` [precise(..)]` (bits 19 to 22) after it, `resinfo`, `sampleinfo`,
+  `sync` and `label` included. `hs_control_point_phase`, `hs_fork_phase` and `hs_join_phase` take both, then a space;
+  `hs_decls` neither. Fixtures `controls` (pixel, geometry and compute) and `controls_fork` and `controls_join` (hull).
+- `dxbc-reader`: declaration fields Microsoft has no name for are written as it writes them: a resource or UAV
+  dimension of 0 or 13 to 31 `<unknown dimension>` (in an extended resource-dimension token too); a sampler mode of 3
+  to 15 nothing (no `, mode_…`); an interpolation mode of 0 `undefined` and of 8 to 15 `???`; the tessellator domain
+  from bits 11 to 12 (`Declaration::tessellator_domain` reads those two alone), 0 `???`; a partitioning or output
+  primitive of 0 or 5 to 7 `???` and the bare `dcl_tessellator_output_primitive`; an unnamed output topology or
+  input primitive `???`. In the `controls` fixtures.
+- `dxbc-reader`: of an instruction's extended tokens, Microsoft keeps the last of each kind and writes its group once
+  for each token of that kind, offsets, then resource dimension, then return types, whatever their order; a kind with
+  no token writes no group. Fixture `extended`.
+- `dxbc-reader`: the `#line` with the file name before a function body's `label` is written for the `label`
+  instruction with a function-body operand, whatever its text. Fixture `labels.ps50.zi` (the `/Zi` class program with
+  its labels' control bits set).
+- `dx`: the command is a library too (`dx::check`, `dx::files`, `dx::reflect`; not published), so its tests call
+  what the command does in-process, and `dx disasm --check`'s comparison is `dx::check::compare`.
+- Tests: `dx/tests/slim.rs` reads the slim shader set (`oracles.corpus.general/slim`, 8,287 programs that reach
+  every region and branch side of the readers the full pool does): each program's listing against Microsoft's and
+  its `dx reflect` and `dx info`, in seconds. It is the run before every push to main (CONTRIBUTING.md). The
+  real-data tests take primase-testdata 0.2.2.
+- `dxbc-reader`: more rules of the listing, each with a fixture:
+  - the immediates of `ld_raw`, `ld_structured`, their `_feedback` forms, `resinfo`, `sample_pos` and
+    `eval_sample_index` are integers (`l(4)`), as those of `ld` already were; `store_raw`, `store_structured` and
+    `store_uav_typed` keep the hex-or-float style; fixture `load_integers`;
+  - every register number and index is signed: `r-2`, `v-2`, `cb-2[-2]`, `cb0[r0.x + -1]`, `x-2[-2]`, `fb-2`, Shader
+    Model 5.1's `T`, `S`, `U` and `CB` operands, Shader Model 5.0's declared `t`, `s`, `u` and `g`; and so are
+    `dcl_temps`, `dcl_indexableTemp`'s register and size, `dcl_indexrange`'s count, the hull phases' instance counts
+    and every field of a Shader Model 5.1 `dcl_constantbuffer`. A Shader Model 5.1 resource, sampler or UAV's id,
+    range and space, strides, `dcl_maxout`, `dcl_thread_group`, `dcl_gsinstances`, `dcl_function_body` and
+    `dcl_tgsm_*` sizes stay unsigned. Fixtures `indices` (Shader Model 5.0 and 5.1) and `indices_negated` (their
+    numbers bit-inverted);
+  - `dcl_interface` writes its id's low 16 bits; fixture `interface_id`;
+  - `dcl_indexableTemp`'s component count is written clamped to 1 to 4; a return type of 0 or 10 to 15 is
+    `<unknown resource return type>`, 8 `<continued>` and 9 `<unused>`; fixture `indices_names` (with an unknown
+    siv and sgv name and two unknown signature system values);
+  - an empty mask on a four-component operand is its dot alone (`r0.`, `dcl_output o0.`); fixture `empty_masks`;
+  - the header's "shader requires additional functionality" notes take, besides the `SFI0` bits, those
+    `dcl_globalFlags` states: double precision, forced early depth-stencil, minimum precision and the two 11.1
+    extensions; fixtures `global_flags` (with `/Od` and Shader Model 5.1 `/all_resources_bound`) and
+    `globalflags_all` (every flag set).
+- Tests: every reader has property tests over generated inputs, and `fuzz/` has cargo-fuzz targets for the five
+  (`fuzz/run.sh`, corpora outside the repository). `dxil-reader`'s Elden Ring corpus test tells programs by their
+  extension and compares them on `primase_testdata::threads()` threads.
+
 ## 0.9.1 (2026-11-06)
 
 - `dxbc-reader`: a double immediate that is a signaling NaN (the mantissa's highest bit clear) lists as Microsoft's

@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 publish = false
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "dx"
 path = "src/main.rs"
@@ -19,6 +22,9 @@ dxbc-reader = { path = "../dxbc-reader" }
 dxcontainer.workspace = true
 dxil-reader = { path = "../dxil-reader" }
 serde_json = { version = "1", features = ["preserve_order"] }
+
+[dev-dependencies]
+primase-testdata.workspace = true
 
 [lints]
 workspace = true

@@ -13,6 +13,49 @@ struct Counts {
     failed: usize,
 }
 
+/// What a program's listing is beside Microsoft's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Outcome {
+    /// The same, byte for byte.
+    Identical,
+    /// Different from a line on.
+    Differing {
+        /// The first line that differs, numbered from 1.
+        line: usize,
+        /// dx's text of the line, `<end>` where dx's listing ended before it.
+        ours: String,
+        /// Microsoft's text of the line, `<end>` where Microsoft's listing ended before it.
+        theirs: String,
+    },
+    /// dx refused the program, for this reason.
+    Failed(String),
+}
+
+/// Microsoft's listing as the text it wrote, from the bytes of its stored file: the disassembler writes LF and ends
+/// its blob in a NUL; fxc's /Fc and listings saved in text mode on Windows end their lines in CRLF.
+pub fn microsofts(stored: &[u8]) -> String {
+    String::from_utf8_lossy(stored)
+        .replace("\r\n", "\n")
+        .trim_end_matches('\0')
+        .to_owned()
+}
+
+/// dx's listing of the program `bytes` with Microsoft's `D3D_DISASM_*` `flags` against Microsoft's text `theirs` of
+/// it ([`microsofts`]).
+pub fn compare(bytes: &[u8], theirs: &str, flags: u32) -> Outcome {
+    match files::listing(bytes, flags) {
+        Err(e) => Outcome::Failed(e),
+        Ok(ours) => match first_difference(&ours, theirs) {
+            None => Outcome::Identical,
+            Some((line, ours, theirs)) => Outcome::Differing {
+                line,
+                ours: ours.to_owned(),
+                theirs: theirs.to_owned(),
+            },
+        },
+    }
+}
+
 /// The first line where `ours` and `theirs` differ: its number (from 1) and both texts.
 fn first_difference<'a>(ours: &'a str, theirs: &'a str) -> Option<(usize, &'a str, &'a str)> {
     let mut a = ours.split('\n');
@@ -49,6 +92,9 @@ fn reason(theirs: &str, ours: &str) -> String {
     format!("code: {word}")
 }
 
+/// `dx disasm --check PATH`: the counts by target written to standard output, with the differing lines grouped by
+/// what differs (each listed when `verbose`) and the refusals grouped by reason. Fails when no program under `path`
+/// has a stored listing; the exit code is a failure when any listing differs or any program is refused.
 pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
     let mut by_target: BTreeMap<String, Counts> = BTreeMap::new();
     let mut reasons: BTreeMap<String, (usize, String)> = BTreeMap::new();
@@ -71,32 +117,27 @@ pub fn run(path: &Path, flags: u32, verbose: bool) -> Result<ExitCode, String> {
         };
         let bytes = std::fs::read(program).map_err(|e| format!("{}: {e}", program.display()))?;
         let theirs = std::fs::read(&stored).map_err(|e| format!("{}: {e}", stored.display()))?;
-        // Microsoft's disassembler writes LF and ends its blob in a NUL; fxc's /Fc and listings saved in text mode on
-        // Windows end their lines in CRLF
-        let theirs = String::from_utf8_lossy(&theirs).replace("\r\n", "\n");
-        let theirs = theirs.trim_end_matches('\0');
-        let target = files::target(&bytes, theirs).unwrap_or_else(|| "unknown".to_owned());
+        let theirs = microsofts(&theirs);
+        let target = files::target(&bytes, &theirs).unwrap_or_else(|| "unknown".to_owned());
         let counts = by_target.entry(target).or_default();
         let name = program.display().to_string();
-        match files::listing(&bytes, flags) {
-            Err(e) => {
+        match compare(&bytes, &theirs, flags) {
+            Outcome::Failed(e) => {
                 counts.failed = counts.failed.saturating_add(1);
                 let key = e.split(':').nth(1).unwrap_or(&e).trim().to_owned();
                 let entry = failures.entry(key).or_insert((0, format!("{name}: {e}")));
                 entry.0 = entry.0.saturating_add(1);
             }
-            Ok(ours) => match first_difference(&ours, theirs) {
-                None => counts.identical = counts.identical.saturating_add(1),
-                Some((line, a, b)) => {
-                    counts.differing = counts.differing.saturating_add(1);
-                    let example = format!("{name}:{line}\n    ms: {b:?}\n    dx: {a:?}");
-                    if verbose {
-                        println!("{example}");
-                    }
-                    let entry = reasons.entry(reason(b, a)).or_insert((0, example));
-                    entry.0 = entry.0.saturating_add(1);
+            Outcome::Identical => counts.identical = counts.identical.saturating_add(1),
+            Outcome::Differing { line, ours, theirs } => {
+                counts.differing = counts.differing.saturating_add(1);
+                let example = format!("{name}:{line}\n    ms: {theirs:?}\n    dx: {ours:?}");
+                if verbose {
+                    println!("{example}");
                 }
-            },
+                let entry = reasons.entry(reason(&theirs, &ours)).or_insert((0, example));
+                entry.0 = entry.0.saturating_add(1);
+            }
         }
     }
     println!(

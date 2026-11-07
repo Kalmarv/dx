@@ -110,9 +110,13 @@ fn declarations_carry_their_fields() {
         Declared::Sampler {
             slot: 1,
             mode: 1,
-            range: None
+            range: None,
+            ..
         }
     ));
+    // the operand each binding names its register with, which a constant buffer's fields take in
+    assert_eq!(kinds[1].operand().map(|o| o.register), Some(Register::Sampler));
+    assert!(kinds[0].operand().is_none());
     assert!(matches!(
         kinds[2],
         Declared::Resource {
@@ -128,7 +132,8 @@ fn declarations_carry_their_fields() {
         Declared::ResourceStructured {
             slot: 2,
             stride: 64,
-            range: None
+            range: None,
+            ..
         }
     ));
 }

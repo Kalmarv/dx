@@ -116,7 +116,7 @@ fn the_flag_relations_hold_for_microsofts_listings() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 6 * 72);
+    assert_eq!(checked, 6 * 74);
 }
 
 /// Changes to a committed program's words: which program, and the bytes (where, as a fraction of its length, and the

@@ -223,6 +223,35 @@ pub struct Relative {
     pub swizzle: [u8; 4],
 }
 
+/// The minimum precision of an operand (`D3DSP_MIN_PRECISION`, bits 14 to 15 of a destination or source token), which
+/// fxc writes in a feature level 9 program's Direct3D 9 part for a `min16float` value. Microsoft's listing writes it
+/// after the operand: `{min16f}`, `{min2_8f}`, nothing for 3. A relative-address or predicate token's bits 14 to 15
+/// mean nothing; it ignores them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Precision {
+    /// 0, the precision of the register (`D3DMP_DEFAULT`).
+    #[default]
+    Default,
+    /// 1, at least 16 bits (`D3DMP_16`, `{min16f}`).
+    Min16,
+    /// 2, at least 2.8 fixed point (`D3DMP_2_8`, `{min2_8f}`).
+    Min2_8,
+    /// 3, which `d3d9types.h` does not name and the listing writes nothing for.
+    Unnamed,
+}
+
+impl Precision {
+    /// The precision of an operand token's bits 14 to 15.
+    pub fn of(token: u32) -> Self {
+        match (token >> 14) & 3 {
+            0 => Precision::Default,
+            1 => Precision::Min16,
+            2 => Precision::Min2_8,
+            _ => Precision::Unnamed,
+        }
+    }
+}
+
 /// A destination operand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Destination {
@@ -243,6 +272,8 @@ pub struct Destination {
     pub shift: i8,
     /// The index register, for a relatively addressed destination (`o[aL]` of a vertex 3.0 program).
     pub relative: Option<Relative>,
+    /// The minimum precision, bits 14 to 15.
+    pub precision: Precision,
 }
 
 /// A source operand.
@@ -258,6 +289,8 @@ pub struct Source {
     pub modifier: Modifier,
     /// The index register, for a relatively addressed source.
     pub relative: Option<Relative>,
+    /// The minimum precision, bits 14 to 15 (of a predicate, nothing the listing writes).
+    pub precision: Precision,
 }
 
 /// The comparison of `if_comp`, `break_comp` and `setp_comp` (`D3DSHADER_COMPARISON`), bits 16 to 18 of the instruction
@@ -616,16 +649,10 @@ fn bits(word: u32, shift: u32, mask: u32) -> u8 {
     u8::try_from(word.checked_shr(shift).unwrap_or(0) & mask & 0xff).unwrap_or(u8::MAX)
 }
 
-/// The register an operand token names.
+/// The register an operand token names (its bits 14 to 15, a precision, are the caller's).
 fn register(token: u32, at: usize, version: Version) -> Result<Register> {
     if token & 0x8000_0000 == 0 {
         return Err(error(at, format!("operand token {token:#010x} lacks bit 31")));
-    }
-    if token & 0xc000 != 0 {
-        return Err(error(
-            at,
-            format!("operand token {token:#010x} sets reserved bits 14 to 15"),
-        ));
     }
     let code = ((token >> 28) & 7) | ((token >> 8) & 0x18);
     let number = token & 0x7ff;
@@ -775,6 +802,7 @@ impl Operands<'_> {
             centroid: modifiers & 4 != 0,
             shift,
             relative,
+            precision: Precision::of(token),
         })
     }
 
@@ -799,6 +827,7 @@ impl Operands<'_> {
             swizzle: [16, 18, 20, 22].map(|shift| bits(token, shift, 3)),
             modifier,
             relative,
+            precision: Precision::of(token),
         })
     }
 }

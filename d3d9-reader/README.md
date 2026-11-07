@@ -79,10 +79,11 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
 and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
-fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,656 listings of 72 programs, 10 of them
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,702 listings of 74 programs, 10 of them
 `/Zi` builds; for each of the 11 versions, one with every instruction and one with every register type, `dcl` usage
-and instruction flag, whatever the version's own lists; and one whose constant table has every parameter type and
-class). No game files are needed for these.
+and instruction flag, whatever the version's own lists; one whose constant table has every parameter type and
+class; one whose `def` values are infinities, NaNs, a denormal and -0; and one with minimum precision on every
+operand). No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every
 program of Shaun White Skateboarding's three SDB2 bundles (7,306) and three more of its programs; the inputs are in

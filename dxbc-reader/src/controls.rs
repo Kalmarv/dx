@@ -53,7 +53,9 @@ pub struct GlobalFlags {
     pub skip_optimization: bool,
     /// Bit 5, `enableMinimumPrecision`.
     pub minimum_precision: bool,
-    /// The bits above bit 5, as stored (shifted down by six).
+    /// The bits above bit 5, as stored (shifted down by six): bit 6 `enable11_1DoubleExtensions`, bit 7
+    /// `enable11_1ShaderExtensions`, bit 8 `allResourcesBound` (a Shader Model 5.1 program built with
+    /// `/all_resources_bound`); bits 9 to 12 have no name.
     pub other: u32,
 }
 
@@ -170,9 +172,10 @@ impl Declaration {
         self.control_value(OUTPUT_CONTROL_POINTS, 63)
     }
 
-    /// The tessellator domain (`dcl_tessellator_domain`; a `D3D11_TESSELLATOR_DOMAIN`: 1 isoline, 2 triangle, 3 quad).
+    /// The tessellator domain (`dcl_tessellator_domain`; a `D3D11_TESSELLATOR_DOMAIN`: 1 isoline, 2 triangle, 3 quad):
+    /// control bits 0 to 1, as `D3D11_SB_TESS_DOMAIN_MASK` and Microsoft's listing read it.
     pub fn tessellator_domain(&self) -> Option<u32> {
-        self.control_value(TESS_DOMAIN, 7)
+        self.control_value(TESS_DOMAIN, 3)
     }
 
     /// The tessellator partitioning (`dcl_tessellator_partitioning`; a `D3D11_TESSELLATOR_PARTITIONING`: 1 integer, 2 pow2,

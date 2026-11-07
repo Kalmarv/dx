@@ -7,9 +7,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-mod check;
-mod files;
-mod reflect;
+use dx::{check, files, reflect};
 
 #[derive(Parser)]
 #[command(name = "dx", version, about = "Read compiled Direct3D shader programs")]

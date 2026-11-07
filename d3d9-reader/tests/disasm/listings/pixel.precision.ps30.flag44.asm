@@ -1,0 +1,62 @@
+    ps_3_0
+          def c2 {min16f}, 0.5, 1, 0.125, 2.20000005
+          def c3 {min2_8f}, 1, -1, 0, 2
+          dcl_texcoord v0
+          dcl_texcoord1 v1.xyz {min16f}
+          dcl_color_centroid v2 {min2_8f}
+          dcl_texcoord2 v3
+          dcl vFace {min16f}
+          dcl vPos.xy {min2_8f}
+          dcl_2d s0
+          dcl_cube s1 {min16f}
+          dcl_volume s2 {min2_8f}
+          dcl_2d s3
+          dcl_2d s4 {min16f}
+   0:     texld r0 {min2_8f}, v0, s0 {min16f}
+   0:     texldp r1 {min2_8f}, v3, s4 {min16f}
+   0:     add r0 {min2_8f}, r0, r1 {min16f}
+   1:     mul r1 {min2_8f}, c3.xxzx, v0.xyxw {min16f}
+   2:     texldb r1 {min2_8f}, r1, s0 {min16f}
+   2:     add r0 {min2_8f}, r0, r1 {min16f}
+   3:     nrm r1.xyz {min2_8f}, v1
+   6:     mad r1.xyz {min16f}, r1.z {min2_8f}, -c3.zzww, r1 {min16f}
+   7:     texld r1 {min2_8f}, r1, s1 {min16f}
+   7:     texld r2 {min2_8f}, v0, s2 {min16f}
+   7:     texld r3 {min2_8f}, v0.z, s3 {min16f}
+   7:     mul r2 {min2_8f}, r2, r3.x {min16f}
+   8:     mad r0 {min2_8f}, r0, r1 {min16f}, r2 {min2_8f}
+   9:     dsx r1.xy, v0 {min16f}
+  11:     dsy r1.zw {min2_8f}, v0.xyxy
+  13:     dp2add_sat r2.x {min16f}, r1 {min2_8f}, r1.zwzw, c3.z {min16f}
+  15:     texldd r1 {min2_8f}, v0.zwzw, s0 {min16f}, r1 {min2_8f}, r1.zwzw
+  17:     lrp r3 {min16f}, r2.x {min2_8f}, v2, r0 {min16f}
+  18:     mad r0 {min2_8f}, v0.wzxw, c3.xxzz {min16f}, c3.zzzw {min2_8f}
+  19:     texldl r0, r0 {min16f}, s0 {min2_8f}
+  19:     add r0, r0 {min16f}, r1 {min2_8f}
+  20:     add r0, r0 {min16f}, r3 {min2_8f}
+  21:     add r1, r0.w {min16f}, -c1.x {min2_8f}
+  22:     texkill r1
+  23:     cmp r1.x {min16f}, vFace {min2_8f}, c3.x, c3.y {min16f}
+  24:     cmp r1.x {min2_8f}, -r1.x, c2.x {min16f}, c2.y {min2_8f}
+  25:     mul r0.z, r0.z {min16f}, r1.x {min2_8f}
+  26:     mul r1.yz, c2.z {min16f}, vPos.xxyw {min2_8f}
+  27:     frc r1.yz, r1 {min16f}
+  28:     mad r0.xy {min2_8f}, r0, r1.x {min16f}, r1.yzzw {min2_8f}
+  29:     exp oC1.w, r0.w {min16f}
+  30:     mul_pp r1 {min2_8f}, r0, c2.x {min16f}
+  31:     mad r1 {min2_8f}, r0, c0 {min16f}, r1 {min2_8f}
+  32:     log r2.z, r0_abs.z {min16f}
+  33:     add r0.z {min2_8f}, -r1.y, c2.x {min16f}
+  34:     rcp r0.w {min2_8f}, r1.y
+  35:     cmp oC0.z {min16f}, r0.z {min2_8f}, r1.z, r0.w {min16f}
+  36:     mov oC0.xyw {min2_8f}, r1
+  37:     log r2.x {min16f}, r0_abs.x {min2_8f}
+  38:     log r2.y, r0_abs.y {min16f}
+  39:     mul r0.xyz {min2_8f}, r2, c2.w {min16f}
+  40:     exp oC1.x {min2_8f}, r0.x
+  41:     exp oC1.y {min16f}, r0.y {min2_8f}
+  42:     exp oC1.z, r0.z {min16f}
+  43:     rcp r0.x {min2_8f}, v3.w
+  44:     mul oDepth {min16f}, r0.x {min2_8f}, v3.z
+
+// approximately 54 instruction slots used (9 texture, 45 arithmetic)

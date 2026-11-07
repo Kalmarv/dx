@@ -164,13 +164,8 @@ fn frame_finds_end_by_reading_and_leaves_the_rest() {
 fn malformed_tokens_are_refused_at_their_word() {
     let mov = |destination: u32, source: u32| op(1, &[destination, source]);
     let cases = [
-        // an operand without bit 31, and with reserved bits 14 to 15
+        // an operand without bit 31
         (mov(0x000f_0000, src(CONST, 0, 0xe4, 0)), 2, "lacks bit 31"),
-        (
-            mov(dst(TEMP, 0, 15) | 0x4000, src(CONST, 0, 0xe4, 0)),
-            2,
-            "reserved bits 14 to 15",
-        ),
         // register type 16 (D3DSPR_TEMPFLOAT16, never used) and 20
         (
             mov(dst(TEMP, 0, 15), src(16, 0, 0xe4, 0)),

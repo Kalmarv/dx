@@ -1,0 +1,38 @@
+      ps_5_1
+      dcl_globalFlags refactoringAllowed
+      dcl_constantbuffer CB0[1:1][12], dynamicIndexed, space=0
+      dcl_sampler S0[3:3], mode_default, space=0
+      dcl_resource_texture2d (<unknown resource return type>,<continued>,<unused>,<unknown resource return type>) T0[2:3], space=0
+      dcl_resource_raw T1[5:5], space=0
+      dcl_uav_structured U0[1:1], 16, space=0
+      dcl_input_ps_siv linear noperspective v0.xyzw, position
+      dcl_input_ps linear v1.xyzw
+      dcl_input_ps linear v2.xyzw
+      dcl_input_ps linear v3.xyzw
+      dcl_input_ps_sgv constant v4.x, 
+      dcl_output o0.xyzw
+      dcl_temps 2
+      dcl_indexrange v1.xyzw 3
+      dcl_indexableTemp x0[4], 4
+   0: mov x0[0].xyzw, v0.xyzw
+   1: mov x0[1].xyzw, v1.xyzw
+   2: mov x0[2].xyzw, v2.xyzw
+   3: mov x0[3].xyzw, v3.xyzw
+   4: and r0.x, CB0[1][11].x, l(3)
+   5: mov r1.xyzw, x0[r0.x + 0].xyzw
+   6: mov r0.y, CB0[1][11].x
+   7: add r1.xyzw, r1.xyzw, CB0[1][r0.y + 3].xyzw
+   8: mov x0[r0.x + 0].xyzw, r1.xyzw
+   9: iadd r0.x, CB0[1][11].x, l(1)
+  10: and r0.x, r0.x, l(3)
+  11: mov r0.xyzw, x0[r0.x + 0].xyzw
+  12: udiv null, r1.x, CB0[1][11].x, l(3)
+  13: add r0.xyzw, r0.xyzw, v[r1.x + 1].xyzw
+  14: sample r1.xyzw, v0.xyxx, T0[3].xyzw, S0[3]
+  15: add r0.xyzw, r0.xyzw, r1.xyzw
+  16: ishl r1.x, CB0[1][11].x, l(2)
+  17: ld_raw r1.x, r1.x, T1[5].xxxx
+  18: add r0.xyzw, r0.xyzw, r1.xxxx
+  19: store_structured U0[1].xyzw, CB0[1][11].x, l(0), r0.xyzw
+  20: movc o0.xyzw, v4.xxxx, r0.xyzw, -r0.xyzw
+  21: ret 

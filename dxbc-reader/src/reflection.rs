@@ -243,9 +243,9 @@ impl SignatureElement {
         }
     }
 
-    /// [`Self::system_value_for`] as Microsoft's disassembler names it in the SysValue column (`POS`, `TARGET`; `SV`
-    /// and the number for one it has no name for).
-    pub fn system_value_name(&self, output: bool, kind: ProgramType) -> String {
+    /// [`Self::system_value_for`] as Microsoft's disassembler names it in the SysValue column (`POS`, `TARGET`; `NONE`
+    /// for one it has no name for, as for none).
+    pub fn system_value_name(&self, output: bool, kind: ProgramType) -> &'static str {
         match self.system_value_for(output, kind) {
             0 => "NONE",
             1 => "POS",
@@ -271,9 +271,8 @@ impl SignatureElement {
             68 => "DEPTHLE",
             69 => "STENCILREF",
             70 => "INNERCOV",
-            other => return format!("SV{other}"),
+            _ => "NONE",
         }
-        .to_owned()
     }
 
     /// The component type as Microsoft's disassembler names it in the Format column, or the minimum precision where

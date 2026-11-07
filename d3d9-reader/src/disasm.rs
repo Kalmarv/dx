@@ -5,8 +5,8 @@ use std::fmt::Write;
 
 use crate::{
     Comparison, Constant, ConstantTable, DebugInfo, Declared, Destination, Error, Instruction, Item, Literal,
-    Modifier, Opcode, Program, Register, RegisterType, Relative, Result, Source, SourceLine, Stage,
-    TextureType, Type, read,
+    Modifier, Opcode, Precision, Program, Register, RegisterType, Relative, Result, Source, SourceLine,
+    Stage, TextureType, Type, read,
 };
 
 /// What the listing writes, as the `D3D_DISASM_*` flags of Microsoft's disassembler choose it.
@@ -174,7 +174,7 @@ pub fn disassemble_with(bytes: &[u8], options: &Options) -> Result<String> {
             Item::Definition(d) => format!(
                 "{}{}",
                 "  ".repeat(depth),
-                definition(&d.literal, d.destination.register, &program, options)
+                definition(&d.literal, &d.destination, &program, options)
             ),
             Item::Instruction(i) => {
                 if matches!(
@@ -450,7 +450,16 @@ fn source(s: &Source, program: &Program) -> String {
     } else {
         swizzle(s.swizzle)
     };
-    format!("{sign}{body}{swizzled}")
+    format!("{sign}{body}{swizzled}{}", precision(s.precision))
+}
+
+/// An operand's minimum precision as the listing writes it after the operand.
+fn precision(p: Precision) -> &'static str {
+    match p {
+        Precision::Min16 => " {min16f}",
+        Precision::Min2_8 => " {min2_8f}",
+        Precision::Default | Precision::Unnamed => "",
+    }
 }
 
 fn destination(d: &Destination, program: &Program) -> String {
@@ -461,9 +470,10 @@ fn destination(d: &Destination, program: &Program) -> String {
         format!(".{lanes}")
     };
     format!(
-        "{}{}{mask}",
+        "{}{}{mask}{}",
         register(d.register, program),
-        relative(d.relative, program)
+        relative(d.relative, program),
+        precision(d.precision)
     )
 }
 
@@ -528,10 +538,14 @@ fn instruction(i: &Instruction, program: &Program) -> String {
         args.push(destination(d, program));
     }
     args.extend(i.sources.iter().map(|s| source(s, program)));
-    let predicate = i
-        .predicate
-        .as_ref()
-        .map_or(String::new(), |p| format!("({}) ", source(p, program)));
+    // a predicate token's precision bits mean nothing, and the listing leaves them out
+    let predicate = i.predicate.as_ref().map_or(String::new(), |p| {
+        let p = Source {
+            precision: Precision::Default,
+            ..*p
+        };
+        format!("({}) ", source(&p, program))
+    });
     format!(
         "{predicate}{}{} {}",
         mnemonic(i, program),
@@ -564,6 +578,7 @@ fn breakp(i: &Instruction, program: &Program) -> String {
         centroid: bits & 64 != 0,
         shift,
         relative: None,
+        precision: p.precision,
     };
     format!("break{} {}", suffixes(Some(&read)), destination(&read, program))
 }
@@ -610,7 +625,7 @@ fn declaration(d: &crate::Declaration, program: &Program) -> String {
     )
 }
 
-fn definition(literal: &Literal, register_: Register, program: &Program, options: &Options) -> String {
+fn definition(literal: &Literal, register_: &Destination, program: &Program, options: &Options) -> String {
     let (op, values) = match literal {
         Literal::Float(f) => (
             "def",
@@ -631,18 +646,32 @@ fn definition(literal: &Literal, register_: Register, program: &Program, options
         ),
         Literal::Bool(b) => ("defb", (if *b != 0 { "true" } else { "false" }).to_owned()),
     };
-    format!("{op} {}, {values}", register(register_, program))
+    format!(
+        "{op} {}{}, {values}",
+        register(register_.register, program),
+        precision(register_.precision)
+    )
 }
 
 /// A float as C's `%.9g` writes it: nine significant digits, trailing zeros dropped, an exponent below 1e-4 and from
-/// 1e9.
+/// 1e9; an infinity or NaN as MSVC spells it (`1.#INF`, `1.#QNAN`, and `-1.#IND` for the default NaN, 0xffc00000).
+/// The float is widened to a double first, which quiets a signaling NaN.
 fn general(value: f32) -> String {
+    let bits = value.to_bits();
     let value = f64::from(value);
     if value == 0.0 {
         return if value.is_sign_negative() { "-0" } else { "0" }.to_owned();
     }
     if !value.is_finite() {
-        return format!("{value}");
+        let sign = if value.is_sign_negative() { "-" } else { "" };
+        let name = if value.is_infinite() {
+            "INF"
+        } else if bits == 0xffc0_0000 {
+            "IND"
+        } else {
+            "QNAN"
+        };
+        return format!("{sign}1.#{name}");
     }
     let scientific = format!("{value:.8e}");
     let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));

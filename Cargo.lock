@@ -185,7 +185,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "d3d9-reader"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "primase-testdata",
  "proptest",
@@ -194,19 +194,20 @@ dependencies = [
 
 [[package]]
 name = "dx"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "clap",
  "d3d9-reader",
  "dxbc-reader",
  "dxcontainer",
  "dxil-reader",
+ "primase-testdata",
  "serde_json",
 ]
 
 [[package]]
 name = "dxbc-reader"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "d3d9-reader",
  "dxcontainer",
@@ -217,7 +218,7 @@ dependencies = [
 
 [[package]]
 name = "dxcontainer"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "primase-foundations",
  "proptest",
@@ -226,7 +227,7 @@ dependencies = [
 
 [[package]]
 name = "dxil-reader"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "dxcontainer",
  "primase-foundations",
@@ -349,9 +350,9 @@ dependencies = [
 
 [[package]]
 name = "primase-testdata"
-version = "0.1.16"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7048e591aca105fb10c160d79a80d8ecb733755ad267fdfbc8e5e340565752ff"
+checksum = "916ee3e2102d9d06dca4c1949c673ec909117aa1594e8ec46660df82c9c3abf4"
 dependencies = [
  "blake3",
  "serde_json",
@@ -432,7 +433,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "rsx-reader"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "primase-foundations",
  "proptest",

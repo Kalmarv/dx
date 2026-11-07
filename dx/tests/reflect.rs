@@ -286,7 +286,7 @@ fn dxbc_features_are_those_microsofts_listing_notes() {
         let bits =
             u64::from_str_radix(features["bits"].as_str().unwrap().trim_start_matches("0x"), 16).unwrap();
         // the listing notes neither bit 1 (raw and structured buffers) nor any bit with no name, and notes forced early
-        // depth-stencil, which is no SFI0 bit
+        // depth-stencil, which is no SFI0 bit (and the features dcl_globalFlags states, which fxc states in SFI0 too)
         let ours: Vec<String> = features["names"]
             .as_array()
             .unwrap()
@@ -303,6 +303,6 @@ fn dxbc_features_are_those_microsofts_listing_notes() {
         }
     }
     assert!(differing.is_empty(), "{}", differing.join("\n"));
-    assert_eq!(containers.len(), 224);
-    assert_eq!(with_features, 43);
+    assert_eq!(containers.len(), 251);
+    assert_eq!(with_features, 57);
 }

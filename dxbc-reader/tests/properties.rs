@@ -11,8 +11,9 @@
 //!   not this disassembler's:
 //!   - 0x02 changes nothing;
 //!   - 0x04, 0x20 and 0x24 put a prefix of spaces, a number, an offset and colons before lines and change nothing else;
-//!   - 0x40 leaves the program's lines as they are and drops comments (except in a feature level 9 program, whose
-//!     Direct3D 9 listing it drops too);
+//!   - 0x40 drops the header (comments, and the rest of a name with a newline in it, which is none) and comments, and
+//!     leaves the program's lines as they are (except in a feature level 9 program, whose Direct3D 9 listing it drops
+//!     too);
 //!   - 0x80 changes only lines with literals (`l(`, `d(`, a Direct3D 9 `def`) and an immediate constant buffer.
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -68,7 +69,13 @@ fn relates(plain: &str, flagged: &str, flags: u32, level9: bool) -> Result<(), S
                     .map(|x| (*x).to_owned())
                     .collect()
             };
-            if level9 || code(&p) == code(&f) {
+            // the program starts at its version line, the first line 0x40 writes: the header before it can hold lines
+            // that are no comment, the rest of a name with a newline in it
+            let program = f
+                .first()
+                .and_then(|version| p.iter().position(|l| l == version))
+                .map_or(&p[..], |start| &p[start..]);
+            if level9 || code(program) == code(&f) {
                 Ok(())
             } else {
                 Err("0x40 changed the program's lines".into())

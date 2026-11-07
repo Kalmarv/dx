@@ -1,0 +1,38 @@
+      ps_5_0
+      dcl_globalFlags refactoringAllowed
+      dcl_constantbuffer CB-2[-13], dynamicIndexed
+      dcl_sampler s-4, mode_default
+      dcl_resource_texture2d (float,float,float,float) t-4
+      dcl_resource_raw t-6
+      dcl_uav_structured u-2, 16
+      dcl_input_ps_siv linear noperspective v-1.xyzw, position
+      dcl_input_ps linear v-2.xyzw
+      dcl_input_ps linear v-3.xyzw
+      dcl_input_ps linear v-4.xyzw
+      dcl_input_ps_sgv constant v-5.x, is_front_face
+      dcl_output o-1.xyzw
+      dcl_temps -3
+      dcl_indexrange v-2.xyzw -4
+      dcl_indexableTemp x-1[-5], 4
+   0: mov x-1[-1].xyzw, v-1.xyzw
+   1: mov x-1[-2].xyzw, v-2.xyzw
+   2: mov x-1[-3].xyzw, v-3.xyzw
+   3: mov x-1[-4].xyzw, v-4.xyzw
+   4: and r-1.x, cb-2[-12].x, l(3)
+   5: mov r-2.xyzw, x-1[r-1.x + 0].xyzw
+   6: mov r-1.y, cb-2[-12].x
+   7: add r-2.xyzw, r-2.xyzw, cb-2[r-1.y + -4].xyzw
+   8: mov x-1[r-1.x + 0].xyzw, r-2.xyzw
+   9: iadd r-1.x, cb-2[-12].x, l(1)
+  10: and r-1.x, r-1.x, l(3)
+  11: mov r-1.xyzw, x-1[r-1.x + 0].xyzw
+  12: udiv null, r-2.x, cb-2[-12].x, l(3)
+  13: add r-1.xyzw, r-1.xyzw, v[r-2.x + -2].xyzw
+  14: sample_indexable(texture2d)(float,float,float,float) r-2.xyzw, v-1.xyxx, t-4.xyzw, s-4
+  15: add r-1.xyzw, r-1.xyzw, r-2.xyzw
+  16: ishl r-2.x, cb-2[-12].x, l(2)
+  17: ld_raw_indexable(raw_buffer)(mixed,mixed,mixed,mixed) r-2.x, r-2.x, t-6.xxxx
+  18: add r-1.xyzw, r-1.xyzw, r-2.xxxx
+  19: store_structured u-2.xyzw, cb-2[-12].x, l(0), r-1.xyzw
+  20: movc o-1.xyzw, v-5.xxxx, r-1.xyzw, -r-1.xyzw
+  21: ret 

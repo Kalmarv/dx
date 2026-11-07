@@ -67,6 +67,7 @@ pub fn stored_listing(program: &Path, flags: u32, shared_stem: bool) -> Option<P
 }
 
 /// What a program file is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     /// A `DXBC` container of a Shader Model 4 or 5 program.
     Dxbc,

@@ -1,0 +1,73 @@
+ps_5_0
+dcl_globalFlags refactoringAllowed
+dcl_constantbuffer CB0[1], immediateIndexed
+dcl_function_body fb0
+dcl_function_body fb1
+dcl_function_body fb2
+dcl_function_body fb3
+dcl_function_body fb4
+dcl_function_body fb5
+dcl_function_body fb6
+dcl_function_body fb7
+dcl_function_body fb8
+dcl_function_body fb9
+dcl_function_table ft0 = {fb0, fb2, fb4, fb6}
+dcl_function_table ft1 = {fb1, fb3, fb5, fb7}
+dcl_function_table ft2 = {fb8}
+dcl_function_table ft3 = {fb9}
+dcl_interface_dynamicindexed fp0[3][4] = {ft0, ft1}
+dcl_interface fp3[1][1] = {ft2, ft3}
+dcl_input_ps linear v0.xyz
+dcl_output o0.xyzw
+dcl_temps 2
+fcall fp0[0][0]
+fcall fp0[1][1]
+add r0.xyz, r0.xyzx, r1.xyzx
+fcall fp0[2][2]
+add r0.xyz, r0.xyzx, r1.xyzx
+mov r0.w, cb0[0].x
+fcall fp0[r0.w + 0][3]
+add r0.xyz, r0.xyzx, r1.xxxx
+fcall fp3[0][0]
+add o0.xyz, r0.wwww, r0.xyzx
+mov o0.w, l(1.000000)
+ret 
+label fb0
+mov r0.xyz, -v0.xyzx
+ret 
+label fb1
+mov r0.w, this[0].y
+mov r1.x, this[0].x
+add r0.xyz, v0.xyzx, cb[r1.x + 0][r0.w + 0].xxxx
+ret 
+label fb2
+mov r1.xyz, v0.xyzx
+ret 
+label fb3
+mov r0.w, this[1].y
+mov r1.w, this[1].x
+mul r1.xyz, v0.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+ret 
+label fb4
+mov r1.xyz, v0.xyzx
+ret 
+label fb5
+mov r0.w, this[2].y
+mov r1.w, this[2].x
+mul r1.xyz, v0.xyzx, cb[r1.w + 0][r0.w + 0].xxxx
+ret 
+label fb6
+add r1.x, v0.x, v0.x
+ret 
+label fb7
+mov r1.y, this[r0.w + 0].y
+mov r0.w, this[r0.w + 0].x
+add r1.x, v0.x, -cb[r0.w + 0][r1.y + 0].x
+ret 
+label fb8
+add r0.w, v0.y, v0.y
+ret 
+label fb9
+mov r1.xy, this[3].yxyy
+add r0.w, v0.y, -cb[r1.y + 0][r1.x + 0].x
+ret 

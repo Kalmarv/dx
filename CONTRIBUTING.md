@@ -20,6 +20,22 @@ The library crates read byte slices and nothing else: no file, environment or pr
 refusal or record needs a test with hand-built bytes; a new format feature needs a fixture or a hand-laid example, with the
 source it was compiled from (the HLSL beside the shader fixtures).
 
+## Before pushing
+
+Before every push to main, run the slim shader set and quote its counts in the push report:
+
+```sh
+GAME_DATA=<configuration whose [run] has require = 'gate'> cargo test --release --locked -p dx --test slim -- --nocapture
+```
+
+`dx/tests/slim.rs` reads the 8,287 programs of `oracles.corpus.general/slim` (`dx/tests/inputs/README.md`), chosen to
+reach every region and branch side of the readers that the full pool of programs reaches: each one's listing against
+Microsoft's, and its `dx reflect` and `dx info`. It prints, for each of the three families, the programs that are
+identical, refused as malformed and without a Microsoft listing, and takes seconds once the files are cached (about a
+minute on a first read over the network). Under a configuration that requires the gate inputs a missing set fails;
+with no `GAME_DATA` the test skips, so CI, which has no real data, stays synthetic. The full corpora (step 2 of
+releasing) run weekly and before a large release.
+
 ## Fuzzing
 
 `fuzz/` holds [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) targets for the five readers: no input may panic,

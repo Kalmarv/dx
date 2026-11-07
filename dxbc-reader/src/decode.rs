@@ -377,6 +377,9 @@ pub enum Declared {
         mode: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_resource_<dimension> t<slot>`: the D3D resource dimension code, the sample count of a multisampled one,
     /// and the four return types.
@@ -393,6 +396,9 @@ pub enum Declared {
         token: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_resource_raw t<slot>`.
     ResourceRaw {
@@ -400,6 +406,9 @@ pub enum Declared {
         slot: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_resource_structured t<slot>, stride`.
     ResourceStructured {
@@ -409,6 +418,9 @@ pub enum Declared {
         stride: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_uav_typed` and its control bits (dimension in bits 0 to 4, globally coherent bit 5).
     UavTyped {
@@ -424,6 +436,9 @@ pub enum Declared {
         control: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_uav_raw u<slot>`.
     UavRaw {
@@ -433,6 +448,9 @@ pub enum Declared {
         control: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_uav_structured u<slot>, stride`.
     UavStructured {
@@ -444,6 +462,9 @@ pub enum Declared {
         control: u32,
         /// The registers and space of a Shader Model 5.1 declaration; `None` before 5.1.
         range: Option<RegisterRange>,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register before Shader Model 5.1.
+        operand: Operand,
     },
     /// `dcl_thread_group x, y, z`.
     ThreadGroup([u32; 3]),
@@ -453,6 +474,9 @@ pub enum Declared {
         register: u32,
         /// Its size in bytes.
         bytes: u32,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register.
+        operand: Operand,
     },
     /// `dcl_tgsm_structured g<register>, stride, count`.
     GroupSharedStructured {
@@ -462,6 +486,9 @@ pub enum Declared {
         stride: u32,
         /// The number of elements.
         count: u32,
+        /// The operand as stored: the register it names, and a component selection (fxc writes none), which
+        /// Microsoft's listing writes after the register.
+        operand: Operand,
     },
     /// An input register or special input: `dcl_input`, `_sgv`, `_siv`, `_ps`, `_ps_sgv`, `_ps_siv`. `interpolation` is
     /// a pixel input's `D3D_INTERPOLATION_MODE`; `name` a system value's `D3D_NAME`.
@@ -470,14 +497,16 @@ pub enum Declared {
         operand: Operand,
         /// The interpolation mode of a pixel input.
         interpolation: Option<u32>,
-        /// The system value (`D3D_NAME`) of a `_sgv` or `_siv` declaration.
+        /// The system value (`D3D_NAME`) of a `_sgv` or `_siv` declaration: the low 16 bits of its token, the rest
+        /// being reserved.
         name: Option<u32>,
     },
     /// An output register or special output: `dcl_output`, `_sgv`, `_siv`.
     Output {
         /// The output register or special output the declaration names.
         operand: Operand,
-        /// The system value (`D3D_NAME`) of a `_siv` or `_sgv` declaration.
+        /// The system value (`D3D_NAME`) of a `_siv` or `_sgv` declaration: the low 16 bits of its token, the rest
+        /// being reserved.
         name: Option<u32>,
     },
     /// `dcl_indexrange`: registers from the operand's that a program indexes as one array, `count` of them.
@@ -499,13 +528,17 @@ pub enum Declared {
         id: u32,
         /// `D3D11_SB_SHADER_MESSAGE_FORMAT`: 0 text, 1 a `printf` format string.
         format: u32,
-        /// The message's characters as stored, without the terminating zero.
+        /// The number of characters the message states, without the terminating zero.
+        characters: u32,
+        /// The message's characters as Microsoft's listing reads them: from the string's start to its first zero
+        /// byte, whatever `characters` says.
         text: Vec<u8>,
         /// The operands the format string formats, in order.
         operands: Vec<Operand>,
     },
     /// Custom data that is not an immediate constant buffer or a shader message (a comment, debug information, ...) by
-    /// its class.
+    /// its class; of class 4, a shader message whose character count leaves no room in it for its string's terminating
+    /// zero, which Microsoft's listing calls undecipherable.
     CustomData {
         /// The custom data class.
         class: u32,
@@ -544,6 +577,27 @@ pub enum Declared {
 }
 
 impl Declared {
+    /// The operand of a declaration that names a register: a resource, sampler, view, shared memory, input, output,
+    /// index range or stream; `None` for the others (a constant buffer's is read into its fields).
+    pub fn operand(&self) -> Option<&Operand> {
+        match self {
+            Declared::Sampler { operand, .. }
+            | Declared::Resource { operand, .. }
+            | Declared::ResourceRaw { operand, .. }
+            | Declared::ResourceStructured { operand, .. }
+            | Declared::UavTyped { operand, .. }
+            | Declared::UavRaw { operand, .. }
+            | Declared::UavStructured { operand, .. }
+            | Declared::GroupSharedRaw { operand, .. }
+            | Declared::GroupSharedStructured { operand, .. }
+            | Declared::Input { operand, .. }
+            | Declared::Output { operand, .. }
+            | Declared::IndexRange { operand, .. }
+            | Declared::Stream(operand) => Some(operand),
+            _ => None,
+        }
+    }
+
     /// The registers and space a resource, sampler, view or constant buffer declaration binds: its `range` in Shader
     /// Model 5.1, its one register in space 0 before; `None` for the other declarations.
     pub fn registers(&self) -> Option<RegisterRange> {
@@ -551,7 +605,7 @@ impl Declared {
             Declared::ConstantBuffer { slot, range, .. }
             | Declared::Sampler { slot, range, .. }
             | Declared::Resource { slot, range, .. }
-            | Declared::ResourceRaw { slot, range }
+            | Declared::ResourceRaw { slot, range, .. }
             | Declared::ResourceStructured { slot, range, .. }
             | Declared::UavTyped { slot, range, .. }
             | Declared::UavRaw { slot, range, .. }
@@ -752,6 +806,9 @@ impl Cursor<'_> {
 /// `interface_call`, whose first word after its token is a call site, not an operand.
 const INTERFACE_CALL: u16 = 120;
 
+/// `D3D10_SB_NAME_MASK`: the bits of a declaration's name token that hold its `D3D_NAME`.
+const NAME: u32 = 0xffff;
+
 fn return_codes(token: u32) -> ReturnCodes {
     [0, 4, 8, 12].map(|shift| low8((token >> shift) & 15))
 }
@@ -788,6 +845,11 @@ fn shader_message(body: &[u32], origin: usize, kind: ProgramType, sm51: bool) ->
             ),
         ));
     };
+    // Microsoft deciphers a message whose count leaves room for the string's zero, before it reads the operands
+    let string = body.get(start.saturating_add(words.len())..).unwrap_or_default();
+    if usize::try_from(characters).map_or(true, |n| n >= string.len().saturating_mul(4)) {
+        return Ok(Declared::CustomData { class: 4 });
+    }
     let mut c = Cursor {
         words,
         at: 0,
@@ -809,27 +871,24 @@ fn shader_message(body: &[u32], origin: usize, kind: ProgramType, sm51: bool) ->
             ),
         ));
     }
-    let bytes: Vec<u8> = body
-        .get(start.saturating_add(words.len())..)
-        .unwrap_or_default()
-        .iter()
-        .flat_map(|w| w.to_le_bytes())
-        .collect();
-    let Some(text) = usize::try_from(characters).ok().and_then(|n| bytes.get(..n)) else {
-        return Err(error(
-            origin.saturating_add(2),
-            format!(
-                "a shader message of {characters} characters, more than the {} bytes after its operands",
-                bytes.len()
-            ),
-        ));
-    };
-    Ok(Declared::ShaderMessage {
-        id,
-        format,
-        text: text.to_vec(),
-        operands,
-    })
+    // Microsoft reads the string to its zero, not by its count; past the custom data, what it reads is not the program's
+    let mut text: Vec<u8> = Vec::new();
+    for byte in string.iter().flat_map(|w| w.to_le_bytes()) {
+        if byte == 0 {
+            return Ok(Declared::ShaderMessage {
+                id,
+                format,
+                characters,
+                text,
+                operands,
+            });
+        }
+        text.push(byte);
+    }
+    Err(error(
+        origin.saturating_add(start).saturating_add(words.len()),
+        "a shader message's string has no terminating zero in its custom data",
+    ))
 }
 
 /// Decode a complete token stream: version token, length, then declarations and instructions to its end.
@@ -1066,6 +1125,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 returns: return_codes(token),
                 token,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         89 => {
@@ -1090,6 +1150,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 slot: slot(&o)?,
                 mode: control & 15,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         95..=100 => {
@@ -1097,7 +1158,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             let pixel = matches!(opcode, 98..=100);
             let interpolation = pixel.then_some(control & 15);
             let name = matches!(opcode, 96 | 97 | 99 | 100)
-                .then(|| c.take())
+                .then(|| c.take().map(|t| t & NAME))
                 .transpose()?;
             Declared::Input {
                 operand,
@@ -1107,7 +1168,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
         }
         101..=103 => {
             let operand = c.operand(0)?;
-            let name = (opcode != 101).then(|| c.take()).transpose()?;
+            let name = (opcode != 101).then(|| c.take().map(|t| t & NAME)).transpose()?;
             Declared::Output { operand, name }
         }
         156 => {
@@ -1120,6 +1181,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 token,
                 control,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         157 => {
@@ -1128,6 +1190,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 slot: slot(&o)?,
                 control,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         158 => {
@@ -1137,6 +1200,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 stride: c.take()?,
                 control,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         155 => Declared::ThreadGroup([c.take()?, c.take()?, c.take()?]),
@@ -1150,6 +1214,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             Declared::GroupSharedRaw {
                 register: slot(&o)?,
                 bytes: c.take()?,
+                operand: o,
             }
         }
         160 => {
@@ -1158,6 +1223,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 register: slot(&o)?,
                 stride: c.take()?,
                 count: c.take()?,
+                operand: o,
             }
         }
         161 => {
@@ -1165,6 +1231,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
             Declared::ResourceRaw {
                 slot: slot(&o)?,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         162 => {
@@ -1173,6 +1240,7 @@ fn declaration(opcode: u16, control: u32, c: &mut Cursor<'_>) -> Result<Declared
                 slot: slot(&o)?,
                 stride: c.take()?,
                 range: range(&o, c)?,
+                operand: o,
             }
         }
         144 => Declared::FunctionBody(c.take()?),

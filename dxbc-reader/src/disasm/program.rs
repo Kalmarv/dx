@@ -135,6 +135,13 @@ fn style(opcode: u16) -> Style {
         | "ld_feedback"
         | "ld_ms_feedback"
         | "ld_uav_typed_feedback"
+        | "ld_raw"
+        | "ld_structured"
+        | "ld_raw_feedback"
+        | "ld_structured_feedback"
+        | "resinfo"
+        | "sample_pos"
+        | "eval_sample_index"
         | "eval_snapped"
         | "atomic_and"
         | "atomic_or"
@@ -337,7 +344,7 @@ impl Writer {
             && let Some((first, rest)) = indices.split_first()
             && first.relative.is_none()
         {
-            let _ = write!(out, "{}", first.base);
+            let _ = write!(out, "{}", first.base.cast_signed());
             indices = rest;
         }
         for index in indices {
@@ -348,14 +355,15 @@ impl Writer {
         self.selection(out, o);
     }
 
+    /// An index as Microsoft writes it: signed, as every operand index and register number (`r-2`, `cb0[r0.x + -1]`).
     fn index(&self, out: &mut String, index: &Index) {
         match &index.relative {
             None => {
-                let _ = write!(out, "{}", index.base);
+                let _ = write!(out, "{}", index.base.cast_signed());
             }
             Some(relative) => {
                 self.operand(out, relative, Style::Integer);
-                let _ = write!(out, " + {}", index.base);
+                let _ = write!(out, " + {}", index.base.cast_signed());
             }
         }
     }
@@ -365,7 +373,8 @@ impl Writer {
             return;
         }
         match o.selection {
-            Selection::Mask(0) | Selection::None => {}
+            Selection::None => {}
+            // an empty mask is written as its dot alone (`r0.`)
             Selection::Mask(mask) => {
                 out.push('.');
                 for (bit, c) in COMPONENTS.iter().enumerate() {
@@ -398,50 +407,49 @@ fn precision_name(precision: u8) -> &'static str {
 }
 
 /// What an instruction's extended tokens add to its mnemonic: the suffixes (`_aoffimmi`, `_indexable`) and, after any
-/// `[precise]`, their groups (`(u,v,w)`, `(texture2d)(float,float,float,float)`).
+/// `[precise]`, their groups (`(u,v,w)`, `(texture2d)(float,float,float,float)`). Microsoft keeps the last token of
+/// each kind and writes its group once for each token of the kind: the offsets first, then the dimension, then the
+/// return types, whatever the tokens' order.
 fn extended(instruction: &Instruction) -> (String, String) {
-    let mut offsets = None;
-    let mut dimension = None;
-    let mut returns = None;
+    // the number of tokens of each kind and the group of the last
+    let mut offsets = (0_usize, String::new());
+    let mut dimension = (0_usize, String::new());
+    let mut returns = (0_usize, String::new());
     for &token in &instruction.extensions {
-        match token & 63 {
+        let (kind, group) = match token & 63 {
             1 => {
                 let field = |shift: u32| (((token >> shift) & 15) as i32) << 28 >> 28;
-                offsets = Some(format!("({},{},{})", field(9), field(13), field(17)));
+                (
+                    &mut offsets,
+                    format!("({},{},{})", field(9), field(13), field(17)),
+                )
             }
             2 => {
-                let mut text = resource_dimension((token >> 6) & 31).to_owned();
+                let mut text = format!("({}", resource_dimension((token >> 6) & 31));
                 let stride = (token >> 11) & 0xfff;
                 if stride != 0 {
                     let _ = write!(text, ", stride={stride}");
                 }
-                dimension = Some(text);
+                text.push(')');
+                (&mut dimension, text)
             }
-            3 => returns = Some(return_types((token >> 6) & 0xffff)),
-            _ => {}
-        }
+            3 => (&mut returns, return_types((token >> 6) & 0xffff)),
+            _ => continue,
+        };
+        *kind = (kind.0.saturating_add(1), group);
     }
     let mut suffixes = String::new();
-    let mut out = String::new();
-    if offsets.is_some() {
+    if offsets.0 > 0 {
         suffixes.push_str("_aoffimmi");
     }
-    let indexable = dimension.is_some() || returns.is_some();
-    if indexable {
+    if dimension.0 > 0 || returns.0 > 0 {
         suffixes.push_str("_indexable");
     }
-    if let Some(offsets) = offsets {
-        out.push_str(&offsets);
-    }
-    if indexable {
-        let _ = write!(
-            out,
-            "({}){}",
-            dimension.unwrap_or_default(),
-            returns.unwrap_or_default()
-        );
-    }
-    (suffixes, out)
+    let groups = [offsets, dimension, returns]
+        .iter()
+        .map(|(count, group)| group.repeat(*count))
+        .collect();
+    (suffixes, groups)
 }
 
 /// `D3D10_SB_RESOURCE_DIMENSION` as the listing names it.
@@ -459,32 +467,32 @@ fn resource_dimension(dimension: u32) -> &'static str {
         10 => "texturecubearray",
         11 => "raw_buffer",
         12 => "structured_buffer",
-        _ => "unknown",
+        _ => "<unknown dimension>",
     }
 }
 
 /// A return type token's four lanes: `(float,float,float,float)`.
 fn return_types(token: u32) -> String {
-    let names: Vec<String> = [0, 4, 8, 12]
+    let names: Vec<&str> = [0, 4, 8, 12]
         .iter()
         .map(|shift| match (token >> shift) & 15 {
-            1 => "unorm".to_owned(),
-            2 => "snorm".to_owned(),
-            3 => "sint".to_owned(),
-            4 => "uint".to_owned(),
-            5 => "float".to_owned(),
-            6 => "mixed".to_owned(),
-            7 => "double".to_owned(),
-            8 => "continued".to_owned(),
-            9 => "unused".to_owned(),
-            other => other.to_string(),
+            1 => "unorm",
+            2 => "snorm",
+            3 => "sint",
+            4 => "uint",
+            5 => "float",
+            6 => "mixed",
+            7 => "double",
+            8 => "<continued>",
+            9 => "<unused>",
+            _ => "<unknown resource return type>",
         })
         .collect();
     format!("({})", names.join(","))
 }
 
-/// `D3D10_SB_NAME` as declarations name it.
-fn system_value(name: u32) -> String {
+/// `D3D10_SB_NAME` as declarations name it; nothing for one Microsoft's disassembler has no name for.
+fn system_value(name: u32) -> &'static str {
     match name {
         0 => "undefined",
         1 => "position",
@@ -509,14 +517,14 @@ fn system_value(name: u32) -> String {
         20 => "finalTriInsideTessFactor",
         21 => "finalLineDetailTessFactor",
         22 => "finalLineDensityTessFactor",
-        other => return format!("name{other}"),
+        _ => "",
     }
-    .to_owned()
 }
 
-/// `D3D_INTERPOLATION_MODE` as `dcl_input_ps` names it, with its trailing space; nothing for undefined.
+/// `D3D_INTERPOLATION_MODE` as `dcl_input_ps` names it, with its trailing space.
 fn interpolation(mode: u32) -> &'static str {
     match mode {
+        0 => "undefined ",
         1 => "constant ",
         2 => "linear ",
         3 => "linear centroid ",
@@ -524,23 +532,43 @@ fn interpolation(mode: u32) -> &'static str {
         5 => "linear noperspective centroid ",
         6 => "linear sample ",
         7 => "linear noperspective sample ",
-        _ => "",
+        _ => "??? ",
     }
 }
 
-/// The flags of `dcl_globalFlags`, joined with ` | `.
+/// ` [precise]`, or ` [precise(xz)]` for some components, for a mask of control bits 8 to 11 (x to w); nothing for 0.
+fn precise(out: &mut String, mask: u32) {
+    if mask == 0 {
+        return;
+    }
+    out.push_str(" [precise");
+    if mask != 15 {
+        out.push('(');
+        for (bit, c) in COMPONENTS.iter().enumerate() {
+            if mask & (1 << bit) != 0 {
+                out.push(*c);
+            }
+        }
+        out.push(')');
+    }
+    out.push(']');
+}
+
+/// The flags of `dcl_globalFlags`, joined with ` | `, in Microsoft's order, which writes bit 3 before bit 2. Bits 9 to
+/// 12 have no name: with no named bit set the listing writes `none`.
 fn global_flags(control: u32) -> String {
     let flags = GlobalFlags::from_bits(control);
     let mut names = Vec::new();
     for (set, name) in [
         (flags.refactoring_allowed, "refactoringAllowed"),
         (flags.double_precision, "enableDoublePrecisionFloatOps"),
-        (flags.force_early_depth_stencil, "forceEarlyDepthStencil"),
         (flags.raw_and_structured_buffers, "enableRawAndStructuredBuffers"),
+        (flags.force_early_depth_stencil, "forceEarlyDepthStencil"),
         (flags.skip_optimization, "skipOptimization"),
         (flags.minimum_precision, "enableMinimumPrecision"),
         (flags.other & 1 != 0, "enable11_1DoubleExtensions"),
         (flags.other & 2 != 0, "enable11_1ShaderExtensions"),
+        (flags.other & 4 != 0, "allResourcesBound"),
     ] {
         if set {
             names.push(name);
@@ -563,11 +591,16 @@ fn uav_flags(control: u32) -> String {
 
 impl Writer {
     fn declaration(&self, out: &mut String, d: &Declaration) {
+        // a constant buffer's numbers are written signed, a resource's, sampler's or view's unsigned
         let space = |out: &mut String, d: &Declared| {
             if self.sm51
                 && let Some(range) = d.registers()
             {
-                let _ = write!(out, ", space={}", range.space);
+                if matches!(d, Declared::ConstantBuffer { .. }) {
+                    let _ = write!(out, ", space={}", range.space.cast_signed());
+                } else {
+                    let _ = write!(out, ", space={}", range.space);
+                }
             }
         };
         match &d.kind {
@@ -579,14 +612,21 @@ impl Writer {
                 }
             },
             Declared::Temps(n) => {
-                let _ = write!(out, "dcl_temps {n}");
+                let _ = write!(out, "dcl_temps {}", n.cast_signed());
             }
             Declared::IndexableTemp {
                 register,
                 size,
                 components,
             } => {
-                let _ = write!(out, "dcl_indexableTemp x{register}[{size}], {components}");
+                // the component count as Microsoft writes it, between one and four
+                let _ = write!(
+                    out,
+                    "dcl_indexableTemp x{}[{}], {}",
+                    register.cast_signed(),
+                    size.cast_signed(),
+                    (*components).clamp(1, 4)
+                );
             }
             Declared::ConstantBuffer {
                 slot,
@@ -598,15 +638,21 @@ impl Writer {
                 out.push_str("dcl_constantbuffer ");
                 match range {
                     None => {
-                        let _ = write!(out, "CB{slot}[{rows}]");
+                        let _ = write!(out, "CB{}[{}]", slot.cast_signed(), rows.cast_signed());
                     }
                     Some(r) => {
                         let upper = if r.upper == u32::MAX {
                             "*".to_owned()
                         } else {
-                            r.upper.to_string()
+                            r.upper.cast_signed().to_string()
                         };
-                        let _ = write!(out, "CB{slot}[{}:{upper}][{rows}]", r.lower);
+                        let _ = write!(
+                            out,
+                            "CB{}[{}:{upper}][{}]",
+                            slot.cast_signed(),
+                            r.lower.cast_signed(),
+                            rows.cast_signed()
+                        );
                     }
                 }
                 out.push_str(if *dynamic {
@@ -619,10 +665,12 @@ impl Writer {
             Declared::Sampler { mode, .. } => {
                 out.push_str("dcl_sampler ");
                 self.declared_binding(out, d);
+                // a mode Microsoft's listing has no name for is left out, comma and all
                 out.push_str(match mode {
+                    0 => ", mode_default",
                     1 => ", mode_comparison",
                     2 => ", mode_mono",
-                    _ => ", mode_default",
+                    _ => "",
                 });
                 space(out, &d.kind);
             }
@@ -681,15 +729,24 @@ impl Writer {
             Declared::ThreadGroup([x, y, z]) => {
                 let _ = write!(out, "dcl_thread_group {x}, {y}, {z}");
             }
-            Declared::GroupSharedRaw { register, bytes } => {
-                let _ = write!(out, "dcl_tgsm_raw g{register}, {bytes}");
+            Declared::GroupSharedRaw {
+                register,
+                bytes,
+                operand,
+            } => {
+                let _ = write!(out, "dcl_tgsm_raw g{}", register.cast_signed());
+                self.selection(out, operand);
+                let _ = write!(out, ", {bytes}");
             }
             Declared::GroupSharedStructured {
                 register,
                 stride,
                 count,
+                operand,
             } => {
-                let _ = write!(out, "dcl_tgsm_structured g{register}, {stride}, {count}");
+                let _ = write!(out, "dcl_tgsm_structured g{}", register.cast_signed());
+                self.selection(out, operand);
+                let _ = write!(out, ", {stride}, {count}");
             }
             Declared::Input {
                 operand,
@@ -717,7 +774,7 @@ impl Writer {
             Declared::IndexRange { operand, count } => {
                 out.push_str("dcl_indexrange ");
                 self.operand(out, operand, Style::Typeless);
-                let _ = write!(out, " {count}");
+                let _ = write!(out, " {}", count.cast_signed());
             }
             Declared::Stream(operand) => {
                 out.push_str("dcl_stream ");
@@ -752,9 +809,11 @@ impl Writer {
             } => {
                 let tables: Vec<String> = tables.iter().map(|t| format!("ft{t}")).collect();
                 let dynamic = if *dynamic { "_dynamicindexed" } else { "" };
+                // Microsoft's listing writes only the id's low 16 bits
                 let _ = write!(
                     out,
-                    "dcl_interface{dynamic} fp{id}[{length}][{sites}] = {{{}}}",
+                    "dcl_interface{dynamic} fp{}[{length}][{sites}] = {{{}}}",
+                    id & 0xffff,
                     tables.join(", ")
                 );
             }
@@ -763,6 +822,7 @@ impl Writer {
                 format,
                 text,
                 operands,
+                ..
             } => {
                 let name = match (id, format) {
                     (0x0020_0102, 1) => "printf",
@@ -775,6 +835,7 @@ impl Writer {
                     self.operand(out, o, Style::Data);
                 }
             }
+            Declared::CustomData { class: 4 } => out.push_str("undecipherable custom data"),
             Declared::CustomData { class } => {
                 let _ = write!(out, "customdata {class}");
             }
@@ -789,13 +850,18 @@ impl Writer {
     /// The binding operand of a resource, sampler or view declaration.
     fn declared_binding(&self, out: &mut String, d: &Declaration) {
         let (Some(range), true) = (d.kind.registers(), self.sm51) else {
-            let slot = d.kind.registers().map_or(0, |r| r.lower);
+            // a register number, so signed, as an operand's
+            let slot = d.kind.registers().map_or(0, |r| r.lower.cast_signed());
             let prefix = match d.kind {
                 Declared::Sampler { .. } => "s",
                 Declared::UavTyped { .. } | Declared::UavRaw { .. } | Declared::UavStructured { .. } => "u",
                 _ => "t",
             };
             let _ = write!(out, "{prefix}{slot}");
+            // and the operand's component selection, which Shader Model 5.1 leaves out
+            if let Some(operand) = d.kind.operand() {
+                self.selection(out, operand);
+            }
             return;
         };
         let (prefix, id) = match &d.kind {
@@ -819,39 +885,40 @@ impl Writer {
     /// The declarations this reader keeps as words: the stage declarations and hull phases.
     fn other(&self, out: &mut String, opcode: u16, control: u32, words: &[u32]) {
         let first = words.first().copied().unwrap_or(0);
-        let named = |names: &[&str], value: u32| -> String {
+        // Microsoft's listing writes `unknown` for a value it has no name for
+        let named = |names: &[&'static str], value: u32, unknown: &'static str| -> &'static str {
             names
                 .get(value as usize)
+                .copied()
                 .filter(|n| !n.is_empty())
-                .map_or_else(|| value.to_string(), |n| (*n).to_owned())
+                .unwrap_or(unknown)
         };
         match opcode {
             92 => {
-                let topologies = [
-                    "",
-                    "pointlist",
-                    "linelist",
-                    "linestrip",
-                    "trianglelist",
-                    "trianglestrip",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "linelistadj",
-                    "linestripadj",
-                    "trianglelistadj",
-                    "trianglestripadj",
-                ];
-                let _ = write!(out, "dcl_outputtopology {} ", named(&topologies, control & 63));
+                // the topologies a geometry program may write; the others are `???`
+                let topologies = ["undefined", "pointlist", "", "linestrip", "", "trianglestrip"];
+                let _ = write!(
+                    out,
+                    "dcl_outputtopology {} ",
+                    named(&topologies, control & 63, "???")
+                );
             }
             93 => {
-                let primitives = ["", "point", "line", "triangle", "", "", "lineadj", "triangleadj"];
+                let primitives = [
+                    "undefined",
+                    "point",
+                    "line",
+                    "triangle",
+                    "",
+                    "",
+                    "lineadj",
+                    "triangleadj",
+                ];
                 let value = control & 63;
                 let name = if (8..=39).contains(&value) {
                     format!("patch{}", value.saturating_sub(7))
                 } else {
-                    named(&primitives, value)
+                    named(&primitives, value, "???").to_owned()
                 };
                 let _ = write!(out, "dcl_inputprimitive {name} ");
             }
@@ -862,9 +929,15 @@ impl Writer {
                 let _ = write!(out, "dcl_gsinstances {first}");
             }
             113 => out.push_str("hs_decls "),
-            114 => out.push_str("hs_control_point_phase "),
-            115 => out.push_str("hs_fork_phase "),
-            116 => out.push_str("hs_join_phase "),
+            // a phase is written as an instruction is, with its saturate and precise bits
+            114..=116 => {
+                out.push_str(crate::opcode_name(opcode));
+                if control & 4 != 0 {
+                    out.push_str("_sat");
+                }
+                precise(out, (control >> 8) & 15);
+                out.push(' ');
+            }
             147 => {
                 let _ = write!(out, "dcl_input_control_point_count {}", control & 63);
             }
@@ -873,7 +946,11 @@ impl Writer {
             }
             149 => {
                 let domains = ["", "domain_isoline", "domain_tri", "domain_quad"];
-                let _ = write!(out, "dcl_tessellator_domain {}", named(&domains, control & 7));
+                let _ = write!(
+                    out,
+                    "dcl_tessellator_domain {}",
+                    named(&domains, control & 3, "???")
+                );
             }
             150 => {
                 let modes = [
@@ -883,7 +960,11 @@ impl Writer {
                     "partitioning_fractional_odd",
                     "partitioning_fractional_even",
                 ];
-                let _ = write!(out, "dcl_tessellator_partitioning {}", named(&modes, control & 7));
+                let _ = write!(
+                    out,
+                    "dcl_tessellator_partitioning {}",
+                    named(&modes, control & 7, "???")
+                );
             }
             151 => {
                 let primitives = [
@@ -893,11 +974,12 @@ impl Writer {
                     "output_triangle_cw",
                     "output_triangle_ccw",
                 ];
-                let _ = write!(
-                    out,
-                    "dcl_tessellator_output_primitive {}",
-                    named(&primitives, control & 7)
-                );
+                // one Microsoft's listing has no name for is left out, space and all
+                out.push_str("dcl_tessellator_output_primitive");
+                let name = named(&primitives, control & 7, "");
+                if !name.is_empty() {
+                    let _ = write!(out, " {name}");
+                }
             }
             152 => {
                 let _ = write!(
@@ -908,10 +990,10 @@ impl Writer {
                 );
             }
             153 => {
-                let _ = write!(out, "dcl_hs_fork_phase_instance_count {first}");
+                let _ = write!(out, "dcl_hs_fork_phase_instance_count {}", first.cast_signed());
             }
             154 => {
-                let _ = write!(out, "dcl_hs_join_phase_instance_count {first}");
+                let _ = write!(out, "dcl_hs_join_phase_instance_count {}", first.cast_signed());
             }
             _ => {
                 let _ = write!(out, "{}", crate::opcode_name(opcode));
@@ -920,12 +1002,17 @@ impl Writer {
     }
 
     fn instruction(&self, out: &mut String, i: &Instruction) {
+        // Microsoft's order: the extended suffixes, saturate, precise, the test, the sync flags, then the extended
+        // groups, whatever bits the opcode gives a meaning (`sync_sat_ugroup`: bit 13 is both)
         out.push_str(mnemonic(i.opcode));
-        if conditional(i.opcode) {
-            out.push_str(if i.nonzero { "_nz" } else { "_z" });
-        }
+        let (suffixes, groups) = extended(i);
+        out.push_str(&suffixes);
         if i.saturate {
             out.push_str("_sat");
+        }
+        precise(out, u32::from(i.precise_mask()));
+        if conditional(i.opcode) {
+            out.push_str(if i.nonzero { "_nz" } else { "_z" });
         }
         if let Some(flags) = i.sync_flags() {
             for (set, name) in [
@@ -938,22 +1025,6 @@ impl Writer {
                     out.push_str(name);
                 }
             }
-        }
-        let (suffixes, groups) = extended(i);
-        out.push_str(&suffixes);
-        let precise = i.precise_mask();
-        if precise != 0 && !matches!(crate::opcode_name(i.opcode), "resinfo" | "sample_info" | "sync") {
-            out.push_str(" [precise");
-            if precise != 15 {
-                out.push('(');
-                for (bit, c) in COMPONENTS.iter().enumerate() {
-                    if precise & (1 << bit) != 0 {
-                        out.push(*c);
-                    }
-                }
-                out.push(')');
-            }
-            out.push(']');
         }
         out.push_str(&groups);
         match i.info_return() {
@@ -1018,10 +1089,14 @@ fn indentation(opcode: u16) -> (i32, i32) {
 }
 
 /// Whether a declaration's line is numbered like an instruction's: the phase markers of a hull program but its
-/// `hs_decls`, and shader messages.
+/// `hs_decls`, and shader messages, those Microsoft finds undecipherable too.
 fn numbered(d: &Declaration) -> bool {
     // hs_control_point_phase, hs_fork_phase, hs_join_phase
-    matches!(d.opcode, 114..=116) || matches!(d.kind, Declared::ShaderMessage { .. })
+    matches!(d.opcode, 114..=116)
+        || matches!(
+            d.kind,
+            Declared::ShaderMessage { .. } | Declared::CustomData { class: 4 }
+        )
 }
 
 /// A shader message's characters as the listing quotes them: `\b`, `\t`, `\n`, `\r` and `\\` escaped, the other
@@ -1145,7 +1220,10 @@ pub(super) fn write(
                 out.push_str("//\n");
             }
             // a `#line` where the line or the file changes: the path with the first, a new file and a function
-            // body's label; an empty line before each but the first after the initial locations
+            // body's label (whatever its control bits add to its text); an empty line before each but the first after
+            // the initial locations
+            let body = matches!(row, Row::Instruction(i) if crate::opcode_name(i.opcode) == "label"
+                && i.operands.first().is_some_and(|o| o.register == Register::FunctionBody));
             if let Some((path, line)) = a.sources.get(&at)
                 && source != Some((path.as_str(), *line))
             {
@@ -1156,7 +1234,7 @@ pub(super) fn write(
                     None => {
                         let _ = writeln!(out, "#line {line} \"{path}\"");
                     }
-                    Some((file, _)) if file != path || bare.starts_with("label fb") => {
+                    Some((file, _)) if file != path || body => {
                         let _ = writeln!(out, "\n#line {line} \"{path}\"");
                     }
                     Some(_) => {

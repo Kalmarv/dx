@@ -298,14 +298,26 @@ const NOTES: [&str; 14] = [
     "SV_RenderTargetArrayIndex or SV_ViewportArrayIndex from any shader feeding rasterizer",
 ];
 
-/// The `// Note: shader requires additional functionality:` block.
+/// The `dcl_globalFlags` bits Microsoft notes as well as the `SFI0` ones, with the note each is: double precision,
+/// forced early depth-stencil, minimum precision and the two 11.1 extensions. The other flags note nothing.
+const NOTED_FLAGS: [(u32, u32); 5] = [(1, 0), (2, 1), (5, 4), (6, 5), (7, 6)];
+
+/// The `// Note: shader requires additional functionality:` block: the features of the `SFI0` part and those the
+/// `dcl_globalFlags` declaration states.
 fn notes(out: &mut String, features: u64, program: &Decoded) {
-    // dcl_globalFlags forceEarlyDepthStencil
-    let early = program
+    let flags = program
         .declarations
         .iter()
-        .any(|d| matches!(d.kind, Declared::GlobalFlags(flags) if flags & 4 != 0));
-    let bits = (features & !2) | if early { 2 } else { 0 };
+        .find_map(|d| match d.kind {
+            Declared::GlobalFlags(flags) => Some(flags),
+            _ => None,
+        })
+        .unwrap_or(0);
+    let stated = NOTED_FLAGS
+        .iter()
+        .filter(|&&(flag, _)| flags >> flag & 1 != 0)
+        .fold(0, |bits, &(_, note)| bits | 1 << note);
+    let bits = (features & !2) | stated;
     let names: Vec<&str> = NOTES
         .iter()
         .enumerate()

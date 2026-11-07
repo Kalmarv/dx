@@ -53,7 +53,8 @@ pub use disasm::{Options, disassemble, disassemble_with};
 pub use opcodes::Opcode;
 pub use program::{
     Comment, Comparison, Declaration, Declared, Definition, Destination, Instruction, Item, Literal,
-    Modifier, Program, Records, Register, RegisterType, Relative, Source, TextureType, frame, read, records,
+    Modifier, Precision, Program, Records, Register, RegisterType, Relative, Source, TextureType, frame,
+    read, records,
 };
 
 /// Something the reader can't read: the 32-bit word of the token stream where it is (the version token is word 0), and

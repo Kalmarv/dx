@@ -84,13 +84,26 @@ fn no_part_no_counters_and_a_bitcode_part_or_a_ragged_one_is_refused() {
     assert!(statistics(b"DXBC").is_err());
 }
 
+/// The fixtures of `examples/patched_fixtures.rs` whose counters do not describe what the decoder reads: two with
+/// their `dcl_temps` counts made negative, and edits of class programs (`classes_calls.ps50` and
+/// `classes_resources.ps50.zi` in `tests/disasm`), whose instruction counter fxc does not write as the number of their
+/// instructions (41 of 51, 57 of 68).
+const EDITED: [&str; 4] = [
+    "indices_negated.ps50.dxbc",
+    "indices_negated.ps51.dxbc",
+    "interface_id.ps50.dxbc",
+    "labels.ps50.zi.dxbc",
+];
+
 #[test]
 fn the_counters_of_the_compilers_own_output_equal_the_decoders_counts() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
     let mut checked = 0;
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
-        if !path.extension().is_some_and(|e| e == "dxbc") {
+        if !path.extension().is_some_and(|e| e == "dxbc")
+            || EDITED.iter().any(|e| path.file_name().is_some_and(|n| n == *e))
+        {
             continue;
         }
         let bytes = std::fs::read(&path).unwrap();
@@ -107,11 +120,17 @@ fn the_counters_of_the_compilers_own_output_equal_the_decoders_counts() {
             .map(|d| if let Declared::Temps(n) = d.kind { n } else { 0 })
             .max()
             .unwrap_or(0);
-        // fxc counts a shader message (`printf`, `errorf`) as an instruction, as its listing's slot count does
+        // fxc counts a shader message (`printf`, `errorf`) as an instruction, as its listing's slot count does, one
+        // whose character count leaves no room for its string (custom data of class 4) too
         let messages = program
             .declarations
             .iter()
-            .filter(|d| matches!(d.kind, Declared::ShaderMessage { .. }))
+            .filter(|d| {
+                matches!(
+                    d.kind,
+                    Declared::ShaderMessage { .. } | Declared::CustomData { class: 4 }
+                )
+            })
             .count();
         assert_eq!(
             stat.instructions(),
