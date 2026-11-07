@@ -107,6 +107,92 @@ fn special(class: Class, negative: bool) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    /// What a finite value's text must be: `%f`'s digits, six after the point, a `-` exactly where the sign bit is
+    /// set (`-0.000000` included), and within half a millionth of the value (the rounding of the sixth digit) plus the
+    /// value's own precision.
+    fn finite(text: &str, value: f64, negative: bool) -> std::result::Result<(), TestCaseError> {
+        let (whole, fraction) = text.trim_start_matches('-').split_once('.').unwrap_or_default();
+        prop_assert!(
+            !whole.is_empty() && whole.bytes().all(|b| b.is_ascii_digit()),
+            "{}",
+            text
+        );
+        prop_assert!(
+            fraction.len() == 6 && fraction.bytes().all(|b| b.is_ascii_digit()),
+            "{}",
+            text
+        );
+        prop_assert_eq!(text.starts_with('-'), negative, "{}", text);
+        let read: f64 = text.parse().unwrap();
+        let ulp = f64::from_bits(value.abs().to_bits().saturating_add(1)) - value.abs();
+        prop_assert!((read - value).abs() <= 0.5e-6 + ulp, "{} for {:e}", text, value);
+        Ok(())
+    }
+
+    /// The spelling a non-finite value must have, from its bits alone: the sign, the exponent all ones, and the
+    /// mantissa (zero for an infinity, its highest bit set for a quiet NaN). A float is spelled as the double it
+    /// widens to, which is quiet.
+    fn special(negative: bool, mantissa: u64, quiet_bit: u64, widened: bool) -> String {
+        let sign = if negative { "-" } else { "" };
+        if mantissa == 0 {
+            format!("{sign}1.#INF00")
+        } else if negative && mantissa == quiet_bit {
+            "-1.#IND00".to_owned()
+        } else if mantissa & quiet_bit != 0 || widened {
+            format!("{sign}1.#QNAN0")
+        } else {
+            format!("{sign}1.#SNAN0")
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 4096, failure_persistence: None, ..ProptestConfig::default() })]
+
+        // a third of the values have the exponent of an infinity or a NaN, and a quarter of the doubles a zero low word
+        #[test]
+        fn a_float_is_spelled_as_percent_f_spells_it(
+            bits in prop_oneof![2 => any::<u32>(), 1 => any::<u32>().prop_map(|b| b | 0x7f80_0000)],
+        ) {
+            let text = float(bits);
+            let negative = bits >> 31 != 0;
+            if (bits >> 23) & 0xff == 0xff {
+                prop_assert_eq!(text, special(negative, u64::from(bits & 0x7f_ffff), 1 << 22, true));
+            } else {
+                finite(&text, f64::from(f32::from_bits(bits)), negative)?;
+            }
+        }
+
+        #[test]
+        fn a_double_is_spelled_as_percent_f_spells_it(
+            low in prop_oneof![1 => Just(0u32), 3 => any::<u32>()],
+            high in prop_oneof![2 => any::<u32>(), 1 => any::<u32>().prop_map(|h| h | 0x7ff0_0000)],
+        ) {
+            let text = double(low, high);
+            let bits = (u64::from(high) << 32) | u64::from(low);
+            let negative = high >> 31 != 0;
+            let body = text.strip_suffix('l').unwrap();
+            if (bits >> 52) & 0x7ff == 0x7ff {
+                prop_assert_eq!(body, special(negative, bits & ((1 << 52) - 1), 1 << 51, false));
+            } else {
+                finite(body, f64::from_bits(bits), negative)?;
+            }
+        }
+
+        #[test]
+        fn an_integer_is_decimal_to_ten_thousand_and_hex_beyond(bits in any::<u32>()) {
+            let text = integer(bits);
+            let signed = bits.cast_signed();
+            if (-10000..=10000).contains(&signed) {
+                prop_assert_eq!(text.parse::<i32>().unwrap(), signed);
+            } else {
+                let hex = text.strip_prefix("0x").unwrap();
+                prop_assert_eq!(hex.len(), 8);
+                prop_assert_eq!(u32::from_str_radix(hex, 16).unwrap(), bits);
+            }
+        }
+    }
 
     #[test]
     fn floats_and_integers() {

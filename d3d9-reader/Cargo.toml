@@ -16,6 +16,7 @@ publish.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 primase-testdata.workspace = true
 
 [lints]
