@@ -32,7 +32,11 @@ and compares instead of writing.
 1. Raise the version in the workspace and in the crates' dependencies on each other (a patch, 0.x.Y, for fixes and data
    or manifest additions; a minor, 0.X.0, for new API or any breaking change before 1.0; then `cargo check`, so
    `Cargo.lock` follows) and put the change's CHANGELOG lines under a `## <version> (<date>)` heading, in one commit.
-2. Push it to main. Once every check has passed, release-plz publishes each crate whose version crates.io does not have
+2. Run the tests with the real data: `cargo test --workspace --release` with `GAME_DATA` naming a configuration whose
+   `[run]` has `require = 'gate'`. There an input marked gate (`tests/inputs/README.md` of each crate: Microsoft's and
+   dxc's listings of games' programs and of the fxc sweep) that is missing fails its test, where an everyday
+   configuration skips it. CI has no real data, so this run is the only one that compares them.
+3. Push it to main. Once every check has passed, release-plz publishes each crate whose version crates.io does not have
    yet (trusted publishing: no token is stored anywhere), tags the commit `v<version>` and creates the GitHub Release
    with that CHANGELOG section as its notes. Then dist (`.github/workflows/release.yml`) builds the binaries and
    attaches them to the Release, with their checksums.
