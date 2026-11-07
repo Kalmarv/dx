@@ -1,0 +1,16 @@
+cs_5_0
+dcl_globalFlags refactoringAllowed | enableDoublePrecisionFloatOps
+dcl_uav_raw u0
+dcl_input vThreadID.xyz
+dcl_temps 2
+dcl_thread_group 1, 1, 1
+mov r0.xy, vThreadID.xyxx
+dmul r1.xyzw, r0.xyxy, d(-1.#INF00l, 1.#INF00l)
+store_raw u0.xyzw, l(0), r1.xyzw
+dmovc r1.xyzw, vThreadID.zzzz, r0.xyxy, d(1.#SNAN0l, -1.#SNAN0l)
+store_raw u0.xyzw, l(16), r1.xyzw
+dmovc r1.xyzw, vThreadID.zzzz, r0.xyxy, d(-1.#IND00l, 1.#QNAN0l)
+dmovc r0.xy, vThreadID.zzzz, r0.xyxy, d(-1.#QNAN0l, 0.000000l)
+store_raw u0.xyzw, l(32), r1.xyzw
+store_raw u0.xy, l(48), r0.xyxx
+ret 

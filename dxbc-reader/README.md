@@ -105,7 +105,7 @@ controls and extended tokens, the refusals by name) and the committed fixtures i
 compiled by `fxc` from the HLSL beside each (`.od` files with `/Od`), each read to its end; two in `tests/fixtures`
 are builds of `tests/disasm` edited into programs fxc does not write (`examples/patched_fixtures.rs` makes them). `tests/disasm.rs` compares
 the listing of each with `D3DDisassemble`'s, stored in `tests/disasm/listings` under no flags and the flags that
-change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 5,129 listings of 223
+change the text alone, in pairs and all together (`tests/disasm/generate.py` writes them; 5,152 listings of 224
 programs, 114 of them `/Zi` builds), and the listings of the 19 test programs of t7_dxbc (`tests/third-party`).
 `tests/spdb.rs` changes every byte of two `/Zi` builds' `SPDB` parts and checks each is written or refused without a
 panic. No game files are needed for these.

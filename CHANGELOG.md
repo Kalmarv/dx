@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1 (2026-11-06)
+
+- `dxbc-reader`: a double immediate that is a signaling NaN (the mantissa's highest bit clear) lists as Microsoft's
+  disassembler lists it, `1.#SNAN0l` and `-1.#SNAN0l`; before, it was `1.#QNAN0l`. A float's spelling is unchanged.
+  New fixture `double_specials` (infinities, signaling, quiet and default NaNs as double immediates) and its 23
+  listings, found by comparing dx with `fxc /dumpbin` on a program written for it. No corpus program has a double NaN
+  or infinity.
+
 ## 0.9.0 (2026-11-06)
 
 - Breaking, `dxil-reader`: a `PSV0` part with the 24-byte runtime info validator 1.0 writes reads, and its program

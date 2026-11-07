@@ -47,40 +47,60 @@ pub(crate) fn integer(bits: u32) -> String {
 /// A 32-bit float as `%f` writes it.
 pub(crate) fn float(bits: u32) -> String {
     let value = f32::from_bits(bits);
-    special(
-        value.is_nan(),
-        value.is_infinite(),
-        bits >> 31 != 0,
-        bits == 0xffc0_0000,
-    )
-    .unwrap_or_else(|| format!("{:.6}", f64::from(value)))
+    // `%f` takes the float as a double, and widening it quiets a signaling NaN
+    let class = if value.is_infinite() {
+        Class::Infinite
+    } else if bits == 0xffc0_0000 {
+        Class::Indefinite
+    } else if value.is_nan() {
+        Class::Quiet
+    } else {
+        Class::Finite
+    };
+    special(class, bits >> 31 != 0).unwrap_or_else(|| format!("{:.6}", f64::from(value)))
 }
 
 /// A 64-bit float as `%f` writes it, with the `l` suffix of a double literal.
 pub(crate) fn double(low: u32, high: u32) -> String {
     let bits = (u64::from(high) << 32) | u64::from(low);
     let value = f64::from_bits(bits);
-    let text = special(
-        value.is_nan(),
-        value.is_infinite(),
-        high >> 31 != 0,
-        bits == 0xfff8_0000_0000_0000,
-    )
-    .unwrap_or_else(|| format!("{value:.6}"));
+    let class = if value.is_infinite() {
+        Class::Infinite
+    } else if bits == 0xfff8_0000_0000_0000 {
+        Class::Indefinite
+    } else if value.is_nan() && bits & (1 << 51) == 0 {
+        Class::Signaling
+    } else if value.is_nan() {
+        Class::Quiet
+    } else {
+        Class::Finite
+    };
+    let text = special(class, high >> 31 != 0).unwrap_or_else(|| format!("{value:.6}"));
     format!("{text}l")
 }
 
-/// MSVC's `%f` of an infinity or a NaN: `1.#INF00`, `-1.#IND00` (the default NaN), `1.#QNAN0`.
-fn special(nan: bool, infinite: bool, negative: bool, indefinite: bool) -> Option<String> {
+/// What kind of value a float is, for its spelling.
+enum Class {
+    Finite,
+    Infinite,
+    /// The default NaN, negative with only the quiet bit set.
+    Indefinite,
+    /// A NaN with the quiet bit (the mantissa's highest) set.
+    Quiet,
+    /// A NaN with the quiet bit clear.
+    Signaling,
+}
+
+/// MSVC's `%f` of an infinity or a NaN: `1.#INF00`, `-1.#IND00` (the default NaN), `1.#QNAN0`, `1.#SNAN0`; `None` for
+/// a finite value.
+fn special(class: Class, negative: bool) -> Option<String> {
     let sign = if negative { "-" } else { "" };
-    if infinite {
-        Some(format!("{sign}1.#INF00"))
-    } else if indefinite {
-        Some("-1.#IND00".to_owned())
-    } else if nan {
-        Some(format!("{sign}1.#QNAN0"))
-    } else {
-        None
+    match class {
+        Class::Finite => None,
+        Class::Infinite => Some(format!("{sign}1.#INF00")),
+        Class::Indefinite => Some("-1.#IND00".to_owned()),
+        Class::Quiet => Some(format!("{sign}1.#QNAN0")),
+        Class::Signaling => Some(format!("{sign}1.#SNAN0")),
     }
 }
 
@@ -99,5 +119,17 @@ mod tests {
         assert_eq!(value(0x8000_0000, Style::Typeless), "-0.000000");
         assert_eq!(value(1, Style::Typeless), "1");
         assert_eq!(value(0x3f00_0000, Style::Typeless), "0.500000");
+    }
+
+    #[test]
+    fn doubles_keep_a_signaling_nan() {
+        // Microsoft's listings of tests/disasm/double_specials.hlsl
+        assert_eq!(double(0, 0xfff0_0000), "-1.#INF00l");
+        assert_eq!(double(0, 0x7ff0_0000), "1.#INF00l");
+        assert_eq!(double(1, 0x7ff0_0001), "1.#SNAN0l");
+        assert_eq!(double(1, 0xfff0_0001), "-1.#SNAN0l");
+        assert_eq!(double(0, 0xfff8_0000), "-1.#IND00l");
+        assert_eq!(double(5, 0x7ff8_0000), "1.#QNAN0l");
+        assert_eq!(double(5, 0xfff8_0000), "-1.#QNAN0l");
     }
 }
