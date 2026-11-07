@@ -50,6 +50,18 @@ bash fuzz/run.sh 60
 The weekly run is `bash fuzz/run.sh 1500`. What a target finds becomes a fixture under the reader's `tests/fuzz/`, with
 the test that reads it and the fix; `fuzz/README.md` has the rest.
 
+## Differential
+
+`differential/` compares dx's listings with Microsoft's disassembler on generated and edited programs, on Windows with
+`d3dcompiler_47.dll` (`differential/README.md`). It runs weekly and before every minor release:
+
+```sh
+bash differential/weekly.sh
+```
+
+A listing that differs becomes a fixture with its fix; dx refusing a malformed program that Microsoft's disassembler
+lists anyway is a refusal dx keeps.
+
 ## Generated code
 
 `dxil-reader/src/disasm/ops.rs` is written by `cargo xtask dxil-ops --source <DirectXShaderCompiler checkout at
@@ -66,7 +78,8 @@ and compares instead of writing.
    --release` with `GAME_DATA` naming a configuration whose `[run]` has `require = 'gate'`. There an input marked gate
    (`tests/inputs/README.md` of each crate: Microsoft's and dxc's listings of games' programs and of the fxc sweep) that
    is missing fails its test, where an everyday configuration skips it. CI has no real data, so this run is the only one
-   that compares them.
+   that compares them. Before a minor release, run the differential as well (`bash differential/weekly.sh`, on
+   Windows) and fix what it finds to fix.
 3. Push it to main. Once every check has passed, release-plz publishes each crate whose version crates.io does not have
    yet (trusted publishing: no token is stored anywhere), tags the commit `v<version>` and creates the GitHub Release
    with that CHANGELOG section as its notes. Then dist (`.github/workflows/release.yml`) builds the binaries and

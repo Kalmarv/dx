@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["d3d9-reader", "dx", "dxbc-reader", "dxcontainer", "dxil-reader", "rsx-reader", "xtask"]
+members = ["d3d9-reader", "differential/dxlist", "dx", "dxbc-reader", "dxcontainer", "dxil-reader", "rsx-reader", "xtask"]
 # its own workspace, built with a nightly toolchain (fuzz/README.md)
 exclude = ["fuzz"]
 

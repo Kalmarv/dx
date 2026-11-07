@@ -1,0 +1,16 @@
+[package]
+name = "dxlist"
+description = "dx's listings of a folder of programs under every flags word, for the differential against D3DDisassemble (differential/README.md)"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+d3d9-reader.workspace = true
+dxbc-reader = { path = "../../dxbc-reader" }
+
+[lints]
+workspace = true
