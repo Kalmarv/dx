@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 (2026-11-06)
 
 - Breaking, `dxil-reader`: a `PSV0` part with the 24-byte runtime info validator 1.0 writes reads, and its program
   lists as dxc 1.9.2609 lists it; before, the part was refused ("a runtime info of 24 bytes") and with it the listing.
@@ -48,15 +48,17 @@
   6,870 jobs, of which fxc builds 4,613 with `/Zi` and 4,614 with `/Zi /Od` (0.8.0's sweep had 4,304 of each), and
   `tests/corpora.rs` compares their 106,099 and 106,122 listings. The jobs fxc refuses (2,257 and 2,256) are code fxc
   has no form of: Vulkan-only tests, Shader Model 6 features, 16-bit types, HLSL 2021, tests written to fail, fxc's
-  stricter rules and its own internal errors and crashes. What changed: a dxc test's `RUN` lines are joined where they end in `\`, `%S` names the test's folder
-  and `-I` its include folders, and the last `/E` wins; a `-D NAME=` defines `NAME` empty; vkd3d's shader tests are cut
-  as `tests/shader_runner.c` cuts them (lines starting with `%` and empty lines dropped, `[require]` resetting the
-  model range and options, `[header] test-shader-models`, `fail` and `notimpl` qualifiers with their model arguments,
-  an `options:` line matched in shader_runner's table order, backcompat dropped from 5.1 up); a Shader Model 6 job is
-  tried at 5.0, then 5.1; job names differing only in case get `__2`, `__3`; and a build fxc refuses keeps fxc's
-  messages and exit code (`fail/BUILD/NAME.txt`).
-- `dxbc-reader`: eight new fixture programs of the six sources above and their 184 listings (`tests/disasm`; 5,037 listings of 219
-  programs, 114 of them `/Zi` builds).
+  stricter rules and its own internal errors and crashes. What changed: a dxc test's `RUN` lines are joined where they
+  end in `\`, `%S` names the test's folder and `-I` its include folders, and the last `/E` wins; a `-D NAME=` defines
+  `NAME` empty; vkd3d's shader tests are cut as `tests/shader_runner.c` cuts them (lines starting with `%` and empty
+  lines dropped, `[require]` resetting the model range and options, `[header] test-shader-models`, `fail` and
+  `notimpl` qualifiers with their model arguments, an `options:` line matched in shader_runner's table order,
+  backcompat dropped from 5.1 up); a Shader Model 6 job is tried at 5.0, then 5.1; job names differing only in case get
+  `__2`, `__3`; and a build fxc refuses keeps fxc's messages and exit code (`fail/BUILD/NAME.txt`). The two oracle
+  entries, `d3d-disassembler.general/fxc-sweep-zi` and `fxc-sweep-zod`, are now required inputs of a full run
+  (`gate: true`): primase-testdata 0.1.16, which the workspace now needs, records their manifests.
+- `dxbc-reader`: eight new fixture programs of the six sources above and their 184 listings (`tests/disasm`; 5,037
+  listings of 219 programs, 114 of them `/Zi` builds).
 - `dxbc-reader`: three more rules of Microsoft's listings, found over Wine's, vkd3d's and vkd3d-proton's tests. A
   `dcl_globalFlags` with no flags is `dcl_globalFlagsnone`. The four-component immediate of a load (`ld_structured`,
   `ld_raw`) has a space after each comma, where a move's and a store's have none. An XNA build's `XNAP` and `XNAS`

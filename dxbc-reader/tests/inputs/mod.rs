@@ -39,13 +39,13 @@ primase_testdata::inputs! {
         },
         Query::Oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zi") => {
             status: Live,
-            gate: false,
+            gate: true,
             about: r#"the /Zi sweep's 4,613 programs (`NAME.dxbc`): fxc 10.0.26100.4654 `/Zi` builds of the HLSL in dxc's tests, vkd3d's and vkd3d-proton's shader tests and MiniEngine, each with Microsoft's listing under no flags (`NAME.dxbc.asm`) and 22 other flag words (`NAME.dxbc.flagNN.asm`); tests/corpora.rs"#,
             source: r#"independent: fxc and d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (tests/inputs/fxc_sweep.py) over outside open-source HLSL, the commits in the set's MANIFEST.toml; programs and listings stay outside the repository"#,
         },
         Query::Oracle(OracleSet::D3dDisassembler, Game::General, "fxc-sweep-zod") => {
             status: Live,
-            gate: false,
+            gate: true,
             about: r#"the /Zi sweep's 4,614 programs built with `/Zi /Od` (`NAME.dxbc`), as `fxc-sweep-zi` otherwise: each with Microsoft's listing under no flags and 22 other flag words; tests/corpora.rs"#,
             source: r#"independent: fxc and d3dcompiler_47.dll 10.0.26100.4654 D3DDisassemble (tests/inputs/fxc_sweep.py) over outside open-source HLSL, the commits in the set's MANIFEST.toml; programs and listings stay outside the repository"#,
         },
