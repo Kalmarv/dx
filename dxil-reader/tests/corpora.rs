@@ -3,39 +3,43 @@
 //! oracle entry, each against its listing in another (`<path>.txt`, the same path below it), each entry read as a tree
 //! of files whether the store holds it as a folder or as one archive. A test whose entries are not configured skips
 //! with a line naming the key; a program without its listing fails, as one that differs or that the disassembler
-//! refuses does. The programs are compared on `primase_testdata::threads()` threads when both entries are archives, on
-//! one when either is a folder ([`workers`]), and the failures are listed in path order whatever their number.
+//! refuses does. The programs are compared on `primase_testdata::threads()` threads, a folder's files read one at a
+//! time ([`read`]), and the failures are listed in path order whatever their number.
 mod inputs;
 
 use inputs::{Game, OracleSet};
 use primase_testdata::Tree;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, PoisonError};
 
 /// The extensions of Elden Ring's programs, one a stage: compute (and the libraries), domain, geometry, hull, pixel
 /// and vertex. The counts the test asserts take in every program, so a file this misses fails it.
 const EXTENSIONS: [&str; 6] = ["cpo", "dpo", "gpo", "hpo", "ppo", "vpo"];
 
-/// The threads that read `corpus` and `listings`: `primase_testdata::threads()` when both are archives, each read
-/// with positional reads of a single open file; one when either is a folder, whose files opened at once on several threads over the NAS's SMB share fail at random with Windows error 1450
-/// (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they do not.
-fn workers(corpus: &Tree, listings: &Tree) -> usize {
-    if corpus.as_folder().is_some() || listings.as_folder().is_some() {
-        1
-    } else {
-        primase_testdata::threads().get()
-    }
+/// Held while a file of a folder is read, by every thread.
+static FOLDER_READS: Mutex<()> = Mutex::new(());
+
+/// The file `name` of `tree`, from any thread: an archive's files are read at once, each a positional read of its one
+/// open file; a folder's one at a time ([`FOLDER_READS`]), because on the desktop's SMB share files opened at once on
+/// several threads failed at random with Windows error 1450 (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they
+/// do not.
+fn read(tree: &Tree, name: &str) -> std::io::Result<Vec<u8>> {
+    let _turn = tree
+        .as_folder()
+        .map(|_| FOLDER_READS.lock().unwrap_or_else(PoisonError::into_inner));
+    tree.read(name)
 }
 
 /// One program, the file `name` of `corpus`, against its listing in `listings`: its target when the two are the same,
 /// otherwise the failure's line.
 fn compare(corpus: &Tree, listings: &Tree, name: &str) -> Result<String, String> {
-    let bytes = corpus.read(name).unwrap();
+    let bytes = read(corpus, name).map_err(|e| format!("{name}: {e}"))?;
     let target = dxil_reader::part(&bytes)
         .ok()
         .and_then(|p| p.target())
         .unwrap_or_else(|| "unknown".to_owned());
-    let theirs = match listings.read(&format!("{name}.txt")) {
+    let theirs = match read(listings, &format!("{name}.txt")) {
         Ok(theirs) => theirs,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Err(format!("{name}: no listing")),
         Err(e) => return Err(format!("{name}: {e}")),
@@ -75,7 +79,7 @@ fn elden_ring_programs() {
         .collect();
     let next = AtomicUsize::new(0);
     let mut outcomes: Vec<(usize, Result<String, String>)> = std::thread::scope(|s| {
-        let workers: Vec<_> = (0..workers(&corpus, &listings))
+        let workers: Vec<_> = (0..primase_testdata::threads().get())
             .map(|_| {
                 s.spawn(|| {
                     let mut done = Vec::new();

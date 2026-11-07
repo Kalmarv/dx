@@ -4,14 +4,14 @@
 //! branch side of the readers that the full pool of programs does, so this is the run before every push to main
 //! (CONTRIBUTING.md). A program Microsoft's tools refuse (`microsoft-refused.tsv`) has no listing to compare and dx
 //! must still read it without a panic, as it must the malformed Direct3D 9 programs it refuses ([`REFUSED`]). Each
-//! family is one test, its programs read on `primase_testdata::threads()` threads from an archive and on one from a
-//! folder ([`workers`]); a failure lists every program that failed, in name order.
+//! family is one test, its programs read on `primase_testdata::threads()` threads, a folder's files one at a time
+//! ([`read`]); a failure lists every program that failed, in name order.
 mod inputs;
 
 use std::collections::BTreeSet;
 use std::panic::catch_unwind;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Instant;
 
 use dx::check::{Outcome, compare, microsofts};
@@ -71,7 +71,7 @@ fn slim() -> Option<&'static Tree> {
 /// One program, the file `name` of the set, against Microsoft's listing `listing` of it (`None` for a program
 /// Microsoft's tools refuse).
 fn one(set: &Tree, name: &str, listing: Option<&str>) -> Verdict {
-    let read = |name: &str| set.read(name).map_err(|e| format!("{name}: {e}"));
+    let read = |name: &str| read(set, name).map_err(|e| format!("{name}: {e}"));
     let (bytes, theirs) = match (read(name), listing.map(read).transpose()) {
         (Ok(bytes), Ok(theirs)) => (bytes, theirs.map(|t| microsofts(&t))),
         (Err(e), _) | (_, Err(e)) => return Verdict::Failed(e),
@@ -109,7 +109,7 @@ fn one(set: &Tree, name: &str, listing: Option<&str>) -> Verdict {
 
 /// The programs Microsoft's tools refuse, by their paths in the set (`programs/d3d9/<sha256>.d3d9`).
 fn microsoft_refused(set: &Tree) -> BTreeSet<String> {
-    let text = set.read("microsoft-refused.tsv").unwrap();
+    let text = read(set, "microsoft-refused.tsv").unwrap();
     String::from_utf8(text)
         .unwrap()
         .lines()
@@ -119,15 +119,18 @@ fn microsoft_refused(set: &Tree) -> BTreeSet<String> {
         .collect()
 }
 
-/// The threads that read `set`: `primase_testdata::threads()` for an archive, one positional read after another of a
-/// single open file; one for a folder, whose files opened at once on several threads over the NAS's SMB share fail at random with Windows error 1450
-/// (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they do not.
-fn workers(set: &Tree) -> usize {
-    if set.as_folder().is_some() {
-        1
-    } else {
-        primase_testdata::threads().get()
-    }
+/// Held while a file of a folder is read, by every thread of every test here.
+static FOLDER_READS: Mutex<()> = Mutex::new(());
+
+/// The file `name` of `tree`, from any thread: an archive's files are read at once, each a positional read of its one
+/// open file; a folder's one at a time ([`FOLDER_READS`]), because on the desktop's SMB share files opened at once on
+/// several threads failed at random with Windows error 1450 (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they
+/// do not.
+fn read(tree: &Tree, name: &str) -> std::io::Result<Vec<u8>> {
+    let _turn = tree
+        .as_folder()
+        .map(|_| FOLDER_READS.lock().unwrap_or_else(PoisonError::into_inner));
+    tree.read(name)
 }
 
 /// Every program of the family `family` (`programs/<family>/*.<family>`), its Microsoft listing `NAME.<ending>`
@@ -144,7 +147,7 @@ fn family(family: &str, ending: &str) -> Option<Counts> {
         .collect();
     let next = AtomicUsize::new(0);
     let mut results: Vec<(usize, Verdict)> = std::thread::scope(|scope| {
-        let workers: Vec<_> = (0..workers(set))
+        let workers: Vec<_> = (0..primase_testdata::threads().get())
             .map(|_| {
                 scope.spawn(|| {
                     let mut out = Vec::new();

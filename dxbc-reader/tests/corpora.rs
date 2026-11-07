@@ -2,8 +2,8 @@
 //! The listings of whole games' programs against Microsoft's, byte for byte: the oracle entries of
 //! tests/inputs/mod.rs, each program beside the listings Microsoft's disassembler wrote of it, read as a tree of files
 //! whether the store holds the entry as a folder or as one archive. A test whose entry is not configured skips with a
-//! line naming its key. The programs of an archive are compared on `primase_testdata::threads()` threads, those of a
-//! folder on one ([`workers`]), and the listings that differ are listed in name order.
+//! line naming its key. The programs are compared on `primase_testdata::threads()` threads, a folder's files read one
+//! at a time ([`read`]), and the listings that differ are listed in name order.
 mod compare;
 mod inputs;
 
@@ -12,6 +12,21 @@ use dxbc_reader::{Options, disassemble_with, parts};
 use inputs::{Game, OracleSet};
 use primase_testdata::Tree;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Mutex, PoisonError};
+
+/// Held while a file of a folder is read, by every thread of every test here.
+static FOLDER_READS: Mutex<()> = Mutex::new(());
+
+/// The file `name` of `tree`, from any thread: an archive's files are read at once, each a positional read of its one
+/// open file; a folder's one at a time ([`FOLDER_READS`]), because on the desktop's SMB share files opened at once on
+/// several threads failed at random with Windows error 1450 (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they
+/// do not.
+fn read(tree: &Tree, name: &str) -> std::io::Result<Vec<u8>> {
+    let _turn = tree
+        .as_folder()
+        .map(|_| FOLDER_READS.lock().unwrap_or_else(PoisonError::into_inner));
+    tree.read(name)
+}
 
 /// What one entry's comparison found.
 #[derive(Default)]
@@ -27,7 +42,7 @@ struct Tally {
 /// One program, the file `name` of `tree`, against its listings under each of `flags`, named by `listing`.
 fn one(tree: &Tree, name: &str, flags: &[u32], listing: &impl Fn(&str, u32) -> String) -> Tally {
     let mut tally = Tally::default();
-    let bytes = match tree.read(name) {
+    let bytes = match read(tree, name) {
         Ok(bytes) => bytes,
         Err(e) => {
             tally.differing.push(format!("{name}: {e}"));
@@ -37,7 +52,7 @@ fn one(tree: &Tree, name: &str, flags: &[u32], listing: &impl Fn(&str, u32) -> S
     let debug = parts(&bytes).unwrap().iter().any(|c| &c.kind == b"SPDB");
     for &word in flags {
         let what = format!("{name} flags 0x{word:02x}");
-        let theirs = match tree.read(&listing(name, word)) {
+        let theirs = match read(tree, &listing(name, word)) {
             Ok(theirs) => microsofts(&theirs),
             Err(e) => {
                 tally.differing.push(format!("{what}: {e}"));
@@ -56,17 +71,6 @@ fn one(tree: &Tree, name: &str, flags: &[u32], listing: &impl Fn(&str, u32) -> S
     tally
 }
 
-/// The threads that read `tree`: `primase_testdata::threads()` for an archive, one positional read after another of
-/// a single open file; one for a folder, whose files opened at once on several threads over the NAS's SMB share fail at
-/// random with Windows error 1450 (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they do not.
-fn workers(tree: &Tree) -> usize {
-    if tree.as_folder().is_some() {
-        1
-    } else {
-        primase_testdata::threads().get()
-    }
-}
-
 /// Every program of `tree`, the files with one of the extensions `programs`, against its listings under each of
 /// `flags`, named by `listing`. The programs are told by their names, not by opening every file of a set that holds
 /// far more listings than programs.
@@ -83,7 +87,7 @@ fn compare(
         .collect();
     let next = AtomicUsize::new(0);
     let mut tallies: Vec<(usize, Tally)> = std::thread::scope(|scope| {
-        let workers: Vec<_> = (0..workers(tree))
+        let workers: Vec<_> = (0..primase_testdata::threads().get())
             .map(|_| {
                 scope.spawn(|| {
                     let mut done = Vec::new();
