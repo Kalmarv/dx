@@ -281,6 +281,54 @@ def sampler_swizzles(data):
     return bytes(data)
 
 
+def ctab_constants(data):
+    """The CTAB data's byte in `data` and each constant's record byte, name, register set and default value byte."""
+    assert data[4:6] == b"\xfe\xff" and data[8:12] == b"CTAB"
+    base = 12
+    count, info = struct.unpack_from("<II", data, base + 12)
+    out = []
+    for n in range(count):
+        at = base + info + 20 * n
+        name, register_set, _, _, _, _, default = struct.unpack_from("<I4HII", data, at)
+        out.append((at, data[base + name:data.index(b"\0", base + name)].decode(), register_set, default))
+    return base, out
+
+
+def default_specials(data):
+    """defaults.ps30 with its stored values made what the compiler never writes: `small`'s and `large`'s infinities,
+    quiet and signaling NaNs of both signs (0xffc00000, which Microsoft writes as -1.#IND, among them), a denormal and
+    -0; `count`'s the integer limits; `flags`' bools other bit patterns than 1 (any not 0 is true); and `far` moved to
+    c1234, past the width of the register column."""
+    data = bytearray(data)
+    base, constants = ctab_constants(data)
+    values = {
+        "small": [0x7F800000, 0xFF800000, 0x7FC00000, 0xFFC00000],
+        "large": [0x7F800001, 0xFFFFFFFF, 0x00000001, 0x80000000],
+        "count": [0xFFFFFFFF, 0x7FFFFFFF, 0x80000000, 0x3F800000],
+        "flags": [0x80000000, 0, 0x00000100],
+    }
+    for at, name, _, default in constants:
+        if name in values:
+            words = values.pop(name)
+            struct.pack_into(f"<{len(words)}I", data, base + default, *words)
+        if name == "far":
+            struct.pack_into("<H", data, at + 6, 1234)
+    assert not values, values
+    return bytes(data)
+
+
+def unaligned_default(data):
+    """pixel.twosets.ps30 with the default value of its int constant (`limit`, in i0; its float range in c0 has none)
+    made byte 3 of the table, where the compiler aligns values to four bytes: Microsoft reads the four integers there,
+    within the table's own bytes."""
+    data = bytearray(data)
+    _, constants = ctab_constants(data)
+    ints = [at for at, _, register_set, _ in constants if register_set == 1]
+    assert len(ints) == 1, ints
+    struct.pack_into("<I", data, ints[0] + 16, 3)
+    return bytes(data)
+
+
 # Programs written from a built one with bytes changed, for what the compiler never writes: name -> (built, change).
 PATCHED = {
     "ctab.types.ps30": ("ctab.many.ps30", ctab_types),
@@ -289,6 +337,8 @@ PATCHED = {
     "versions.definitions.ps30": ("versions.opcodes.ps30", definitions),
     "pixel.samplers.ps2a": ("pixel.ps2a", sampler_swizzles),
     "pixel.order.ps30": ("pixel.ps30", ctab_order),
+    "defaults.specials.ps30": ("defaults.ps30", default_specials),
+    "pixel.twosets.default.ps30": ("pixel.twosets.ps30", unaligned_default),
 }
 
 

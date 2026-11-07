@@ -303,6 +303,6 @@ fn dxbc_features_are_those_microsofts_listing_notes() {
         }
     }
     assert!(differing.is_empty(), "{}", differing.join("\n"));
-    assert_eq!(containers.len(), 258);
-    assert_eq!(with_features, 59);
+    assert_eq!(containers.len(), 263);
+    assert_eq!(with_features, 61);
 }

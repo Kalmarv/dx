@@ -1,0 +1,29 @@
+    vs_3_0
+          def c10, 1, 0, 0, 0
+          dcl_color v0
+          dcl_position o0
+   0:     mov r0, c7
+   1:     add r0, r0, c8
+   2:     dp4 r1.x, v0, c0
+   3:     dp4 r1.y, v0, c1
+   4:     dp4 r1.z, v0, c2
+   5:     dp4 r1.w, v0, c3
+   6:     add r0, r0, r1
+   7:     add r0, r0, c5.x
+   8:     add r0, r0, c6.x
+   9:     add r0, r0, c123
+  10:     add r0, r0, c9.xyzz
+  11:     mov r1, r0
+  12:     rep i0
+  15:       add r1, r1, v0
+  16:     endrep
+  18:     if b0
+  21:       add r1, r1, r1
+  22:     endif
+  23:     if b2
+  26:       add o0, r1, c10.x
+  27:     else
+  28:       mov o0, r1
+  29:     endif
+
+// approximately 30 instruction slots used

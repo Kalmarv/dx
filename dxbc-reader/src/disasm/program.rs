@@ -226,7 +226,7 @@ fn register_name(register: Register, sm51: bool) -> (&'static str, bool) {
         Register::Sampler => (upper("s", "S"), true),
         Register::Null => ("null", false),
         Register::Uav => (upper("u", "U"), true),
-        Register::ImmediateBuffer => ("icb", false),
+        Register::ImmediateBuffer => ("icb", true),
         Register::PrimitiveId => ("vPrim", false),
         Register::InputCoverage => ("vCoverage", false),
         Register::OutputDepth => ("oDepth", false),

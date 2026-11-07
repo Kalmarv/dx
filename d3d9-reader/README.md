@@ -19,7 +19,10 @@ if let Some(table) = &program.constants {
 
 `disassemble` writes a program's listing as Microsoft's disassembler does with no flags, byte for byte: the constant
 table's parameters and registers, the program, and the instruction slot count; for a `/Zi` build, the `#line` lines
-and the variables each line writes (`mul r0, v0, c0  // ::o<0,1,2,3>`). `dx disasm` runs it over files.
+and the variables each line writes (`mul r0, v0, c0  // ::o<0,1,2,3>`). `disassemble_with` writes it with the
+`Options` of a `D3D_DISASM_*` flags word (`Options::from_flags`): slot numbers, byte offsets, `def` values in hex, no
+debug information, no comments, and the values the constant table stores for its constants (`0x02`). `dx disasm`
+runs it over files.
 
 ## What it reads
 
@@ -79,12 +82,14 @@ version's caps; `CTAB` ranges are checked to be nonempty and not to overlap). Te
 instructions, co-issue and result shifts, the 2.x and 3.0 flow control, predication, `aL`, vertex texture fetch,
 `vPos` and `vFace`), the constant table, framing, and the refusals by word; every truncation of a program is refused
 and every single-bit change of one is read or refused without a panic. `tests/disasm.rs` compares the listing of each
-fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,771 listings of 77 programs, 10 of them
+fixture in `tests/disasm` with `D3DDisassemble`'s under 23 flag words (1,886 listings of 82 programs, 10 of them
 `/Zi` builds; for each of the 11 versions, one with every instruction and one with every register type, `dcl` usage
 and instruction flag, whatever the version's own lists; one whose constant table has every parameter type and
-class, and one whose table is not sorted by name; one whose `def` values are infinities, NaNs, a denormal and -0;
-one with minimum precision on every operand; one with result modifiers and masks on the registers `def`, `defi`
-and `defb` define; and one with swizzles on its sampler sources). No game files are needed for these.
+class, and one whose table is not sorted by name; three with default values of every register set, one whose
+default values are infinities, NaNs, a denormal, -0 and the integer limits, and one whose default value is at an odd
+byte; one whose `def` values are infinities, NaNs, a denormal and -0; one with minimum precision on every operand;
+one with result modifiers and masks on the registers `def`, `defi` and `defb` define; and one with swizzles on its
+sampler sources). No game files are needed for these.
 
 With `GAME_DATA` naming a real-data configuration, `tests/corpora.rs` compares the listing with Microsoft's for every
 program of Shaun White Skateboarding's three SDB2 bundles (7,306) and three more of its programs; the inputs are in

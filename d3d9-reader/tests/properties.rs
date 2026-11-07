@@ -9,7 +9,8 @@
 //! - The listings under the flags words relate to the plain one as Microsoft's do. The relations are checked first on
 //!   Microsoft's own listings of the programs in `tests/disasm`, so they are Microsoft's rules and not this
 //!   disassembler's:
-//!   - 0x02 changes nothing;
+//!   - 0x02 adds the default values after the registers (a comment line, the title and the values, up to the blank
+//!     line) and changes nothing else;
 //!   - 0x04, 0x20 and 0x24 put a prefix of spaces, a number, an offset and colons before lines and change nothing else;
 //!   - 0x40 leaves the program's lines as they are and drops comments;
 //!   - 0x80 changes only `def` lines, whatever result modifiers follow the mnemonic (`def_sat`).
@@ -46,7 +47,21 @@ fn relates(plain: &str, flagged: &str, flags: u32) -> Result<(), String> {
             .ok_or(format!("{} lines, {} plain", f.len(), p.len()))
     };
     match flags {
-        0x02 => (p == f).then_some(()).ok_or("0x02 changed the listing".into()),
+        0x02 => {
+            let without = match f.iter().position(|l| *l == "// Default values:") {
+                Some(title) => {
+                    let end = f[title..]
+                        .iter()
+                        .position(|l| l.is_empty())
+                        .map_or(f.len(), |n| title + n);
+                    [&f[..title.saturating_sub(1)], &f[end..]].concat()
+                }
+                None => f.clone(),
+            };
+            (without == p)
+                .then_some(())
+                .ok_or("0x02 changed more than the default values".into())
+        }
         0x04 | 0x20 | 0x24 => {
             same_length()?;
             for (a, b) in f.iter().zip(&p) {
@@ -116,7 +131,7 @@ fn the_flag_relations_hold_for_microsofts_listings() {
             checked += 1;
         }
     }
-    assert_eq!(checked, 6 * 77);
+    assert_eq!(checked, 6 * 82);
 }
 
 /// Changes to a committed program's words: which program, and the bytes (where, as a fraction of its length, and the

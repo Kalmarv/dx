@@ -334,40 +334,46 @@ fn notes(out: &mut String, features: u64, program: &Decoded) {
     out.push_str("//\n");
 }
 
-/// The tessellation tables, from the `STAT` part (a container without one has none): the domain and control points
-/// of a hull or domain program, and a hull program's output primitive and partitioning.
-fn tessellation(out: &mut String, kind: ProgramType, stat: &Statistics) {
+/// The tessellation tables, from the `STAT` part (a container without one has none), whatever the program's stage:
+/// the domain and control points where either is not 0, and the output primitive and partitioning where either is
+/// not 0. A value the format has no name for is written as Microsoft writes it, `<internal error>`.
+fn tessellation(out: &mut String, stat: &Statistics) {
+    const DOMAINS: [&str; 4] = ["Undefined", "Isoline", "Triangle", "Quadrilateral"];
+    const PRIMITIVES: [&str; 5] = [
+        "Undefined",
+        "Point",
+        "Line",
+        "Clockwise Triangles",
+        "Counter-Clockwise Triangles",
+    ];
+    const PARTITIONINGS: [&str; 5] = [
+        "Undefined",
+        "Integer",
+        "Integer Power of 2",
+        "Odd Fractional",
+        "Even Fractional",
+    ];
     let field = |value: Option<u32>| value.unwrap_or(0);
-    let domain = match field(stat.tessellator_domain()) {
-        0 => return,
-        1 => "Isoline",
-        2 => "Triangle",
-        3 => "Quadrilateral",
-        _ => "Undefined",
-    };
-    out.push_str("// Tessellation Domain   # of control points\n");
-    out.push_str("// -------------------- --------------------\n");
-    let _ = writeln!(out, "// {domain:<20} {:>20}\n//", field(stat.control_points()));
-    if kind != ProgramType::Hull {
-        return;
+    let name =
+        |value: u32, names: &[&'static str]| names.get(value as usize).copied().unwrap_or("<internal error>");
+    let (domain, points) = (field(stat.tessellator_domain()), field(stat.control_points()));
+    if domain != 0 || points != 0 {
+        out.push_str("// Tessellation Domain   # of control points\n");
+        out.push_str("// -------------------- --------------------\n");
+        let _ = writeln!(out, "// {:<20} {points:>20}\n//", name(domain, &DOMAINS));
     }
-    let primitive = match field(stat.tessellator_output_primitive()) {
-        1 => "Point",
-        2 => "Line",
-        3 => "Clockwise Triangles",
-        4 => "Counter-Clockwise Triangles",
-        _ => "Undefined",
-    };
-    let partitioning = match field(stat.tessellator_partitioning()) {
-        1 => "Integer",
-        2 => "Integer Power of 2",
-        3 => "Odd Fractional",
-        4 => "Even Fractional",
-        _ => "Undefined",
-    };
-    out.push_str("// Tessellation Output Primitive  Partitioning Type \n");
-    out.push_str("// ------------------------------ ------------------\n");
-    let _ = writeln!(out, "// {primitive:<30} {partitioning:<18}\n//");
+    let primitive = field(stat.tessellator_output_primitive());
+    let partitioning = field(stat.tessellator_partitioning());
+    if primitive != 0 || partitioning != 0 {
+        out.push_str("// Tessellation Output Primitive  Partitioning Type \n");
+        out.push_str("// ------------------------------ ------------------\n");
+        let _ = writeln!(
+            out,
+            "// {:<30} {:<18}\n//",
+            name(primitive, &PRIMITIVES),
+            name(partitioning, &PARTITIONINGS)
+        );
+    }
 }
 
 /// A signature part's elements, and whether the rows name their streams (where an element is on a stream other
@@ -414,7 +420,8 @@ pub(super) fn write(out: &mut String, h: &Header<'_>) {
     }
     let kind = program.kind;
     if let Some(patch) = &h.patch {
-        signature(out, "Patch Constant", patch, kind == ProgramType::Hull, kind);
+        // an output signature but in a domain program, whatever the stage the version token names
+        signature(out, "Patch Constant", patch, kind != ProgramType::Domain, kind);
     }
     if let Some(inputs) = &h.inputs {
         signature(out, "Input", inputs, false, kind);
@@ -423,7 +430,7 @@ pub(super) fn write(out: &mut String, h: &Header<'_>) {
         signature(out, "Output", outputs, true, kind);
     }
     if let Some(stat) = h.stat {
-        tessellation(out, kind, stat);
+        tessellation(out, stat);
         if stat.sample_frequency().is_some_and(|f| f != 0) {
             out.push_str("// Pixel Shader runs at sample frequency\n//\n");
         }

@@ -34,7 +34,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "d3d9-reader"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "thiserror",
 ]
@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "dxbc-reader"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "d3d9-reader",
  "dxcontainer",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "dxcontainer"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "primase-foundations",
  "thiserror",
@@ -70,7 +70,7 @@ dependencies = [
 
 [[package]]
 name = "dxil-reader"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "dxcontainer",
  "primase-foundations",
@@ -167,7 +167,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rsx-reader"
-version = "0.10.1"
+version = "0.11.0"
 dependencies = [
  "primase-foundations",
  "thiserror",

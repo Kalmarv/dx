@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.11.0 (2026-11-07)
+
+Fixes for the four programs the rerun of the weekly differential (seed 20261107, with the new fixtures among the
+edits' sources) found listed differently from Microsoft's `D3DDisassemble`, which 0.10.0 listed differently too, and
+for the rules found while probing them. Each rule has fixtures and their listings from that disassembler; 0.10.1
+lists 112 of the new fixtures' 230 listings differently. A minor release: `d3d9_reader::Options` has a new field.
+
+- `d3d9-reader`: the values the constant table stores for its constants are written under
+  `D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS` (0x02), the new `Options::default_values`; before, the flag changed
+  nothing. After the registers, a `Default values` block names each constant that has values, in register order,
+  with a row for each of its registers: a bool as `true` (any word but 0) or `false`, an int4 as four signed integers
+  and a float4 as four floats as C's `%g` writes them (`c7   = { 0.1, 1e-008, 1.23457e+008, 1.#INF };`).
+  Fixtures `defaults.ps30`, `defaults.vs30`, `defaults.ps20`, `defaults.specials.ps30` and
+  `pixel.twosets.default.ps30` (a value at an odd byte of the table, which Microsoft reads there). A value that runs
+  past the table is still refused: Microsoft's disassembler reads what follows the table for it, or writes
+  `<invalid default value offset>` and ends the listing's comments there.
+- `dxbc-reader`: an immediate constant buffer register with an immediate index is written as a temp's number is
+  (`icb5`, `icb-2`); before, in brackets (`icb[5]`). A relative index is still in brackets (`icb[r0.x + 5]`).
+  Fixture `icb_numbers.ps50`.
+- `dxbc-reader`: the patch constant signature's Used column is an output's (the lanes written, the complement of the
+  never-written mask) in any program but a domain program, whatever stage the version token names; before, in a
+  hull program alone. Fixtures `stage_pixel.hs` and `stage_hull.ds`.
+- `dxbc-reader`: the tessellation tables follow the `STAT` part whatever the stage: the domain table where the domain
+  or the control point count is not 0 (`Undefined` for a domain of 0), the output primitive table where the primitive
+  or the partitioning is not 0, in any program; a value with no name is `<internal error>`, as Microsoft writes it.
+  Before, the domain table was written where the domain was not 0, the other in a hull program alone, and a value
+  with no name was `Undefined`. Fixtures `tessellation_values.hs` and `tessellation_values.ps50`.
+
 ## 0.10.1 (2026-11-07)
 
 Fixes for what the first weekly differential run (seed 20261107) found: 13 programs Microsoft's `D3DDisassemble`

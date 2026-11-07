@@ -1,0 +1,30 @@
+    ps_3_0
+0x00000280:     def c10, 1, 0, 0, 0
+0x00000298:     dcl_color v0
+0x000002A4:     dcl_texcoord v1.xy
+0x000002B0:     dcl_2d s0
+0x000002BC:     mov r0, c7
+0x000002C8:     add r0, r0, c8
+0x000002D8:     dp4 r1.x, v0, c0
+0x000002E8:     dp4 r1.y, v0, c1
+0x000002F8:     dp4 r1.z, v0, c2
+0x00000308:     dp4 r1.w, v0, c3
+0x00000318:     add r0, r0, r1
+0x00000328:     add r0, r0, c5.x
+0x00000338:     add r0, r0, c6.x
+0x00000348:     add r0, r0, c123
+0x00000358:     add r0, r0, c9.xyzz
+0x00000368:     mov r1, r0
+0x00000374:     rep i0
+0x0000037C:       add r1, r1, v0
+0x0000038C:     endrep
+0x00000390:     if b0
+0x00000398:       add r1, r1, r1
+0x000003A8:     endif
+0x000003AC:     if b2
+0x000003B4:       add r1, r1, c10.x
+0x000003C4:     endif
+0x000003C8:     texld r0, v1, s0
+0x000003D8:     add oC0, r0, r1
+
+// approximately 30 instruction slots used (1 texture, 29 arithmetic)

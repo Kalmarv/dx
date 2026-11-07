@@ -56,6 +56,15 @@
 //! - `saturated_calls.ps50.zi.dxbc` and `saturated_else.vs93.zi.dxbc`, from `zi_names.ps50.zi.dxbc` and
 //!   `level9.twice.vs93.zi.dxbc`: every `call` and every `else` saturated; Microsoft still labels the variable
 //!   locations after them (`Post-call locations`, `Prior locations`).
+//! - `icb_numbers.ps50.dxbc`, from `ps_sampling.ps50.dxbc`: its first three temps with an immediate index made
+//!   immediate constant buffer registers 0, 5 and -2, which Microsoft writes as it writes a temp's number (`icb5`).
+//! - `stage_pixel.hs.dxbc` and `stage_hull.ds.dxbc`, from `tess_stages.pass.hs.dxbc` and `tess_stages.tri.ds.dxbc`:
+//!   the version token's program type made pixel and hull. Microsoft writes the patch constant signature as an
+//!   output's in any program but a domain program's, and the tessellation tables whatever the stage.
+//! - `tessellation_values.hs.dxbc` and `tessellation_values.ps50.dxbc`, from `tess_stages.tri.hs.dxbc` and
+//!   `ps_sampling.ps50.dxbc`: the `STAT` part's control points, output primitive, partitioning and domain given values,
+//!   some with no name (`<internal error>`). Microsoft writes the domain table where the domain or the control points
+//!   are not 0, and the output primitive table where the primitive or the partitioning is not 0.
 //! - `message_strings.vs50.dxbc`, from `messages.vs50.dxbc`: the first message's character count made the bytes its
 //!   string has, leaving no room for the zero (Microsoft's `undecipherable custom data`), the second's 0 and the
 //!   third's string given a zero in its third byte; Microsoft reads a string to its zero, whatever its count.
@@ -196,6 +205,19 @@ const ARITHMETIC: [u32; 4] = [0, 50, 54, 56];
 const OFFSETS_123: u32 = 1 | 1 << 9 | 2 << 13 | 3 << 17;
 const CALL: u32 = 4;
 const ELSE: u32 = 18;
+
+/// The numbers the temps of `icb_numbers.ps50.dxbc` are given as immediate constant buffer registers: Microsoft
+/// writes each after `icb` as it writes a temp's (`icb0`, `icb5`, `icb-2`), where dx wrote it in brackets.
+const ICB_NUMBERS: [u32; 3] = [0, 5, (-2i32).cast_unsigned()];
+const TYPE_TEMP: u32 = 0;
+/// Program types of a version token, and the words of the `STAT` part the tessellation tables are written from.
+const PIXEL: u32 = 0;
+const HULL: u32 = 3;
+const STAT_CONTROL_POINTS: usize = 30;
+const STAT_PRIMITIVE: usize = 31;
+const STAT_PARTITIONING: usize = 32;
+const STAT_DOMAIN: usize = 33;
+const TYPE_IMMEDIATE_BUFFER: u32 = 9;
 
 /// The register types of operands that hold values rather than name a register.
 const TYPE_IMMEDIATE32: u32 = 4;
@@ -501,9 +523,67 @@ fn relative_selections(from: &Path, to: &Path) -> Result<()> {
     write(&container, kind, &program, to)
 }
 
-/// For each of `edits` (an opcode, the opcode written over it, a value), the next three-word instruction of that
-/// opcode, a conditional whose one operand is a register with one index, made the opcode written with a one-component
-/// immediate of the value.
+/// The first temps of the program's instructions with one immediate index and no extended operand token made
+/// immediate constant buffer registers of the numbers of `ICB_NUMBERS`.
+fn immediate_buffer_numbers(from: &Path, to: &Path) -> Result<()> {
+    let container = std::fs::read(from)?;
+    let (kind, mut program) = program(&container)?;
+    let mut temps = Vec::new();
+    for (start, length) in instructions(&program)? {
+        let opcode = program[start] & 0x7ff;
+        if opcode == CUSTOMDATA || declaration(opcode) {
+            continue;
+        }
+        let mut at = after_opcode(&program, start);
+        while at < start + length {
+            let token = program[at];
+            // one dimension, an immediate32 index
+            if token & 0x8000_0000 == 0 && token >> 12 & 0xff == TYPE_TEMP && token >> 20 & 0x1f == 1 {
+                temps.push(at);
+            }
+            at = operand(&program, at, &mut Found::default())?;
+        }
+    }
+    if temps.len() < ICB_NUMBERS.len() {
+        return Err(format!(
+            "{} temps, where the edit takes {}",
+            temps.len(),
+            ICB_NUMBERS.len()
+        )
+        .into());
+    }
+    for (at, number) in temps.into_iter().zip(ICB_NUMBERS) {
+        program[at] = program[at] & !0xff000 | TYPE_IMMEDIATE_BUFFER << 12;
+        program[at + 1] = number;
+    }
+    write(&container, kind, &program, to)
+}
+
+/// The program's version token given the program type `stage` where one is given (its version kept), and the
+/// `STAT` part's words of `statistics` (a word and its value).
+fn restaged(from: &Path, to: &Path, stage: Option<u32>, statistics: &[(usize, u32)]) -> Result<()> {
+    let mut container = std::fs::read(from)?;
+    if !statistics.is_empty() {
+        let mut stat = words(
+            dxcontainer::chunks(&container)?
+                .into_iter()
+                .find(|c| &c.kind == b"STAT")
+                .ok_or("no STAT part")?
+                .data,
+        );
+        for &(at, value) in statistics {
+            *stat.get_mut(at).ok_or_else(|| format!("no STAT word {at}"))? = value;
+        }
+        let bytes: Vec<u8> = stat.iter().flat_map(|w| w.to_le_bytes()).collect();
+        container = dxcontainer::replace_part(&container, *b"STAT", &bytes)?;
+    }
+    let (kind, mut program) = program(&container)?;
+    if let Some(stage) = stage {
+        program[0] = program[0] & 0xffff | stage << 16;
+    }
+    write(&container, kind, &program, to)
+}
+
 /// Every instruction of `opcode` saturated.
 fn saturated(from: &Path, to: &Path, opcode: u32) -> Result<()> {
     let container = std::fs::read(from)?;
@@ -522,6 +602,8 @@ fn saturated(from: &Path, to: &Path, opcode: u32) -> Result<()> {
     write(&container, kind, &program, to)
 }
 
+/// The first four arithmetic instructions given the reserved opcodes (`RESERVED`): the first plain, the second
+/// saturated, the third precise and the fourth with an extended token of sample offsets.
 fn reserved_opcodes(from: &Path, to: &Path) -> Result<()> {
     let container = std::fs::read(from)?;
     let (kind, mut program) = program(&container)?;
@@ -545,6 +627,9 @@ fn reserved_opcodes(from: &Path, to: &Path) -> Result<()> {
     write(&container, kind, &program, to)
 }
 
+/// For each of `edits` (an opcode, the opcode written over it, a value), the next three-word instruction of that
+/// opcode, a conditional whose one operand is a register with one index, made the opcode written with a one-component
+/// immediate of the value.
 fn conditional_values(from: &Path, to: &Path, edits: &[(u32, u32, u32)]) -> Result<()> {
     let container = std::fs::read(from)?;
     let (kind, mut program) = program(&container)?;
@@ -816,6 +901,38 @@ fn main() -> Result<()> {
         &[(BREAKC, RETC, 0x4120_0000)],
     )?;
     reserved_opcodes(&sampling, &fixtures.join("reserved.ps50.dxbc"))?;
+    immediate_buffer_numbers(&sampling, &fixtures.join("icb_numbers.ps50.dxbc"))?;
+    restaged(
+        &disasm.join("tess_stages.pass.hs.dxbc"),
+        &fixtures.join("stage_pixel.hs.dxbc"),
+        Some(PIXEL),
+        &[],
+    )?;
+    restaged(
+        &disasm.join("tess_stages.tri.ds.dxbc"),
+        &fixtures.join("stage_hull.ds.dxbc"),
+        Some(HULL),
+        &[],
+    )?;
+    // a domain and a partitioning with no name, and no output primitive
+    restaged(
+        &disasm.join("tess_stages.tri.hs.dxbc"),
+        &fixtures.join("tessellation_values.hs.dxbc"),
+        None,
+        &[
+            (STAT_CONTROL_POINTS, 5),
+            (STAT_PRIMITIVE, 0),
+            (STAT_PARTITIONING, 6),
+            (STAT_DOMAIN, 4),
+        ],
+    )?;
+    // control points with no domain, and an output primitive with no name, in a pixel program
+    restaged(
+        &sampling,
+        &fixtures.join("tessellation_values.ps50.dxbc"),
+        None,
+        &[(STAT_CONTROL_POINTS, 7), (STAT_PRIMITIVE, 9)],
+    )?;
     saturated(
         &disasm.join("zi_names.ps50.zi.dxbc"),
         &fixtures.join("saturated_calls.ps50.zi.dxbc"),
