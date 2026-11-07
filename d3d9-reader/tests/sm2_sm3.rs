@@ -591,9 +591,6 @@ fn minimum_precision_is_read_and_listed_after_the_operand() {
             "// approximately 7 instruction slots used",
             "",
         ]
-        .join(
-            "
-"
-        )
+        .join("\n")
     );
 }

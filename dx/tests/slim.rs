@@ -4,8 +4,8 @@
 //! branch side of the readers that the full pool of programs does, so this is the run before every push to main
 //! (CONTRIBUTING.md). A program Microsoft's tools refuse (`microsoft-refused.tsv`) has no listing to compare and dx
 //! must still read it without a panic, as it must the malformed Direct3D 9 programs it refuses ([`REFUSED`]). Each
-//! family is one test, its programs read on `primase_testdata::threads()` threads; a failure lists every program that
-//! failed, in name order.
+//! family is one test, its programs read on `primase_testdata::threads()` threads from an archive and on one from a
+//! folder ([`workers`]); a failure lists every program that failed, in name order.
 mod inputs;
 
 use std::collections::BTreeSet;
@@ -119,6 +119,17 @@ fn microsoft_refused(set: &Tree) -> BTreeSet<String> {
         .collect()
 }
 
+/// The threads that read `set`: `primase_testdata::threads()` for an archive, one positional read after another of a
+/// single open file; one for a folder, whose files opened at once on several threads over the NAS's SMB share fail at random with Windows error 1450
+/// (`ERROR_NO_SYSTEM_RESOURCES`), where one at a time they do not.
+fn workers(set: &Tree) -> usize {
+    if set.as_folder().is_some() {
+        1
+    } else {
+        primase_testdata::threads().get()
+    }
+}
+
 /// Every program of the family `family` (`programs/<family>/*.<family>`), its Microsoft listing `NAME.<ending>`
 /// beside it; the counts, after failing on any program that failed.
 fn family(family: &str, ending: &str) -> Option<Counts> {
@@ -133,7 +144,7 @@ fn family(family: &str, ending: &str) -> Option<Counts> {
         .collect();
     let next = AtomicUsize::new(0);
     let mut results: Vec<(usize, Verdict)> = std::thread::scope(|scope| {
-        let workers: Vec<_> = (0..primase_testdata::threads().get())
+        let workers: Vec<_> = (0..workers(set))
             .map(|_| {
                 scope.spawn(|| {
                     let mut out = Vec::new();
